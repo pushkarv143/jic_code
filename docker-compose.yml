@@ -1,0 +1,102 @@
+name: school-management-system
+
+# Local/dev-style multi-container stack for the School Management System:
+# MySQL 8 (auto-seeded from database/*.sql) + Spring Boot backend + React
+# (Vite) frontend served by nginx.
+#
+# Quick start:
+#   1. cp .env.example .env    (then edit the values, especially the
+#      passwords/secret)
+#   2. docker compose up --build
+#   3. Frontend: http://localhost      Backend/Swagger: http://localhost:8080/swagger-ui.html
+#
+# See the root README.md "Docker / Deployment" section for details, and
+# nginx/nginx.conf for a reference single-domain reverse-proxy config that
+# is an alternative to (not used by) this compose file.
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: sms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: school_management_system
+    ports:
+      - "3306:3306"
+    volumes:
+      # Persist data across container restarts/recreations.
+      - mysql_data:/var/lib/mysql
+      # The official MySQL image runs every *.sql (and *.sh) file found in
+      # /docker-entrypoint-initdb.d, in alphabetical order, exactly once
+      # (only when the data volume is empty on first start). The existing
+      # 00_.. through 07_.. numeric prefixes in database/ already sort
+      # correctly, and non-.sql files (e.g. database/README.md) are simply
+      # ignored by the entrypoint script, so the whole directory can be
+      # mounted as-is with no renaming needed.
+      - ./database:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./school-backend
+      dockerfile: Dockerfile
+    container_name: sms-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      # Hostname "mysql" is the mysql service's name on the compose
+      # network - only reachable from other containers, which is fine
+      # since the backend never runs in the user's browser.
+      DB_URL: jdbc:mysql://mysql:3306/school_management_system?useSSL=false&serverTimezone=UTC
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      JWT_SECRET: ${JWT_SECRET}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # These two are used server-side to build links (e.g. password-reset
+      # emails) and to populate the CORS allow-list - both must be a URL
+      # the end user's BROWSER can actually reach, i.e. wherever the
+      # frontend container's published port ends up, not the internal
+      # docker hostname.
+      FRONTEND_URL: http://localhost
+      CORS_ALLOWED_ORIGINS: http://localhost
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persist uploaded files (app.upload.dir / UPLOAD_DIR, default
+      # ./uploads resolved under the container's /app working directory)
+      # across container recreation.
+      - backend_uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./school-frontend
+      dockerfile: Dockerfile
+      args:
+        # Vite bakes VITE_API_BASE_URL into the compiled JS at build time
+        # (see school-frontend/Dockerfile). This value is executed in the
+        # END USER'S BROWSER, so it must be an address reachable from the
+        # host machine (localhost:8080, the backend's published port) -
+        # NOT the internal compose service name "backend", which only
+        # resolves on the docker-compose network, not from the browser.
+        VITE_API_BASE_URL: http://localhost:8080/api/v1
+    container_name: sms-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:
+  backend_uploads:

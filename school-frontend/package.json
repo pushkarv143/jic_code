@@ -1,0 +1,49 @@
+{
+  "name": "school-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
+    "preview": "vite preview",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
+  },
+  "dependencies": {
+    "@emotion/react": "11.13.3",
+    "@emotion/styled": "11.13.0",
+    "@hookform/resolvers": "3.9.0",
+    "@mui/icons-material": "6.1.6",
+    "@mui/material": "6.1.6",
+    "@mui/x-data-grid": "7.23.0",
+    "@mui/x-date-pickers": "7.23.0",
+    "@reduxjs/toolkit": "2.12.0",
+    "axios": "1.7.7",
+    "dayjs": "1.11.13",
+    "jwt-decode": "4.0.0",
+    "notistack": "3.0.2",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-hook-form": "7.53.2",
+    "react-redux": "9.2.0",
+    "react-router-dom": "6.28.0",
+    "recharts": "2.15.4",
+    "yup": "1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "@types/react": "19.0.1",
+    "@types/react-dom": "19.0.1",
+    "@typescript-eslint/eslint-plugin": "8.14.0",
+    "@typescript-eslint/parser": "8.14.0",
+    "@vitejs/plugin-react": "4.3.3",
+    "eslint": "8.57.1",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-plugin-react-hooks": "5.0.0",
+    "eslint-plugin-react-refresh": "0.4.14",
+    "prettier": "3.3.3",
+    "typescript": "5.6.3",
+    "vite": "5.4.11"
+  }
+}
