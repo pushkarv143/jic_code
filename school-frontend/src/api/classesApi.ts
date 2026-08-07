@@ -1,0 +1,193 @@
+import axiosInstance from './axiosInstance';
+import { ENDPOINTS } from './endpoints';
+import type {
+  ApiResponse,
+  ClassSubjectTeacher,
+  PageResponse,
+  SchoolClass,
+  Section,
+  Subject,
+} from '@/types';
+
+export interface ClassListParams {
+  academicYearId?: number;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface ClassPayload {
+  className: string;
+  academicYearId: number;
+}
+
+export interface SectionPayload {
+  sectionName: string;
+  roomNumber?: string | null;
+  capacity?: number | null;
+  classTeacherId?: number | null;
+}
+
+export interface SubjectPayload {
+  subjectName: string;
+  subjectCode: string;
+  isElective?: boolean;
+}
+
+export interface ClassSubjectTeacherPayload {
+  classId: number;
+  sectionId: number;
+  subjectId: number;
+  teacherId: number;
+}
+
+export interface ClassSubjectTeacherParams {
+  sectionId?: number;
+  subjectId?: number;
+  teacherId?: number;
+}
+
+/**
+ * Typed wrappers around /api/v1/classes/**, /api/v1/sections/**,
+ * /api/v1/subjects/** and /api/v1/class-subject-teacher/** from the schema
+ * contract. Grouped in one file because the Classes module UI treats them as
+ * one tightly-coupled screen (class -> sections/subjects -> teacher mapping).
+ */
+export const classesApi = {
+  list: async (
+    params: ClassListParams = {},
+  ): Promise<ApiResponse<PageResponse<SchoolClass>>> => {
+    const { data } = await axiosInstance.get<ApiResponse<PageResponse<SchoolClass>>>(
+      ENDPOINTS.CLASSES.BASE,
+      { params },
+    );
+    return data;
+  },
+
+  getById: async (id: number): Promise<ApiResponse<SchoolClass>> => {
+    const { data } = await axiosInstance.get<ApiResponse<SchoolClass>>(
+      ENDPOINTS.CLASSES.BY_ID(id),
+    );
+    return data;
+  },
+
+  create: async (payload: ClassPayload): Promise<ApiResponse<SchoolClass>> => {
+    const { data } = await axiosInstance.post<ApiResponse<SchoolClass>>(
+      ENDPOINTS.CLASSES.BASE,
+      payload,
+    );
+    return data;
+  },
+
+  update: async (id: number, payload: ClassPayload): Promise<ApiResponse<SchoolClass>> => {
+    const { data } = await axiosInstance.put<ApiResponse<SchoolClass>>(
+      ENDPOINTS.CLASSES.BY_ID(id),
+      payload,
+    );
+    return data;
+  },
+
+  remove: async (id: number): Promise<ApiResponse<null>> => {
+    const { data } = await axiosInstance.delete<ApiResponse<null>>(ENDPOINTS.CLASSES.BY_ID(id));
+    return data;
+  },
+
+  listSections: async (classId: number): Promise<ApiResponse<Section[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<Section[]>>(
+      ENDPOINTS.CLASSES.SECTIONS(classId),
+    );
+    return data;
+  },
+
+  createSection: async (
+    classId: number,
+    payload: SectionPayload,
+  ): Promise<ApiResponse<Section>> => {
+    const { data } = await axiosInstance.post<ApiResponse<Section>>(
+      ENDPOINTS.CLASSES.SECTIONS(classId),
+      payload,
+    );
+    return data;
+  },
+
+  updateSection: async (id: number, payload: SectionPayload): Promise<ApiResponse<Section>> => {
+    const { data } = await axiosInstance.put<ApiResponse<Section>>(
+      ENDPOINTS.SECTIONS.BY_ID(id),
+      payload,
+    );
+    return data;
+  },
+
+  removeSection: async (id: number): Promise<ApiResponse<null>> => {
+    const { data } = await axiosInstance.delete<ApiResponse<null>>(ENDPOINTS.SECTIONS.BY_ID(id));
+    return data;
+  },
+
+  assignClassTeacher: async (id: number, teacherId: number): Promise<ApiResponse<Section>> => {
+    const { data } = await axiosInstance.patch<ApiResponse<Section>>(
+      ENDPOINTS.SECTIONS.ASSIGN_CLASS_TEACHER(id),
+      { teacherId },
+    );
+    return data;
+  },
+
+  listSubjects: async (classId: number): Promise<ApiResponse<Subject[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<Subject[]>>(
+      ENDPOINTS.CLASSES.SUBJECTS(classId),
+    );
+    return data;
+  },
+
+  createSubject: async (
+    classId: number,
+    payload: SubjectPayload,
+  ): Promise<ApiResponse<Subject>> => {
+    const { data } = await axiosInstance.post<ApiResponse<Subject>>(
+      ENDPOINTS.CLASSES.SUBJECTS(classId),
+      payload,
+    );
+    return data;
+  },
+
+  updateSubject: async (id: number, payload: SubjectPayload): Promise<ApiResponse<Subject>> => {
+    const { data } = await axiosInstance.put<ApiResponse<Subject>>(
+      ENDPOINTS.SUBJECTS.BY_ID(id),
+      payload,
+    );
+    return data;
+  },
+
+  removeSubject: async (id: number): Promise<ApiResponse<null>> => {
+    const { data } = await axiosInstance.delete<ApiResponse<null>>(ENDPOINTS.SUBJECTS.BY_ID(id));
+    return data;
+  },
+
+  listTeacherMappings: async (
+    params: ClassSubjectTeacherParams = {},
+  ): Promise<ApiResponse<ClassSubjectTeacher[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<ClassSubjectTeacher[]>>(
+      ENDPOINTS.CLASS_SUBJECT_TEACHER.BASE,
+      { params },
+    );
+    return data;
+  },
+
+  assignTeacherMapping: async (
+    payload: ClassSubjectTeacherPayload,
+  ): Promise<ApiResponse<ClassSubjectTeacher>> => {
+    const { data } = await axiosInstance.post<ApiResponse<ClassSubjectTeacher>>(
+      ENDPOINTS.CLASS_SUBJECT_TEACHER.BASE,
+      payload,
+    );
+    return data;
+  },
+
+  removeTeacherMapping: async (id: number): Promise<ApiResponse<null>> => {
+    const { data } = await axiosInstance.delete<ApiResponse<null>>(
+      ENDPOINTS.CLASS_SUBJECT_TEACHER.BY_ID(id),
+    );
+    return data;
+  },
+};
+
+export default classesApi;

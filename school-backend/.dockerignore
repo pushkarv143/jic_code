@@ -1,0 +1,21 @@
+# Build output (rebuilt inside the image)
+target/
+
+# Logs
+logs/
+*.log
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+
+# VCS
+.git/
+.gitignore
+
+# Stray/unrelated tooling that should never end up in a Java image
+node_modules/
+
+# Docker-related files themselves don't need to be in the build context twice
+.dockerignore

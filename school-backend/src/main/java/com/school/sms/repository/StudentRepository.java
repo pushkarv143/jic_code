@@ -1,0 +1,56 @@
+package com.school.sms.repository;
+
+import com.school.sms.entity.Student;
+import com.school.sms.entity.StudentStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpecificationExecutor<Student> {
+
+    boolean existsByAdmissionNumber(String admissionNumber);
+
+    Optional<Student> findByUserId(Long userId);
+
+    long countByAdmissionNumberStartingWith(String prefix);
+
+    List<Student> findAllByIdIn(List<Long> ids);
+
+    // Attendance/fees modules: roster of a section's active students (used to
+    // pre-fill the attendance-marking grid and the monthly attendance view).
+    List<Student> findAllBySchoolClassIdAndSectionIdAndDeletedFalseAndStatusOrderByRollNumberAsc(
+            Long classId, Long sectionId, StudentStatus status);
+
+    // Fee generation: every active student across all sections of a class.
+    List<Student> findAllBySchoolClassIdAndDeletedFalseAndStatusOrderByRollNumberAsc(
+            Long classId, StudentStatus status);
+
+    // Own-record scoping for a PARENT: student_parents/parents have no JPA
+    // entities in this round, so this resolves a parent's children with a
+    // native query against the raw tables per SCHEMA_CONTRACT.md.
+    @Query(value = "SELECT s.* FROM students s " +
+            "JOIN student_parents sp ON sp.student_id = s.id " +
+            "JOIN parents p ON p.id = sp.parent_id " +
+            "WHERE p.user_id = :userId", nativeQuery = true)
+    List<Student> findAllByParentUserId(@Param("userId") Long userId);
+
+    // Calendar / birthdays widget: active students born in a given month, in day-of-month order.
+    @Query("SELECT s FROM Student s WHERE s.deleted = false AND s.dateOfBirth IS NOT NULL " +
+            "AND MONTH(s.dateOfBirth) = :month ORDER BY DAY(s.dateOfBirth) ASC")
+    List<Student> findAllByBirthMonth(@Param("month") int month);
+
+    // Reports: /api/v1/reports/students-summary.
+    long countByDeletedFalseAndStatus(StudentStatus status);
+
+    @Query("SELECT s.schoolClass.className, COUNT(s) FROM Student s " +
+            "WHERE s.deleted = false AND s.status = 'ACTIVE' " +
+            "GROUP BY s.schoolClass.className ORDER BY s.schoolClass.className")
+    List<Object[]> countActiveGroupByClass();
+
+    @Query("SELECT s.status, COUNT(s) FROM Student s WHERE s.deleted = false GROUP BY s.status")
+    List<Object[]> countGroupByStatus();
+}

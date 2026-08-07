@@ -1,0 +1,22 @@
+node_modules/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env files - build-time API URL is passed explicitly as a build ARG
+# instead (see Dockerfile), so these should never leak into an image.
+.env
+.env.local
+.env.development
+.env.production
+
+# VCS / IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+.DS_Store
+
+.dockerignore
