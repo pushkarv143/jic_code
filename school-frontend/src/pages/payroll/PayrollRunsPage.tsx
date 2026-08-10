@@ -275,6 +275,7 @@ export function PayrollRunsPage() {
           onPaginationModelChange={setPaginationModel}
           emptyTitle="No payroll runs found"
           emptyDescription="Generate payroll for this month to see rows here."
+          mobileVisibleFields={['employeeName', 'status']}
         />
       </Card>
 

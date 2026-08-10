@@ -180,6 +180,7 @@ export function ScholarshipsPage() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['studentName', 'title', 'amount']}
           emptyTitle="No scholarships found"
           emptyDescription={canWrite ? 'Add a scholarship to get started.' : 'No scholarships have been recorded yet.'}
         />

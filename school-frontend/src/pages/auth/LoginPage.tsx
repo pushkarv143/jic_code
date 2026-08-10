@@ -136,18 +136,6 @@ export function LoginPage() {
       <Button component={RouterLink} to="/register" variant="outlined" fullWidth>
         Create a Student / Parent Account
       </Button>
-
-      <Box sx={{ mt: 3, p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
-        <Typography variant="caption" color="text.secondary" display="block" fontWeight={700}>
-          Demo credentials (once backend is running)
-        </Typography>
-        <Typography variant="caption" color="text.secondary" display="block">
-          Admin: <b>admin</b> / <b>Admin@123</b>
-        </Typography>
-        <Typography variant="caption" color="text.secondary" display="block">
-          Any seeded user: <b>Password@123</b>
-        </Typography>
-      </Box>
     </Box>
   );
 }

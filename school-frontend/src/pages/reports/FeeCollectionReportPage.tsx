@@ -135,6 +135,7 @@ export function FeeCollectionReportPage() {
           getRowId={(row) => row.categoryName}
           onExport={handleExport}
           emptyTitle="No fee collection data found"
+          mobileVisibleFields={['categoryName', 'collected']}
         />
       </Card>
     </Box>

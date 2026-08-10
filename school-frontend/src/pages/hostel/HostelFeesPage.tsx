@@ -199,6 +199,7 @@ export function HostelFeesPage() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['studentName', 'month', 'paidStatus']}
           emptyTitle="No hostel fee records found"
           emptyDescription={canWrite ? 'Add a charge to get started.' : 'No hostel fee charges have been recorded for you yet.'}
         />

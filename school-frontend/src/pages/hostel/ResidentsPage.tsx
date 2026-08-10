@@ -252,6 +252,7 @@ export function ResidentsPage() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['studentName', 'status']}
           emptyTitle="No hostel residents found"
           emptyDescription={canWrite ? 'Allocate a student to a room to get started.' : 'No students are currently residing in hostel.'}
         />

@@ -370,6 +370,7 @@ export function IssueReturnPage() {
           onPaginationModelChange={setPaginationModel}
           emptyTitle="No book issues found"
           emptyDescription="Issue a book using the form above to get started."
+          mobileVisibleFields={['bookTitle', 'status']}
         />
       </Card>
 

@@ -148,6 +148,7 @@ export function AttendanceAnalyticsPage() {
           onExport={handleExport}
           emptyTitle="No attendance data found"
           emptyDescription="Try adjusting the class or date range filters."
+          mobileVisibleFields={['className', 'percentage']}
         />
       </Card>
     </Box>

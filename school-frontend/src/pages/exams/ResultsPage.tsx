@@ -229,6 +229,7 @@ function StaffResultsView() {
               columns={columns}
               loading={loading}
               getRowId={(row) => row.studentId}
+              mobileVisibleFields={['studentName', 'percentage']}
               emptyTitle="No results found"
               emptyDescription={loaded ? 'Marks may not have been entered for this exam yet.' : undefined}
             />

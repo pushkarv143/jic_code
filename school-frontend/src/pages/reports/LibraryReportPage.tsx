@@ -81,6 +81,7 @@ export function LibraryReportPage() {
         <DataTable
           rows={report.byCategory}
           columns={columns}
+          mobileVisibleFields={['categoryName', 'count']}
           getRowId={(row) => row.categoryName}
           onExport={handleExport}
           emptyTitle="No category breakdown available"

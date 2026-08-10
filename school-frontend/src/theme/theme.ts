@@ -192,6 +192,20 @@ export function getTheme(mode: PaletteMode, customization: ThemeCustomization = 
           },
         },
       },
+      MuiDialog: {
+        styleOverrides: {
+          paper: ({ theme: t }) => ({
+            [t.breakpoints.down('sm')]: {
+              margin: 0,
+              width: '100%',
+              maxWidth: '100%',
+              height: '100%',
+              maxHeight: '100%',
+              borderRadius: 0,
+            },
+          }),
+        },
+      },
       MuiChip: {
         styleOverrides: {
           root: { fontWeight: 600 },

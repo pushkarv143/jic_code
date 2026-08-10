@@ -194,10 +194,10 @@ export function TeacherListPage() {
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ height: '100%' }}>
             <Avatar sx={{ width: 32, height: 32 }}>{params.row.firstName?.[0] ?? params.row.username?.[0]}</Avatar>
             <Box sx={{ minWidth: 0 }}>
-              <Box sx={{ fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Box sx={{ fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {params.row.firstName ?? params.row.username} {params.row.lastName ?? ''}
               </Box>
-              <Box sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{params.row.employeeId}</Box>
+              <Box sx={{ fontSize: '0.75rem', lineHeight: 1.3, color: 'text.secondary' }}>{params.row.employeeId}</Box>
             </Box>
           </Stack>
         ),
@@ -346,6 +346,7 @@ export function TeacherListPage() {
           rows={rows}
           columns={columns}
           loading={loading}
+          mobileVisibleFields={['name', 'status']}
           paginationMode="server"
           sortingMode="server"
           rowCount={rowCount}

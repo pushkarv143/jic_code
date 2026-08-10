@@ -220,10 +220,10 @@ export function StudentListPage() {
               {getStudentInitials(params.row)}
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
-              <Box sx={{ fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Box sx={{ fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {getStudentDisplayName(params.row)}
               </Box>
-              <Box sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{params.row.admissionNumber}</Box>
+              <Box sx={{ fontSize: '0.75rem', lineHeight: 1.3, color: 'text.secondary' }}>{params.row.admissionNumber}</Box>
             </Box>
           </Stack>
         ),
@@ -387,6 +387,7 @@ export function StudentListPage() {
           columns={columns}
           loading={loading}
           checkboxSelection
+          mobileVisibleFields={['name', 'status']}
           paginationMode="server"
           sortingMode="server"
           rowCount={rowCount}

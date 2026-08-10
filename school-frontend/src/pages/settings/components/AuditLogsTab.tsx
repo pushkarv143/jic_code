@@ -170,6 +170,7 @@ export function AuditLogsTab() {
         <DataTable
           rows={rows}
           columns={columns}
+          mobileVisibleFields={['userName', 'action']}
           loading={loading}
           getRowId={(row) => row.id}
           paginationMode="server"

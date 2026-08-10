@@ -227,6 +227,7 @@ export function ClassListPage() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['className', 'studentCount']}
           emptyTitle="No classes found"
           emptyDescription="Add a class to get started."
         />

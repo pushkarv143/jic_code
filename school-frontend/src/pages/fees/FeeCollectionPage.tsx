@@ -207,6 +207,7 @@ export function FeeCollectionPage({ mode = 'staff' }: FeeCollectionPageProps) {
             rows={rows}
             columns={columns}
             loading={loading}
+            mobileVisibleFields={['studentName', 'feeCategoryName', 'status']}
             emptyTitle="No fee dues found"
             emptyDescription="This student has no fee records yet."
           />

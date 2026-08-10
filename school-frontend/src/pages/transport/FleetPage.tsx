@@ -102,7 +102,7 @@ function DriversTab({ drivers, loading, onChanged }: { drivers: Driver[]; loadin
         </Button>
       </Stack>
       <Card>
-        <DataTable rows={drivers} columns={columns} loading={loading} emptyTitle="No drivers yet" emptyDescription="Add a driver to assign them to a bus." />
+        <DataTable rows={drivers} columns={columns} mobileVisibleFields={['name', 'phone']} loading={loading} emptyTitle="No drivers yet" emptyDescription="Add a driver to assign them to a bus." />
       </Card>
       <DriverFormDialog open={formOpen} editing={editing} saving={saving} onClose={() => { setFormOpen(false); setEditing(null); }} onSubmit={handleSave} />
       <ConfirmDialog
@@ -225,7 +225,7 @@ function BusesTab({
         </Button>
       </Stack>
       <Card>
-        <DataTable rows={buses} columns={columns} loading={loading} emptyTitle="No buses yet" emptyDescription="Add a bus to the fleet to start defining routes." />
+        <DataTable rows={buses} columns={columns} mobileVisibleFields={['busNumber', 'driverName']} loading={loading} emptyTitle="No buses yet" emptyDescription="Add a bus to the fleet to start defining routes." />
       </Card>
       <BusFormDialog open={formOpen} editing={editing} drivers={drivers} saving={saving} onClose={() => { setFormOpen(false); setEditing(null); }} onSubmit={handleSave} />
       <ConfirmDialog
@@ -332,7 +332,7 @@ function RoutesTab({ routes, buses, loading, onChanged }: { routes: Route[]; bus
         </Button>
       </Stack>
       <Card>
-        <DataTable rows={routes} columns={columns} loading={loading} emptyTitle="No routes yet" emptyDescription="Add a route and define its pickup points." />
+        <DataTable rows={routes} columns={columns} mobileVisibleFields={['routeName', 'busNumber']} loading={loading} emptyTitle="No routes yet" emptyDescription="Add a route and define its pickup points." />
       </Card>
       <RouteFormDialog open={formOpen} editing={editing} buses={buses} saving={saving} onClose={() => { setFormOpen(false); setEditing(null); }} onSubmit={handleSave} />
       <ConfirmDialog

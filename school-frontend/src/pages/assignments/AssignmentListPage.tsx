@@ -233,6 +233,7 @@ function ManagementAssignmentsView() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['title', 'dueDate']}
           emptyTitle="No assignments found"
           emptyDescription="Add an assignment to get started."
         />

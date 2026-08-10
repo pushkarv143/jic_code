@@ -109,6 +109,7 @@ export function PayrollReportPage() {
         <DataTable
           rows={report?.byMonth ?? []}
           columns={columns}
+          mobileVisibleFields={['month', 'paidAmount']}
           loading={loading}
           getRowId={(row) => String(row.month)}
           onExport={handleExport}

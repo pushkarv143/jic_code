@@ -278,6 +278,7 @@ export function BooksPage() {
           onExport={handleExport}
           emptyTitle="No books found"
           emptyDescription="Try adjusting the filters, or add a new book to the catalog."
+          mobileVisibleFields={['title', 'copies']}
         />
       </Card>
 

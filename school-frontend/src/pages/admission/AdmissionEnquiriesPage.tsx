@@ -212,6 +212,7 @@ export function AdmissionEnquiriesPage() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['studentName', 'status']}
           emptyTitle="No admission enquiries found"
           emptyDescription="Enquiries submitted from the public admission form will appear here."
         />

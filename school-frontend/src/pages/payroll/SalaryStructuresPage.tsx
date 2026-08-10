@@ -160,6 +160,7 @@ export function SalaryStructuresPage() {
           loading={loading}
           emptyTitle="No salary structures found"
           emptyDescription="Add a salary structure to get started with payroll."
+          mobileVisibleFields={['employeeName', 'basicSalary']}
         />
       </Card>
 

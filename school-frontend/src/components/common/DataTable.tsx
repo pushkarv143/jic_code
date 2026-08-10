@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import {
   DataGrid,
@@ -43,6 +45,13 @@ export interface DataTableProps<T extends GridValidRowModel> {
   onSortModelChange?: (model: GridSortModel) => void;
   rowSelectionModel?: GridRowSelectionModel;
   onRowSelectionModelChange?: (model: GridRowSelectionModel) => void;
+  /**
+   * Data-column fields to keep visible on phone-width screens (< sm); every other data
+   * column starts hidden there (the 'actions' column is always kept). Purely a starting
+   * point — still user-toggleable afterwards via the Columns menu. Omit to leave every
+   * column visible and rely on the grid's own horizontal scroll on narrow screens.
+   */
+  mobileVisibleFields?: string[];
 }
 
 function ExportableToolbar({
@@ -102,13 +111,27 @@ export function DataTable<T extends GridValidRowModel>({
   onSortModelChange,
   rowSelectionModel,
   onRowSelectionModelChange,
+  mobileVisibleFields,
 }: DataTableProps<T>) {
-  const initialState = useMemo(
-    () => ({
-      pagination: { paginationModel: { pageSize, page: 0 } },
-    }),
-    [pageSize],
-  );
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const initialState = useMemo(() => {
+    const state: ComponentProps<typeof DataGrid>['initialState'] = {};
+    if (paginationMode === 'client') {
+      state.pagination = { paginationModel: { pageSize, page: 0 } };
+    }
+    if (isMobile && mobileVisibleFields) {
+      const columnVisibilityModel: Record<string, boolean> = {};
+      columns.forEach((col) => {
+        if (col.field !== 'actions' && !mobileVisibleFields.includes(col.field)) {
+          columnVisibilityModel[col.field] = false;
+        }
+      });
+      state.columns = { columnVisibilityModel };
+    }
+    return state;
+  }, [pageSize, paginationMode, isMobile, mobileVisibleFields, columns]);
 
   if (!loading && rows.length === 0) {
     return <EmptyState title={emptyTitle} description={emptyDescription} />;
@@ -124,7 +147,7 @@ export function DataTable<T extends GridValidRowModel>({
         checkboxSelection={checkboxSelection}
         disableRowSelectionOnClick
         pageSizeOptions={[5, 10, 25, 50]}
-        initialState={paginationMode === 'client' ? initialState : undefined}
+        initialState={Object.keys(initialState).length ? initialState : undefined}
         paginationMode={paginationMode}
         sortingMode={sortingMode}
         rowCount={paginationMode === 'server' ? rowCount : undefined}

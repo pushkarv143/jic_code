@@ -259,6 +259,7 @@ export function StudentAssignmentsPage() {
         <DataTable
           rows={rows}
           columns={canWrite ? columns : columns.filter((c) => c.field !== 'actions')}
+          mobileVisibleFields={['studentName', 'monthlyFee']}
           loading={loading}
           paginationMode="server"
           rowCount={rowCount}

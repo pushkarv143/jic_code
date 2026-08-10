@@ -252,6 +252,7 @@ export function ExamSetupPage() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['examTypeName', 'className']}
           emptyTitle="No exams found"
           emptyDescription="Add an exam to get started."
         />

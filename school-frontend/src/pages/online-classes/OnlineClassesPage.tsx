@@ -183,6 +183,7 @@ function ManagementOnlineClassesView() {
           onPaginationModelChange={setPaginationModel}
           emptyTitle="No online classes found"
           emptyDescription="Schedule an online class to get started."
+          mobileVisibleFields={['title', 'scheduledAt']}
         />
       </Card>
 

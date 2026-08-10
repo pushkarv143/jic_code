@@ -417,6 +417,7 @@ function ReportTab() {
           sortModel={sortModel}
           onSortModelChange={setSortModel}
           onExport={handleExport}
+          mobileVisibleFields={['attendanceDate', 'name', 'status']}
           emptyTitle="No attendance records found"
           emptyDescription="Try adjusting the filters or date range."
         />

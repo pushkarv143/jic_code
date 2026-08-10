@@ -273,6 +273,7 @@ export function LeaveListPage() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['applicantName', 'leaveType', 'status']}
           emptyTitle="No leave applications found"
           emptyDescription={scope === 'mine' ? 'Apply for leave using the button above.' : 'Try adjusting the filters.'}
         />

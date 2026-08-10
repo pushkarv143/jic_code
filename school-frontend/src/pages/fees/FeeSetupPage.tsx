@@ -354,6 +354,7 @@ function FeeStructuresTab() {
           rows={rows}
           columns={columns}
           loading={loading}
+          mobileVisibleFields={['className', 'feeCategoryName', 'amount']}
           emptyTitle="No fee structures found"
           emptyDescription="Add a fee structure to define what each class owes per category."
         />

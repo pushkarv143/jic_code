@@ -248,6 +248,7 @@ export function FeeReportsPage() {
           loading={loading}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['studentName', 'balance']}
           onExport={handleExport}
           toolbarExtra={
             <Button

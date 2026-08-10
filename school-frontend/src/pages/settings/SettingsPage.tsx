@@ -336,6 +336,7 @@ export function SettingsPage() {
             <DataTable
               rows={roles}
               columns={roleColumns}
+              mobileVisibleFields={['name']}
               loading={rolesLoading}
               getRowId={(row) => row.id}
               emptyTitle="No roles found"

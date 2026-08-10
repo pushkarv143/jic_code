@@ -69,7 +69,7 @@ export function AiAssistantWidget() {
       </Fab>
 
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
-        <Box sx={{ width: 360, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ width: { xs: '100vw', sm: 360 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ px: 2.5, py: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Avatar sx={{ bgcolor: 'primary.main' }}>
               <SmartToyOutlinedIcon fontSize="small" />

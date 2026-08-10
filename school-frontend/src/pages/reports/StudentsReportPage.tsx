@@ -79,6 +79,7 @@ export function StudentsReportPage() {
         <DataTable
           rows={report.byClass}
           columns={columns}
+          mobileVisibleFields={['className', 'count']}
           getRowId={(row) => row.className}
           onExport={handleExport}
           emptyTitle="No class breakdown available"

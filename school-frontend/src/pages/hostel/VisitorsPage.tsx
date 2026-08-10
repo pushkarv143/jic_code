@@ -163,6 +163,7 @@ export function VisitorsPage() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
+          mobileVisibleFields={['studentName', 'visitorName', 'checkOut']}
           emptyTitle="No visitors logged"
           emptyDescription={canWrite ? 'Log a visitor to get started.' : 'No visitors have been logged for you yet.'}
         />

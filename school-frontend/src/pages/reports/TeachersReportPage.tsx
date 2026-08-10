@@ -73,6 +73,7 @@ export function TeachersReportPage() {
         <DataTable
           rows={report.byDepartment}
           columns={columns}
+          mobileVisibleFields={['departmentName', 'count']}
           getRowId={(row) => row.departmentName}
           onExport={handleExport}
           emptyTitle="No department breakdown available"

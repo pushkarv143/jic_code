@@ -136,6 +136,7 @@ export function OverdueBooksPage() {
           onPaginationModelChange={setPaginationModel}
           emptyTitle="No overdue books"
           emptyDescription="Every issued book is currently within its due date. Nice work!"
+          mobileVisibleFields={['bookTitle', 'fineAmount']}
         />
       </Card>
 
