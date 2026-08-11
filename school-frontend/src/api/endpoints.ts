@@ -15,6 +15,13 @@ export const ENDPOINTS = {
     ME: '/auth/me',
   },
 
+  USERS: {
+    BASE: '/users',
+    BY_ID: (id: number | string) => `/users/${id}`,
+    ACTIVATE: (id: number | string) => `/users/${id}/activate`,
+    DEACTIVATE: (id: number | string) => `/users/${id}/deactivate`,
+  },
+
   ACADEMIC_YEARS: {
     BASE: '/academic-years',
     BY_ID: (id: number | string) => `/academic-years/${id}`,

@@ -26,6 +26,7 @@ public class UserDto {
     private boolean active;
     private String profileImage;
     private LocalDateTime lastLogin;
+    private LocalDateTime createdAt;
 
     // Self-service identity resolution: populated only on /auth/login, /auth/refresh-token
     // and /auth/me (not on the admin user-management endpoints, which have no need for it),

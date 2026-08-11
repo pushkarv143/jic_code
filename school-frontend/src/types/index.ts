@@ -29,9 +29,10 @@ export interface User {
   phone: string | null;
   gender: Gender | null;
   role: Role;
-  isActive: boolean;
+  active: boolean;
   profileImage: string | null;
   lastLogin: string | null;
+  createdAt: string;
   // Round-3 addition (ASSUMPTION - reconcile with backend): self-service attendance/fees
   // pages need to know "which student/teacher am I" without a dedicated lookup endpoint.
   // Expecting the backend to populate these on /auth/login and /auth/me for the relevant

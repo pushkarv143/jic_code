@@ -4,6 +4,7 @@ import com.school.sms.dto.request.ChangePasswordRequest;
 import com.school.sms.dto.request.ForgotPasswordRequest;
 import com.school.sms.dto.request.LoginRequest;
 import com.school.sms.dto.request.RefreshTokenRequest;
+import com.school.sms.dto.request.RegisterRequest;
 import com.school.sms.dto.request.ResetPasswordRequest;
 import com.school.sms.dto.response.ApiResponse;
 import com.school.sms.dto.response.JwtAuthResponse;
@@ -30,6 +31,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+
+    @PostMapping("/register")
+    @Operation(summary = "Self-register a STUDENT or PARENT account, pending admin approval")
+    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                "Registration submitted. You can sign in once your account is approved by the school."));
+    }
 
     @PostMapping("/login")
     @Operation(summary = "Authenticate a user and issue a JWT access/refresh token pair")

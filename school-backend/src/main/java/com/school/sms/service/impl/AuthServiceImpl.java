@@ -3,19 +3,23 @@ package com.school.sms.service.impl;
 import com.school.sms.dto.request.ChangePasswordRequest;
 import com.school.sms.dto.request.ForgotPasswordRequest;
 import com.school.sms.dto.request.LoginRequest;
+import com.school.sms.dto.request.RegisterRequest;
 import com.school.sms.dto.request.ResetPasswordRequest;
 import com.school.sms.dto.response.JwtAuthResponse;
 import com.school.sms.dto.response.UserDto;
 import com.school.sms.entity.PasswordResetToken;
 import com.school.sms.entity.RefreshToken;
+import com.school.sms.entity.Role;
 import com.school.sms.entity.User;
 import com.school.sms.exception.BadRequestException;
+import com.school.sms.exception.DuplicateResourceException;
 import com.school.sms.exception.ResourceNotFoundException;
 import com.school.sms.exception.TokenRefreshException;
 import com.school.sms.exception.UnauthorizedException;
 import com.school.sms.mapper.UserMapper;
 import com.school.sms.repository.PasswordResetTokenRepository;
 import com.school.sms.repository.RefreshTokenRepository;
+import com.school.sms.repository.RoleRepository;
 import com.school.sms.repository.StudentRepository;
 import com.school.sms.repository.TeacherRepository;
 import com.school.sms.repository.UserRepository;
@@ -56,12 +60,43 @@ public class AuthServiceImpl implements AuthService {
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
     private final AuditLogService auditLogService;
+    private final RoleRepository roleRepository;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
     private static final long PASSWORD_RESET_EXPIRY_MINUTES = 30;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    @Override
+    @Transactional
+    public void register(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new DuplicateResourceException("User", "username", request.getUsername());
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("User", "email", request.getEmail());
+        }
+
+        Role role = roleRepository.findByName(request.getRole())
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "name", request.getRole()));
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phone(request.getPhone())
+                .role(role)
+                // Self-registered accounts start inactive and wait for an admin to review and approve them.
+                .active(false)
+                .emailVerified(false)
+                .build();
+
+        User saved = userRepository.save(user);
+        auditLogService.record("SELF_REGISTER", "User", saved.getId(), null, null);
+    }
 
     @Override
     @Transactional

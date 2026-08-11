@@ -99,6 +99,7 @@ import LibraryReportPage from '@/pages/reports/LibraryReportPage';
 import TransportReportPage from '@/pages/reports/TransportReportPage';
 
 import SettingsPage from '@/pages/settings/SettingsPage';
+import UserListPage from '@/pages/users/UserListPage';
 
 import ProfilePage from '@/pages/misc/ProfilePage';
 import NotFoundPage from '@/pages/misc/NotFoundPage';
@@ -345,6 +346,11 @@ const router = createBrowserRouter([
             path: 'settings',
             element: <RoleBasedRoute allowedRoles={['SUPER_ADMIN', 'PRINCIPAL']} />,
             children: [{ index: true, element: <SettingsPage /> }],
+          },
+          {
+            path: 'users',
+            element: <RoleBasedRoute allowedRoles={['SUPER_ADMIN', 'PRINCIPAL']} />,
+            children: [{ index: true, element: <UserListPage /> }],
           },
           // Open to all roles - the page itself shows a graceful message for non-PARENT accounts.
           { path: 'parent', element: <ParentDashboardPage /> },

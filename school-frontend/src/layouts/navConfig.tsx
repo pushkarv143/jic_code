@@ -15,6 +15,7 @@ import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import VideoCameraFrontOutlinedIcon from '@mui/icons-material/VideoCameraFrontOutlined';
@@ -206,6 +207,13 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Account',
     items: [
       { label: 'My Profile', path: '/app/profile', icon: <PersonOutlineOutlinedIcon />, i18nKey: 'nav.myProfile' },
+      {
+        label: 'Users',
+        path: '/app/users',
+        icon: <ManageAccountsOutlinedIcon />,
+        roles: ['SUPER_ADMIN', 'PRINCIPAL'],
+        i18nKey: 'nav.users',
+      },
       {
         label: 'Settings',
         path: '/app/settings',
