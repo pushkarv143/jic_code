@@ -1,8 +1,10 @@
 package com.school.sms.dto.request;
 
 import com.school.sms.entity.Gender;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,6 +18,33 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StudentUpdateRequest {
+
+    /*
+     * Identity fields. These live on the linked `users` row rather than on
+     * `students`, but they belong in this request because the edit form presents
+     * one student record: splitting them across two endpoints would make renaming
+     * a student a two-call operation that can half-fail.
+     *
+     * They were previously absent while the frontend sent them anyway. With
+     * FAIL_ON_UNKNOWN_PROPERTIES disabled, Jackson dropped them without complaint,
+     * so editing a name returned 200 and changed nothing.
+     *
+     * Null means "leave unchanged", which is what lets a caller update only the
+     * academic fields without having to echo the name back.
+     */
+    @Size(max = 100, message = "First name must be at most 100 characters")
+    private String firstName;
+
+    @Size(max = 100, message = "Last name must be at most 100 characters")
+    private String lastName;
+
+    @Email(message = "Email format is invalid")
+    @Size(max = 150, message = "Email must be at most 150 characters")
+    private String email;
+
+    @Size(max = 20, message = "Phone must be at most 20 characters")
+    @Pattern(regexp = "^$|^[0-9+\\-\\s()]{6,20}$", message = "Phone number format is invalid")
+    private String phone;
 
     @NotNull(message = "Class is required")
     private Long classId;

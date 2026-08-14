@@ -37,8 +37,30 @@ export function usePermissions(): PermissionsApi {
     const role = user?.role;
     const permissions = new Set<Permission>(user?.permissions ?? []);
 
-    const can = (...names: Permission[]) => names.every((name) => permissions.has(name));
-    const canAny = (...names: Permission[]) => names.some((name) => permissions.has(name));
+    /**
+     * The administrator is never gated by a permission grant, mirroring
+     * AppConstants.ADMIN_OVERRIDE on the backend. Without this, a missing
+     * role_permissions row — a data problem, not a policy decision — hides
+     * controls from the one role that is supposed to have all of them.
+     */
+    const isAdmin = role === 'SUPER_ADMIN';
+
+    /**
+     * An empty grant set means "unknown", not "denied": a session cached before
+     * the backend started returning permissions has none, and blanking every
+     * action for those users is a worse answer than falling back to role checks.
+     * This matches getNavForRole() and the Android UserSession.can().
+     *
+     * Safe because it is a display decision only — the API re-checks the same
+     * grant on every request, so an action offered here that the user does not
+     * actually hold still returns 403 rather than data.
+     */
+    const unknownGrants = permissions.size === 0;
+
+    const can = (...names: Permission[]) =>
+      isAdmin || unknownGrants || names.every((name) => permissions.has(name));
+    const canAny = (...names: Permission[]) =>
+      isAdmin || unknownGrants || names.some((name) => permissions.has(name));
     const is = (...roles: Role[]) => Boolean(role && roles.includes(role));
 
     return {

@@ -47,22 +47,42 @@ public class FileStorageServiceImpl implements FileStorageService {
     @Value("${app.upload.dir}")
     private String uploadDir;
 
+    /*
+     * Subfolder names are configurable so a deployment can lay out its storage
+     * however it likes without a code change. They default to the original values,
+     * so an existing install keeps resolving the paths already written into
+     * students.photo_url and the other *_url columns.
+     *
+     * Changing one of these does NOT move existing files: rows written under the old
+     * name keep pointing at the old folder, which still resolves because reads join
+     * uploadDir to whatever path the database holds. Rename the folder on disk too if
+     * you want the old files to follow.
+     */
+    @Value("${app.upload.photos-subdir:photos}")
+    private String photosSubdir;
+
+    @Value("${app.upload.documents-subdir:documents}")
+    private String documentsSubdir;
+
+    @Value("${app.upload.materials-subdir:materials}")
+    private String materialsSubdir;
+
     @Override
     public String storePhoto(MultipartFile file) {
         validate(file, PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES, "Photo");
-        return store(file, "photos");
+        return store(file, photosSubdir);
     }
 
     @Override
     public String storeDocument(MultipartFile file) {
         validate(file, DOCUMENT_CONTENT_TYPES, DOCUMENT_MAX_BYTES, "Document");
-        return store(file, "documents");
+        return store(file, documentsSubdir);
     }
 
     @Override
     public String storeMaterial(MultipartFile file) {
         validate(file, MATERIAL_CONTENT_TYPES, MATERIAL_MAX_BYTES, "Study material");
-        return store(file, "materials");
+        return store(file, materialsSubdir);
     }
 
     @Override

@@ -57,6 +57,12 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   upload:
     dir: ${UPLOAD_DIR:./uploads}
+    # Subfolders under `dir`. Defaults match the paths already stored in
+    # students.photo_url etc., so changing one only affects newly uploaded files —
+    # existing rows keep resolving against the folder they were written to.
+    photos-subdir: ${UPLOAD_PHOTOS_SUBDIR:photos}
+    documents-subdir: ${UPLOAD_DOCUMENTS_SUBDIR:documents}
+    materials-subdir: ${UPLOAD_MATERIALS_SUBDIR:materials}
 
 springdoc:
   api-docs:

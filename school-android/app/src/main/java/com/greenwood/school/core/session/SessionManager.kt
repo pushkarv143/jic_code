@@ -143,9 +143,15 @@ data class UserSession(
      * same grant on every request, so a permission the user does not actually
      * hold still yields 403 rather than data.
      */
+    /**
+     * The administrator is never gated by a permission grant, mirroring
+     * AppConstants.ADMIN_OVERRIDE on the backend and usePermissions() on the web.
+     */
+    private val isAdmin: Boolean get() = role == Role.SUPER_ADMIN
+
     fun can(vararg names: String): Boolean =
-        permissions.isEmpty() || names.all { it in permissions }
+        isAdmin || permissions.isEmpty() || names.all { it in permissions }
 
     fun canAny(vararg names: String): Boolean =
-        permissions.isEmpty() || names.any { it in permissions }
+        isAdmin || permissions.isEmpty() || names.any { it in permissions }
 }

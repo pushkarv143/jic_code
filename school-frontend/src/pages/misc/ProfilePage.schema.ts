@@ -1,4 +1,5 @@
 import * as yup from 'yup';
+import { PHONE_MESSAGE, PHONE_PATTERN } from '@/utils/validationPatterns';
 
 /** Same password complexity rule enforced by the backend: min 8 chars, upper, lower, digit, special char. */
 export const PASSWORD_RULE_MESSAGE =
@@ -17,10 +18,9 @@ export const profileSchema = yup.object({
   firstName: yup.string().required('First name is required').max(50),
   lastName: yup.string().required('Last name is required').max(50),
   email: yup.string().email('Enter a valid email').required('Email is required'),
-  phone: yup
-    .string()
-    .required('Phone number is required')
-    .matches(/^[0-9]{10}$/, 'Enter a valid 10-digit phone number'),
+  // Every seeded user's phone is stored as +91-XXXXXXXXXX, so a digits-only rule
+  // makes "My Profile" unsavable for all of them — on a field they never edited.
+  phone: yup.string().required('Phone number is required').matches(PHONE_PATTERN, PHONE_MESSAGE),
 });
 
 export type ProfileFormValues = yup.InferType<typeof profileSchema>;

@@ -154,10 +154,19 @@ export const studentsApi = {
     return data;
   },
 
-  uploadPhoto: async (id: number, file: File): Promise<ApiResponse<Student>> => {
+  /**
+   * Uploads/replaces a student's photo.
+   *
+   * Returns `{ photoUrl }`, not a Student — the endpoint answers
+   * `ApiResponse<Map<String,String>>`. This was previously typed as
+   * `ApiResponse<Student>`, which happened not to break only because `Student`
+   * also has a `photoUrl` field, so the one property callers read existed on
+   * both types by luck.
+   */
+  uploadPhoto: async (id: number, file: File): Promise<ApiResponse<{ photoUrl: string }>> => {
     const formData = new FormData();
     formData.append('file', file);
-    const { data } = await axiosInstance.post<ApiResponse<Student>>(
+    const { data } = await axiosInstance.post<ApiResponse<{ photoUrl: string }>>(
       ENDPOINTS.STUDENTS.PHOTO(id),
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },

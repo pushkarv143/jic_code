@@ -159,6 +159,8 @@ data class MenuEntry(
      */
     fun isVisibleTo(role: Role, granted: Set<String>): Boolean = when {
         !isVisibleTo(role) -> false
+        // Never filter the administrator by permissions - see AppConstants.ADMIN_OVERRIDE.
+        role == Role.SUPER_ADMIN -> true
         permissions.isEmpty() || granted.isEmpty() -> true
         else -> permissions.any { it in granted }
     }

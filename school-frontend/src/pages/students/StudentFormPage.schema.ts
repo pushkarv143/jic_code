@@ -1,5 +1,6 @@
 import * as yup from 'yup';
 import dayjs from 'dayjs';
+import { PHONE_MESSAGE, PHONE_PATTERN } from '@/utils/validationPatterns';
 
 /**
  * Class/Section/Academic Year selects are kept as strings in RHF state (matching
@@ -16,10 +17,7 @@ export const guardianSchema = yup.object({
   name: yup.string().required('Guardian name is required').max(100),
   relation: yup.string().required('Relation is required').max(50),
   occupation: yup.string().max(100).optional(),
-  phone: yup
-    .string()
-    .required('Phone number is required')
-    .matches(/^[0-9]{10}$/, 'Enter a valid 10-digit phone number'),
+  phone: yup.string().required('Phone number is required').matches(PHONE_PATTERN, PHONE_MESSAGE),
   email: yup
     .string()
     .optional()
@@ -29,7 +27,7 @@ export const guardianSchema = yup.object({
 });
 export type GuardianFormValues = yup.InferType<typeof guardianSchema>;
 
-export const studentSchema = yup.object({
+const baseStudentSchema = yup.object({
   firstName: yup.string().required('First name is required').max(50),
   lastName: yup.string().required('Last name is required').max(50),
   email: yup
@@ -39,7 +37,7 @@ export const studentSchema = yup.object({
   phone: yup
     .string()
     .optional()
-    .test('phone', 'Enter a valid 10-digit phone number', (value) => !value || /^[0-9]{10}$/.test(value)),
+    .test('phone', PHONE_MESSAGE, (value) => !value || PHONE_PATTERN.test(value)),
   gender: yup
     .mixed<'MALE' | 'FEMALE' | 'OTHER'>()
     .oneOf(['MALE', 'FEMALE', 'OTHER'], 'Gender is required')
@@ -77,4 +75,24 @@ export const studentSchema = yup.object({
     ),
 });
 
-export type StudentFormValues = yup.InferType<typeof studentSchema>;
+/**
+ * Guardian rules must not apply when editing.
+ *
+ * On create, guardians are part of the same payload, so requiring one — and
+ * exactly one primary — is correct. On edit they are managed through their own
+ * endpoints (add/update/remove guardian) and `onSubmit` does not send them at
+ * all. Validating them there blocks the whole form over rows the save will not
+ * touch: a student with no guardian, or two primaries, becomes uneditable with
+ * no visible reason.
+ */
+const editStudentSchema = baseStudentSchema.shape({
+  guardians: yup.array().of(guardianSchema).optional().default([]),
+});
+
+export const studentSchema = baseStudentSchema;
+
+export function makeStudentSchema(isEdit: boolean) {
+  return isEdit ? editStudentSchema : baseStudentSchema;
+}
+
+export type StudentFormValues = yup.InferType<typeof baseStudentSchema>;

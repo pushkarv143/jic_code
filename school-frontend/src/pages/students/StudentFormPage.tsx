@@ -35,7 +35,7 @@ import studentsApi, { type GuardianPayload, type StudentPayload } from '@/api/st
 import classesApi from '@/api/classesApi';
 import academicYearsApi from '@/api/academicYearsApi';
 import type { AcademicYear, SchoolClass, Section } from '@/types';
-import { studentSchema, type StudentFormValues } from './StudentFormPage.schema';
+import { makeStudentSchema, type StudentFormValues } from './StudentFormPage.schema';
 
 const RELATION_OPTIONS = ['Father', 'Mother', 'Guardian', 'Grandfather', 'Grandmother', 'Uncle', 'Aunt', 'Other'];
 const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -78,7 +78,9 @@ export function StudentFormPage() {
     trigger,
     formState: { errors },
   } = useForm<StudentFormValues>({
-    resolver: yupResolver(studentSchema) as any,
+    // Guardian rules apply on create only; on edit they are saved through their
+    // own endpoints and must not gate this form.
+    resolver: yupResolver(makeStudentSchema(isEdit)) as any,
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -204,19 +206,38 @@ export function StudentFormPage() {
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Show the local file immediately so the avatar responds while the upload is
+    // still in flight. Replaced with the server URL once it lands.
+    const localPreview = URL.createObjectURL(file);
     setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
-    if (isEdit && studentId) {
-      setUploadingPhoto(true);
-      try {
-        const res = await studentsApi.uploadPhoto(studentId, file);
-        enqueueSnackbar('Photo updated.', { variant: 'success' });
-        if (res.data.photoUrl) setPhotoPreview(res.data.photoUrl);
-      } catch {
-        enqueueSnackbar('Could not upload photo.', { variant: 'error' });
-      } finally {
-        setUploadingPhoto(false);
+    setPhotoPreview(localPreview);
+
+    // Reset the input so re-picking the same file fires onChange again — without
+    // this, a failed upload cannot be retried by selecting the same photo.
+    e.target.value = '';
+
+    if (!isEdit || !studentId) return;
+
+    setUploadingPhoto(true);
+    try {
+      const res = await studentsApi.uploadPhoto(studentId, file);
+      if (res.data?.photoUrl) {
+        setPhotoPreview(res.data.photoUrl);
+        // The blob is no longer displayed; release it rather than leaking one
+        // object URL per photo change for the life of the page.
+        URL.revokeObjectURL(localPreview);
+        // Uploaded already, so onSubmit must not upload it a second time.
+        setPhotoFile(null);
       }
+      enqueueSnackbar('Photo updated.', { variant: 'success' });
+    } catch (err: any) {
+      enqueueSnackbar(
+        err?.response?.data?.message ?? 'Could not upload photo. Check the file is a JPG/PNG under 2MB.',
+        { variant: 'error' },
+      );
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -268,6 +289,50 @@ export function StudentFormPage() {
     }
     remove(index);
     setGuardianDeleteIndex(null);
+  };
+
+  /**
+   * Runs when validation blocks the submit.
+   *
+   * Without this, `handleSubmit` simply does not call `onSubmit` and the button
+   * looks broken — the failing field is often scrolled out of view, or on a
+   * guardian row the user never touched. Naming the fields and scrolling to the
+   * first one turns a dead button into an ordinary correctable error.
+   */
+  const onInvalid = (formErrors: Record<string, unknown>) => {
+    const labels: Record<string, string> = {
+      firstName: 'First name',
+      lastName: 'Last name',
+      email: 'Email',
+      phone: 'Phone',
+      gender: 'Gender',
+      dateOfBirth: 'Date of birth',
+      address: 'Address',
+      city: 'City',
+      state: 'State',
+      pincode: 'Pincode',
+      classId: 'Class',
+      sectionId: 'Section',
+      academicYearId: 'Academic year',
+      rollNumber: 'Roll number',
+      admissionDate: 'Admission date',
+      guardians: 'Guardians',
+    };
+
+    const failed = Object.keys(formErrors).map((key) => labels[key] ?? key);
+    enqueueSnackbar(
+      failed.length
+        ? `Please check: ${failed.join(', ')}`
+        : 'Some fields need attention before saving.',
+      { variant: 'warning' },
+    );
+
+    const firstField = Object.keys(formErrors)[0];
+    if (firstField) {
+      document
+        .querySelector(`[name="${firstField}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const onSubmit = async (values: StudentFormValues) => {
@@ -344,7 +409,7 @@ export function StudentFormPage() {
         ]}
       />
 
-      <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+      <Box component="form" onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate>
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
             <Card>

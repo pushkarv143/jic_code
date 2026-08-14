@@ -39,3 +39,17 @@ bin/
 # Local run scripts hold real DB credentials for pointing at a remote server.
 run-local*
 !run-local*.example
+# A filled-in copy of the deploy env file holds DB_PASSWORD and JWT_SECRET.
+# Only the .example template is tracked.
+deploy/*.env
+school-backend.env
+# SSH keys, in case one is ever copied into the repo to run a deploy.
+*.pem
+*.ppk
+
+### Runtime data — user uploads are not source ###
+# Photos, student documents and study materials land here at runtime. They are
+# per-environment user content, not part of the build, and on a deployed server
+# they live outside the repo entirely (UPLOAD_DIR=/opt/school-backend/uploads).
+school-backend/uploads/
+uploads/

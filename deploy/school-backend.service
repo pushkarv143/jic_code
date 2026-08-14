@@ -1,0 +1,54 @@
+[Unit]
+Description=School Management System - Spring Boot backend
+Documentation=https://github.com/your-org/school
+# The app cannot start without its database, and MySQL is on this same host.
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/school-backend
+
+# Secrets live here, not in this unit file: systemd unit files are world-readable
+# and their contents show up in `systemctl cat`. The env file is chmod 600.
+EnvironmentFile=/etc/school-backend/school-backend.env
+
+# -XX:MaxRAMPercentage rather than a fixed -Xmx so the JVM adapts if the
+# instance is resized. OCI free-tier shapes are small, hence the modest share.
+ExecStart=/usr/bin/java \
+  -XX:MaxRAMPercentage=70.0 \
+  -XX:+UseSerialGC \
+  -Djava.security.egd=file:/dev/./urandom \
+  -jar /opt/school-backend/school-backend.jar
+
+# Restart on crash, but give up if it is crash-looping so a broken deploy is
+# visible in `systemctl status` instead of silently retrying forever.
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=3
+StartLimitIntervalSec=120
+
+SuccessExitStatus=143
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=school-backend
+
+# --- Hardening -------------------------------------------------------------
+# The app only ever writes to its uploads dir and logs; everything else is
+# read-only to limit what a compromised process can touch.
+#
+# ProtectHome must stay false: uploads live under /home/ubuntu/app/uploads.
+# Setting it to true (or "read-only") makes that path invisible to the service
+# and every upload fails with a permission error that does not mention systemd.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/home/ubuntu/app/uploads /opt/school-backend/logs
+
+[Install]
+WantedBy=multi-user.target

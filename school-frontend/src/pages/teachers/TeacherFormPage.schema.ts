@@ -1,6 +1,7 @@
 import * as yup from 'yup';
 import dayjs from 'dayjs';
 import { passwordComplexity } from '@/pages/auth/authSchemas';
+import { PHONE_MESSAGE, PHONE_PATTERN } from '@/utils/validationPatterns';
 
 /** Department/Designation selects kept as strings in RHF state, converted to numbers at submit time. */
 function idSelect(label: string) {
@@ -20,10 +21,7 @@ export function buildTeacherSchema(isEdit: boolean) {
       : passwordComplexity,
     firstName: yup.string().required('First name is required').max(50),
     lastName: yup.string().required('Last name is required').max(50),
-    phone: yup
-      .string()
-      .required('Phone number is required')
-      .matches(/^[0-9]{10}$/, 'Enter a valid 10-digit phone number'),
+    phone: yup.string().required('Phone number is required').matches(PHONE_PATTERN, PHONE_MESSAGE),
     gender: yup
       .mixed<'MALE' | 'FEMALE' | 'OTHER'>()
       .oneOf(['MALE', 'FEMALE', 'OTHER'], 'Gender is required')
@@ -54,7 +52,7 @@ export function buildTeacherSchema(isEdit: boolean) {
     emergencyContact: yup
       .string()
       .optional()
-      .test('phone', 'Enter a valid 10-digit phone number', (value) => !value || /^[0-9]{10}$/.test(value)),
+      .test('phone', PHONE_MESSAGE, (value) => !value || PHONE_PATTERN.test(value)),
     salary: yup
       .string()
       .optional()

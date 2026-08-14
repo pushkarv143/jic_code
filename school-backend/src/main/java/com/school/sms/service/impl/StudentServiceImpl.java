@@ -237,8 +237,62 @@ public class StudentServiceImpl implements StudentService {
         student.setAcademicYear(academicYear);
 
         Student saved = studentRepository.save(student);
+        // Name, email and phone live on the linked users row, so the mapper above
+        // cannot reach them. Applied in the same transaction as the student save so
+        // the two halves of one edit cannot diverge.
+        applyIdentityFields(saved, request);
+
         auditLogService.record("UPDATE_STUDENT", "Student", saved.getId(), null, null);
         return toFullDto(saved);
+    }
+
+    /**
+     * Copies the identity fields onto the student's login account.
+     *
+     * A null field means "leave unchanged", so a caller can update only the
+     * academic details without echoing the name back.
+     */
+    private void applyIdentityFields(Student student, StudentUpdateRequest request) {
+        boolean hasIdentityChange = StringUtils.hasText(request.getFirstName())
+                || StringUtils.hasText(request.getLastName())
+                || StringUtils.hasText(request.getEmail())
+                || StringUtils.hasText(request.getPhone());
+        if (!hasIdentityChange) {
+            return;
+        }
+
+        User user = student.getUser();
+        if (user == null) {
+            // A student may be admitted without a login (students.user_id is
+            // nullable), and there is nowhere else to put a name. Failing loudly is
+            // the point: silently accepting the field is the bug being fixed here.
+            throw new BadRequestException(
+                    "This student has no login account, so name, email and phone cannot be stored. "
+                            + "Create a login for them first.");
+        }
+
+        if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
+            // users.email is UNIQUE; checking here turns a 500-level constraint
+            // violation into a message naming the actual problem.
+            userRepository.findByEmail(request.getEmail())
+                    .filter(existing -> !existing.getId().equals(user.getId()))
+                    .ifPresent(existing -> {
+                        throw new DuplicateResourceException("User", "email", request.getEmail());
+                    });
+            user.setEmail(request.getEmail());
+        }
+
+        if (StringUtils.hasText(request.getFirstName())) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+
+        userRepository.save(user);
     }
 
     @Override

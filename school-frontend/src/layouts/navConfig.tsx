@@ -262,7 +262,9 @@ export const NAV_GROUPS: NavGroup[] = [
  */
 export function getNavForRole(role: Role | undefined, granted?: Set<Permission>): NavGroup[] {
   if (!role) return [];
-  const checkPermissions = Boolean(granted && granted.size > 0);
+  // SUPER_ADMIN is never filtered by permissions, matching usePermissions() and
+  // AppConstants.ADMIN_OVERRIDE on the backend.
+  const checkPermissions = role !== 'SUPER_ADMIN' && Boolean(granted && granted.size > 0);
 
   return NAV_GROUPS.map((group) => ({
     ...group,
