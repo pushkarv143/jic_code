@@ -60,7 +60,14 @@ const baseStudentSchema = yup.object({
   classId: idSelect('Class'),
   sectionId: idSelect('Section'),
   academicYearId: idSelect('Academic year'),
-  rollNumber: yup.string().required('Roll number is required').max(20),
+  // Optional: left blank, the backend assigns the next number in the section's
+  // sequence. Requiring it here is what led to people inventing values.
+  rollNumber: yup
+    .string()
+    .optional()
+    .test('rollNumber', 'Roll number must be a positive whole number', (value) =>
+      !value || /^[0-9]{1,6}$/.test(value),
+    ),
   admissionDate: yup
     .mixed<dayjs.Dayjs>()
     .required('Admission date is required')

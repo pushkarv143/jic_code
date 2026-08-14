@@ -184,8 +184,8 @@ fun StudentFormScreen(
                 AppTextField(
                     value = state.rollNumber,
                     onValueChange = { viewModel.update { copy(rollNumber = it, rollNumberError = null) } },
-                    label = "Roll number",
-                    required = true,
+                    label = "Roll number (leave blank to auto-assign)",
+                    required = false,
                     error = state.rollNumberError,
                 )
                 Spacer(Modifier.height(10.dp))
@@ -375,7 +375,10 @@ class StudentFormViewModel @Inject constructor(
         val validated = current.copy(
             firstNameError = Validators.required(current.firstName, "First name"),
             lastNameError = Validators.required(current.lastName, "Last name"),
-            rollNumberError = Validators.required(current.rollNumber, "Roll number"),
+            // No longer required: leaving it blank asks the backend for the next
+            // number in the section's sequence, which is the safer default than
+            // having someone invent one.
+            rollNumberError = null,
             dateOfBirthError = if (current.dateOfBirth == null) "Date of birth is required" else null,
             emailError = Validators.email(current.email, required = false),
             phoneError = Validators.phone(current.phone, required = false),
@@ -408,7 +411,7 @@ class StudentFormViewModel @Inject constructor(
             classId = current.selectedClass!!.id,
             sectionId = current.selectedSection!!.id,
             academicYearId = current.selectedYear!!.id,
-            rollNumber = current.rollNumber.trim(),
+            rollNumber = current.rollNumber.trim().takeIf { it.isNotBlank() },
             admissionDate = Formatters.apiDate(current.admissionDate),
             dateOfBirth = Formatters.apiDate(current.dateOfBirth!!),
             gender = current.gender,

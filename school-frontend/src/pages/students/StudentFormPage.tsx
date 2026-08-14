@@ -402,7 +402,9 @@ export function StudentFormPage() {
         classId: Number(values.classId),
         sectionId: Number(values.sectionId),
         academicYearId: Number(values.academicYearId),
-        rollNumber: values.rollNumber,
+        // Omitted rather than sent empty, so the backend allocates the next number
+        // in the section rather than trying to parse "".
+        rollNumber: values.rollNumber?.trim() ? values.rollNumber.trim() : undefined,
         admissionDate: dayjs(values.admissionDate).format('YYYY-MM-DD'),
         dateOfBirth: dayjs(values.dateOfBirth).format('YYYY-MM-DD'),
         gender: values.gender,
@@ -846,7 +848,7 @@ export function StudentFormPage() {
                       fullWidth
                       {...register('rollNumber')}
                       error={!!errors.rollNumber}
-                      helperText={errors.rollNumber?.message}
+                      helperText={errors.rollNumber?.message ?? 'Leave blank to auto-assign the next number'}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>

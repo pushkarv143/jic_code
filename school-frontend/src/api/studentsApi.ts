@@ -41,7 +41,8 @@ export interface StudentPayload {
   classId: number;
   sectionId: number;
   academicYearId: number;
-  rollNumber: string;
+  /** Omit to have the backend assign the next roll number in the class/section. */
+  rollNumber?: string;
   admissionDate: string;
   dateOfBirth: string;
   gender: Gender;

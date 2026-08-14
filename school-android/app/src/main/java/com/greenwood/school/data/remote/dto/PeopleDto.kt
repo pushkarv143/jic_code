@@ -116,7 +116,13 @@ data class StudentRequestDto(
     val classId: Long,
     val sectionId: Long,
     val academicYearId: Long,
-    val rollNumber: String,
+    /**
+     * Null lets the backend allocate the next roll number in the class/section
+     * sequence. Sending a value is still allowed but is rejected if already taken —
+     * this used to be required free text, which is how duplicates and values like
+     * 151611 got in.
+     */
+    val rollNumber: String? = null,
     val admissionDate: String,
     val dateOfBirth: String,
     val gender: String,
