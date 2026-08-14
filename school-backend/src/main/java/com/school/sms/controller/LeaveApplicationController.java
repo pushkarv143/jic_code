@@ -35,6 +35,11 @@ public class LeaveApplicationController {
     // Class teachers are included here so they can approve/reject student leave;
     // the service layer restricts them to STUDENT-type applications only.
     private static final String ADMIN_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','CLASS_TEACHER')";
+    // Every role applies for and views their own leave, so these are open to any
+    // signed-in user. Stated explicitly rather than left off: an endpoint with no
+    // gate is indistinguishable from one where the gate was forgotten, which is how
+    // UserController's read endpoints stayed open to students.
+    private static final String ANY_AUTHENTICATED_USER = "isAuthenticated()";
 
     @GetMapping
     @PreAuthorize(ADMIN_ROLES)
@@ -48,6 +53,7 @@ public class LeaveApplicationController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize(ANY_AUTHENTICATED_USER)
     @Operation(summary = "The current user's own leave applications")
     public ResponseEntity<ApiResponse<PageResponse<LeaveApplicationDto>>> getMy(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success("Your leave applications retrieved successfully",
@@ -55,6 +61,7 @@ public class LeaveApplicationController {
     }
 
     @PostMapping
+    @PreAuthorize(ANY_AUTHENTICATED_USER)
     @Operation(summary = "Apply for leave (applicant is always the current user)")
     public ResponseEntity<ApiResponse<LeaveApplicationDto>> create(@Valid @RequestBody LeaveApplicationRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Leave application submitted successfully",
@@ -77,7 +84,10 @@ public class LeaveApplicationController {
                 leaveApplicationService.reject(id)));
     }
 
+    // Any signed-in user may withdraw a leave application, but only their own and
+    // only while pending - both enforced in LeaveApplicationServiceImpl.delete().
     @DeleteMapping("/{id}")
+    @PreAuthorize(ANY_AUTHENTICATED_USER)
     @Operation(summary = "Withdraw a leave application (only its own applicant, only while still pending)")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         leaveApplicationService.delete(id);

@@ -37,7 +37,14 @@ public class UserController {
 
     private final UserService userService;
 
+    // The write endpoints below were gated from the start but these two reads were
+    // not, so any authenticated caller - a student included - could list every
+    // account in the school with its username, email, phone and role. Matches the
+    // write gate: user administration is SUPER_ADMIN/PRINCIPAL only.
+    private static final String READ_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL')";
+
     @GetMapping
+    @PreAuthorize(READ_ROLES)
     @Operation(summary = "List users, paginated, with optional search and role filters")
     public ResponseEntity<ApiResponse<PageResponse<UserDto>>> getAllUsers(
             @RequestParam(required = false) String search,
@@ -51,6 +58,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize(READ_ROLES)
     @Operation(summary = "Get a single user by id")
     public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable @Parameter(description = "User id") Long id) {
         UserDto user = userService.getUserById(id);

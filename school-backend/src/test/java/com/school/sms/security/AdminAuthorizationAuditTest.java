@@ -97,6 +97,61 @@ class AdminAuthorizationAuditTest {
                 .isEmpty();
     }
 
+    /**
+     * Every endpoint carries an authorization gate.
+     *
+     * The two tests either side of this one only inspect gates that exist — so an
+     * endpoint with no {@code @PreAuthorize} at all passed both of them silently.
+     * That is exactly how {@code GET /api/v1/users} shipped readable by any
+     * authenticated caller, students included, while its sibling write endpoints
+     * were correctly restricted: an audit that only checks the rules it can see is
+     * blind to the absence of a rule.
+     *
+     * A handler that genuinely should be open to all authenticated users must say
+     * so explicitly with {@code isAuthenticated()}, so the decision is visible in
+     * the source rather than inferred from an omission.
+     */
+    @Test
+    @DisplayName("no endpoint is left without an authorization gate")
+    void everyEndpointHasAnAuthorizationGate() throws IOException {
+        // Public by design: these are pre-auth or intentionally anonymous, and are
+        // covered by the permitAll() matchers in SecurityConfig instead.
+        List<String> publicControllers = List.of(
+                "AuthController.java",
+                "PublicAdmissionEnquiryController.java");
+
+        // Only the verb-specific mapping annotations, and only where the declaration
+        // that follows is a method rather than a type — a bare class-level
+        // @RequestMapping("/api/v1/...") is the controller's base path, not a handler,
+        // and matching it flags every controller in the project.
+        Pattern handler = Pattern.compile(
+                "@(?:Get|Post|Put|Patch|Delete)Mapping[^\\n]*\\n(\\s*@[^\\n]*\\n)*\\s*public\\s+(?!class\\b)");
+
+        List<String> ungated = new ArrayList<>();
+
+        for (Path controller : controllerFiles()) {
+            String fileName = controller.getFileName().toString();
+            if (publicControllers.contains(fileName)) {
+                continue;
+            }
+            String source = Files.readString(controller, StandardCharsets.UTF_8);
+
+            Matcher matcher = handler.matcher(source);
+            while (matcher.find()) {
+                String declaration = matcher.group();
+                if (!declaration.contains("@PreAuthorize")) {
+                    String firstLine = declaration.strip().split("\\R")[0];
+                    ungated.add(fileName + " -> " + firstLine);
+                }
+            }
+        }
+
+        assertThat(ungated)
+                .as("These handlers have no @PreAuthorize, so any authenticated user can call "
+                        + "them. Add a gate, or isAuthenticated() if that is genuinely intended.")
+                .isEmpty();
+    }
+
     /** The administrator must never be gated by a permission grant alone. */
     @Test
     @DisplayName("permission-gated endpoints carry the admin override")
