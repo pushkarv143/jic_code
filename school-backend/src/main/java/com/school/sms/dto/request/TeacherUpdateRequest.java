@@ -1,5 +1,6 @@
 package com.school.sms.dto.request;
 
+import com.school.sms.util.ValidationPatterns;
 import com.school.sms.entity.EmploymentType;
 import com.school.sms.entity.Gender;
 import jakarta.validation.constraints.Email;
@@ -33,7 +34,7 @@ public class TeacherUpdateRequest {
     @Size(max = 100, message = "Last name must not exceed 100 characters")
     private String lastName;
 
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Phone number must be 10-15 digits, optionally prefixed with +")
+    @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
     private String phone;
 
     @NotNull(message = "Gender is required")
@@ -68,7 +69,7 @@ public class TeacherUpdateRequest {
     @Size(max = 5)
     private String bloodGroup;
 
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Emergency contact must be 10-15 digits, optionally prefixed with +")
+    @Pattern(regexp = ValidationPatterns.PHONE, message = "Emergency contact: " + ValidationPatterns.PHONE_MESSAGE)
     private String emergencyContact;
 
     private BigDecimal salary;

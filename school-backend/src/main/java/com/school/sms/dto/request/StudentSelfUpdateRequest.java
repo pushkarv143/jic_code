@@ -1,5 +1,6 @@
 package com.school.sms.dto.request;
 
+import com.school.sms.util.ValidationPatterns;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -21,7 +22,7 @@ import lombok.Setter;
 public class StudentSelfUpdateRequest {
 
     @Size(max = 20, message = "Phone must be at most 20 characters")
-    @Pattern(regexp = "^$|^[0-9+\\-\\s()]{6,20}$", message = "Phone number format is invalid")
+    @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
     private String phone;
 
     @Size(max = 255, message = "Address must be at most 255 characters")

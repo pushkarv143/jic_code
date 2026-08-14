@@ -1,5 +1,6 @@
 package com.school.sms.dto.request;
 
+import com.school.sms.util.ValidationPatterns;
 import com.school.sms.entity.Gender;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
@@ -43,7 +44,7 @@ public class StudentUpdateRequest {
     private String email;
 
     @Size(max = 20, message = "Phone must be at most 20 characters")
-    @Pattern(regexp = "^$|^[0-9+\\-\\s()]{6,20}$", message = "Phone number format is invalid")
+    @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
     private String phone;
 
     @NotNull(message = "Class is required")

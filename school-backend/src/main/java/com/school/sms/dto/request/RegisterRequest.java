@@ -1,5 +1,6 @@
 package com.school.sms.dto.request;
 
+import com.school.sms.util.ValidationPatterns;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -28,7 +29,7 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "Phone is required")
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Phone number must be 10-15 digits, optionally prefixed with +")
+    @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
     private String phone;
 
     @NotBlank(message = "Username is required")

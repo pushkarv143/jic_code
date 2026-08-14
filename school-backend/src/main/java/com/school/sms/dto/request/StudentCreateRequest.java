@@ -1,5 +1,6 @@
 package com.school.sms.dto.request;
 
+import com.school.sms.util.ValidationPatterns;
 import com.school.sms.entity.Gender;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -40,7 +41,7 @@ public class StudentCreateRequest {
     @Size(max = 100, message = "Last name must not exceed 100 characters")
     private String lastName;
 
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Phone number must be 10-15 digits, optionally prefixed with +")
+    @Pattern(regexp = ValidationPatterns.PHONE, message = ValidationPatterns.PHONE_MESSAGE)
     private String phone;
 
     // ---- student fields ----
