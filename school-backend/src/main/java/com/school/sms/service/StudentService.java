@@ -4,6 +4,7 @@ import com.school.sms.dto.request.GuardianRequest;
 import com.school.sms.dto.request.MedicalDetailsRequest;
 import com.school.sms.dto.request.PromoteStudentsRequest;
 import com.school.sms.dto.request.StudentCreateRequest;
+import com.school.sms.dto.request.StudentSelfUpdateRequest;
 import com.school.sms.dto.request.StudentStatusRequest;
 import com.school.sms.dto.request.StudentUpdateRequest;
 import com.school.sms.dto.request.TransferStudentRequest;
@@ -22,6 +23,12 @@ public interface StudentService {
                                      int page, int size, String sortBy, String sortDirection);
 
     StudentDto getById(Long id);
+
+    /** The caller's own student record, resolved from the security context. */
+    StudentDto getOwnProfile();
+
+    /** Updates the contact fields a student is permitted to maintain themselves. */
+    StudentDto updateOwnProfile(StudentSelfUpdateRequest request);
 
     StudentDto create(StudentCreateRequest request);
 

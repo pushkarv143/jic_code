@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
+import AppFooter from '@/components/common/AppFooter';
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
 
 /** Styled 403 page shown when a role is not permitted to view a route. */
@@ -47,6 +48,10 @@ export function ForbiddenPage() {
           Back to Dashboard
         </Button>
       </Box>
+      {/* These pages render outside any layout, so the footer is added here
+          directly — otherwise the attribution would vanish exactly when a user
+          hits an error or a permission wall. */}
+      <AppFooter variant="bare" />
     </Container>
   );
 }

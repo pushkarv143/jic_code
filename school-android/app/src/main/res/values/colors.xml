@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mirrors school-frontend/src/theme/theme.ts so the splash/system chrome matches
+  the Compose palette in ui/theme/Color.kt. Keep the two in sync.
+-->
+<resources>
+    <color name="brand_indigo">#2B3A8F</color>
+    <color name="brand_indigo_dark">#1C2763</color>
+    <color name="brand_amber">#FFB703</color>
+    <color name="surface_light">#F4F6FB</color>
+    <color name="surface_dark">#0F1420</color>
+    <color name="white">#FFFFFF</color>
+</resources>

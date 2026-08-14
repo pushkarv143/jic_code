@@ -112,6 +112,17 @@ export const attendanceApi = {
     return data;
   },
 
+  /** The signed-in student's own attendance summary. STUDENT role only. */
+  getOwnSummary: async (
+    params: { startDate?: string; endDate?: string } = {},
+  ): Promise<ApiResponse<StudentAttendanceSummary>> => {
+    const { data } = await axiosInstance.get<ApiResponse<StudentAttendanceSummary>>(
+      ENDPOINTS.ATTENDANCE.OWN_SUMMARY,
+      { params },
+    );
+    return data;
+  },
+
   getMonthly: async (
     params: MonthlyAttendanceParams,
   ): Promise<ApiResponse<MonthlyAttendanceRow[]>> => {

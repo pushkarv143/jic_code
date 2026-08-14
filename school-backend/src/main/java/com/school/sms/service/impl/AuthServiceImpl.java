@@ -17,7 +17,9 @@ import com.school.sms.exception.ResourceNotFoundException;
 import com.school.sms.exception.TokenRefreshException;
 import com.school.sms.exception.UnauthorizedException;
 import com.school.sms.mapper.UserMapper;
+import com.school.sms.entity.Permission;
 import com.school.sms.repository.PasswordResetTokenRepository;
+import com.school.sms.repository.PermissionRepository;
 import com.school.sms.repository.RefreshTokenRepository;
 import com.school.sms.repository.RoleRepository;
 import com.school.sms.repository.StudentRepository;
@@ -61,6 +63,7 @@ public class AuthServiceImpl implements AuthService {
     private final TeacherRepository teacherRepository;
     private final AuditLogService auditLogService;
     private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
@@ -231,10 +234,15 @@ public class AuthServiceImpl implements AuthService {
     /**
      * Builds the login/refresh/me response DTO, enriching it with the caller's own
      * studentId/teacherId (and, for students, their current classId/sectionId) so the
-     * frontend can resolve "which student/teacher am I" without a separate lookup call.
+     * frontend can resolve "which student/teacher am I" without a separate lookup call,
+     * plus the role's permission names so the clients can render role-appropriate menus.
      */
     private UserDto buildUserDto(User user) {
         UserDto dto = userMapper.toDto(user);
+
+        dto.setPermissions(permissionRepository.findAllByRoleId(user.getRole().getId()).stream()
+                .map(Permission::getName)
+                .toList());
 
         studentRepository.findByUserId(user.getId()).ifPresent(student -> {
             dto.setStudentId(student.getId());

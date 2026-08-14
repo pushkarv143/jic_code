@@ -9,8 +9,8 @@ import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import SchoolIcon from '@mui/icons-material/School';
-import { useAppSelector } from '@/store/hooks';
 import { useTranslation } from '@/i18n/LanguageProvider';
+import { usePermissions } from '@/hooks/usePermissions';
 import { getNavForRole } from './navConfig';
 
 export const SIDEBAR_WIDTH = 264;
@@ -24,8 +24,8 @@ interface SidebarContentProps {
 function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const role = useAppSelector((state) => state.auth.user?.role);
-  const groups = getNavForRole(role);
+  const { role, permissions } = usePermissions();
+  const groups = getNavForRole(role, permissions);
   const t = useTranslation();
 
   return (

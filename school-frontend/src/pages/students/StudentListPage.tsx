@@ -36,6 +36,7 @@ import classesApi from '@/api/classesApi';
 import type { ImportResult, SchoolClass, Section, Student, StudentStatus } from '@/types';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { exportRowsToCsv } from '@/utils/csvExport';
+import { usePermissions } from '@/hooks/usePermissions';
 import { downloadBlob } from '@/utils/downloadBlob';
 import PromoteDialog from './components/PromoteDialog';
 import ImportResultDialog from './components/ImportResultDialog';
@@ -52,6 +53,17 @@ const STATUS_OPTIONS: Array<{ label: string; value: StudentStatus | '' }> = [
 export function StudentListPage() {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+
+  // Which controls to render. The API enforces the same grants, so a teacher who
+  // reached this page sees only the students they teach and no write actions —
+  // hiding them here just stops the UI from offering a request that would 403.
+  const { can, isManagement } = usePermissions();
+  const canCreate = can('STUDENT_CREATE');
+  const canUpdate = can('STUDENT_UPDATE');
+  const canDelete = can('STUDENT_DELETE');
+  // Bulk import/export hit endpoints that return the whole directory unscoped, so
+  // the backend restricts them to management/office roles; match that here.
+  const canBulkTransfer = isManagement;
 
   const [rows, setRows] = useState<Student[]>([]);
   const [rowCount, setRowCount] = useState(0);
@@ -258,21 +270,25 @@ export function StudentListPage() {
                 <VisibilityOutlinedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Edit">
-              <IconButton size="small" onClick={() => navigate(`/app/students/${params.row.id}/edit`)}>
-                <EditOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton size="small" onClick={() => setDeleteTarget(params.row)}>
-                <DeleteOutlineOutlinedIcon fontSize="small" color="error" />
-              </IconButton>
-            </Tooltip>
+            {canUpdate && (
+              <Tooltip title="Edit">
+                <IconButton size="small" onClick={() => navigate(`/app/students/${params.row.id}/edit`)}>
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {canDelete && (
+              <Tooltip title="Delete">
+                <IconButton size="small" onClick={() => setDeleteTarget(params.row)}>
+                  <DeleteOutlineOutlinedIcon fontSize="small" color="error" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
         ),
       },
     ],
-    [navigate],
+    [navigate, canUpdate, canDelete],
   );
 
   const selectedIds = selectionModel as number[];
@@ -284,13 +300,15 @@ export function StudentListPage() {
         subtitle="Browse, search and manage every enrolled student"
         breadcrumbs={[{ label: 'Dashboard', to: '/app/dashboard' }, { label: 'Students' }]}
         action={
-          <Button
-            variant="contained"
-            startIcon={<AddOutlinedIcon />}
-            onClick={() => navigate('/app/students/new')}
-          >
-            Add Student
-          </Button>
+          canCreate ? (
+            <Button
+              variant="contained"
+              startIcon={<AddOutlinedIcon />}
+              onClick={() => navigate('/app/students/new')}
+            >
+              Add Student
+            </Button>
+          ) : undefined
         }
       />
 
@@ -366,7 +384,7 @@ export function StudentListPage() {
         </CardContent>
       </Card>
 
-      {selectedIds.length > 0 && (
+      {canBulkTransfer && selectedIds.length > 0 && (
         <Box sx={{ mb: 1.5 }}>
           <Button
             variant="outlined"
@@ -386,7 +404,7 @@ export function StudentListPage() {
           rows={rows}
           columns={columns}
           loading={loading}
-          checkboxSelection
+          checkboxSelection={canBulkTransfer}
           mobileVisibleFields={['name', 'status']}
           paginationMode="server"
           sortingMode="server"
@@ -398,31 +416,33 @@ export function StudentListPage() {
           rowSelectionModel={selectionModel}
           onRowSelectionModelChange={setSelectionModel}
           toolbarExtra={
-            <Stack direction="row" spacing={1}>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={importing ? <CircularProgress size={14} color="inherit" /> : <FileUploadOutlinedIcon />}
-                onClick={handleImportClick}
-                disabled={importing}
-              >
-                Import Excel
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={exportingExcel ? <CircularProgress size={14} color="inherit" /> : <FileDownloadOutlinedIcon />}
-                endIcon={<ArrowDropDownIcon />}
-                onClick={(e) => setExportMenuAnchor(e.currentTarget)}
-                disabled={exportingExcel}
-              >
-                Export
-              </Button>
-              <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)}>
-                <MenuItem onClick={handleExportCsv}>Export CSV</MenuItem>
-                <MenuItem onClick={handleExportExcel}>Export Excel (Server)</MenuItem>
-              </Menu>
-            </Stack>
+            canBulkTransfer ? (
+              <Stack direction="row" spacing={1}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={importing ? <CircularProgress size={14} color="inherit" /> : <FileUploadOutlinedIcon />}
+                  onClick={handleImportClick}
+                  disabled={importing}
+                >
+                  Import Excel
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={exportingExcel ? <CircularProgress size={14} color="inherit" /> : <FileDownloadOutlinedIcon />}
+                  endIcon={<ArrowDropDownIcon />}
+                  onClick={(e) => setExportMenuAnchor(e.currentTarget)}
+                  disabled={exportingExcel}
+                >
+                  Export
+                </Button>
+                <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)}>
+                  <MenuItem onClick={handleExportCsv}>Export CSV</MenuItem>
+                  <MenuItem onClick={handleExportExcel}>Export Excel (Server)</MenuItem>
+                </Menu>
+              </Stack>
+            ) : undefined
           }
           emptyTitle="No students found"
           emptyDescription="Try adjusting the filters, or add a new student to get started."

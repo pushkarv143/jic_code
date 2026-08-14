@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Downloaded PDFs/XLSX land here; they are shared read-only via FileProvider. -->
+    <cache-path name="documents" path="documents/" />
+</paths>

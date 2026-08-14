@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Role } from '@/types';
+import type { Permission, Role } from '@/types';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
@@ -18,6 +18,7 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
+import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
 import VideoCameraFrontOutlinedIcon from '@mui/icons-material/VideoCameraFrontOutlined';
 import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
@@ -32,6 +33,13 @@ export interface NavItem {
   icon: ReactNode;
   /** Roles allowed to see this item. Omit to allow every authenticated role. */
   roles?: Role[];
+  /**
+   * Permission names, any one of which reveals this item. Applied on top of
+   * `roles`: an item with both must satisfy both. Omit for items that every
+   * role holding the listed roles should see regardless of permission grants
+   * (e.g. Dashboard, My Profile).
+   */
+  permissions?: Permission[];
   /**
    * Optional dot-path key into i18n/translations.ts (e.g. 'nav.dashboard').
    * Sidebar looks this up via useTranslation() and falls back to `label` when
@@ -65,17 +73,24 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Academics',
     items: [
       {
+        // Renders as the full directory for management/office roles, as the taught
+        // students for a teacher, and as the student's own profile for STUDENT —
+        // the page decides, the backend scopes the rows either way.
         label: 'Students',
         path: '/app/students',
         icon: <SchoolOutlinedIcon />,
-        roles: [...MANAGEMENT, 'TEACHER', 'CLASS_TEACHER', 'RECEPTIONIST'],
+        roles: [...MANAGEMENT, 'TEACHER', 'CLASS_TEACHER', 'RECEPTIONIST', 'STUDENT'],
+        permissions: ['STUDENT_VIEW'],
         i18nKey: 'nav.students',
       },
       {
+        // Directory for management; the signed-in teacher's own record for a
+        // teacher — same entry, TeachersIndexRoute picks the page.
         label: 'Teachers',
         path: '/app/teachers',
         icon: <BadgeOutlinedIcon />,
-        roles: MANAGEMENT,
+        roles: [...MANAGEMENT, 'TEACHER', 'CLASS_TEACHER'],
+        permissions: ['TEACHER_VIEW'],
         i18nKey: 'nav.teachers',
       },
       {
@@ -90,6 +105,7 @@ export const NAV_GROUPS: NavGroup[] = [
         path: '/app/attendance',
         icon: <EventAvailableOutlinedIcon />,
         roles: [...MANAGEMENT, 'TEACHER', 'CLASS_TEACHER', 'STUDENT', 'PARENT'],
+        permissions: ['ATTENDANCE_VIEW'],
         i18nKey: 'nav.attendance',
       },
       {
@@ -112,6 +128,14 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: <FactCheckOutlinedIcon />,
         roles: [...MANAGEMENT, 'TEACHER', 'CLASS_TEACHER', 'STUDENT', 'PARENT'],
         i18nKey: 'nav.assignments',
+      },
+      {
+        label: 'Study Materials',
+        path: '/app/study-materials',
+        icon: <LibraryBooksOutlinedIcon />,
+        roles: [...MANAGEMENT, 'TEACHER', 'CLASS_TEACHER', 'STUDENT', 'PARENT'],
+        permissions: ['MATERIAL_VIEW'],
+        i18nKey: 'nav.studyMaterials',
       },
       {
         label: 'Online Classes',
@@ -212,6 +236,7 @@ export const NAV_GROUPS: NavGroup[] = [
         path: '/app/users',
         icon: <ManageAccountsOutlinedIcon />,
         roles: ['SUPER_ADMIN', 'PRINCIPAL'],
+        permissions: ['USER_VIEW'],
         i18nKey: 'nav.users',
       },
       {
@@ -225,10 +250,26 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-export function getNavForRole(role: Role | undefined): NavGroup[] {
+/**
+ * Filters the menu down to what this user should be offered.
+ *
+ * `granted` is the permission set from the login response. When it is empty the
+ * permission dimension is skipped entirely and filtering falls back to roles
+ * alone — that case means "we don't know this user's grants" (a session cached
+ * before the backend started returning them), and blanking the whole menu would
+ * be a worse answer than the previous role-only behaviour. It is never a
+ * security shortcut: the API refuses the request regardless of what is rendered.
+ */
+export function getNavForRole(role: Role | undefined, granted?: Set<Permission>): NavGroup[] {
   if (!role) return [];
+  const checkPermissions = Boolean(granted && granted.size > 0);
+
   return NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.roles || item.roles.includes(role)),
+    items: group.items.filter((item) => {
+      if (item.roles && !item.roles.includes(role)) return false;
+      if (!checkPermissions || !item.permissions) return true;
+      return item.permissions.some((permission) => granted!.has(permission));
+    }),
   })).filter((group) => group.items.length > 0);
 }

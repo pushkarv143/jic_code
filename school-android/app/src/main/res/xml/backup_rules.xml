@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auth tokens and the cached session must never leave the device in a backup.
+  Everything under datastore/ and the Room cache is excluded; there is nothing
+  else worth backing up, so the app effectively opts out.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="file" path="datastore/" />
+    <exclude domain="database" path="." />
+</full-backup-content>

@@ -55,6 +55,20 @@ export interface StudentPayload {
   guardians?: GuardianPayload[];
 }
 
+/**
+ * The narrow slice of their own profile a student may edit. Mirrors the backend's
+ * StudentSelfUpdateRequest exactly — class, section, roll number and status are
+ * absent from both, so a student cannot move themselves between classes.
+ */
+export interface StudentSelfPayload {
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  bloodGroup?: string;
+}
+
 export interface MedicalDetailsPayload {
   heightCm?: number | null;
   weightKg?: number | null;
@@ -93,6 +107,21 @@ export const studentsApi = {
 
   getById: async (id: number): Promise<ApiResponse<Student>> => {
     const { data } = await axiosInstance.get<ApiResponse<Student>>(ENDPOINTS.STUDENTS.BY_ID(id));
+    return data;
+  },
+
+  /** The signed-in student's own record. STUDENT role only. */
+  getOwnProfile: async (): Promise<ApiResponse<Student>> => {
+    const { data } = await axiosInstance.get<ApiResponse<Student>>(ENDPOINTS.STUDENTS.ME);
+    return data;
+  },
+
+  /** Updates only the contact fields a student may maintain themselves. */
+  updateOwnProfile: async (payload: StudentSelfPayload): Promise<ApiResponse<Student>> => {
+    const { data } = await axiosInstance.patch<ApiResponse<Student>>(
+      ENDPOINTS.STUDENTS.ME,
+      payload,
+    );
     return data;
   },
 

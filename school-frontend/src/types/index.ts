@@ -42,7 +42,63 @@ export interface User {
   teacherId?: number | null;
   classId?: number | null;
   sectionId?: number | null;
+  /**
+   * The permission names granted to this user's role (e.g. 'STUDENT_VIEW'),
+   * returned by /auth/login, /auth/refresh-token and /auth/me. Drives which menu
+   * entries and actions are rendered — never a security boundary on its own:
+   * every endpoint re-checks the same grant server-side. Optional so a stale
+   * cached session from before this field existed still renders.
+   */
+  permissions?: Permission[];
 }
+
+/**
+ * Permission names as seeded in the `permissions` table. Kept as a widened string
+ * union so a permission added on the backend does not fail to type-check here
+ * before the constant is added, while the known names still autocomplete.
+ */
+export type Permission =
+  | 'USER_VIEW'
+  | 'USER_CREATE'
+  | 'USER_UPDATE'
+  | 'USER_DELETE'
+  | 'ROLE_VIEW'
+  | 'ROLE_MANAGE'
+  | 'STUDENT_VIEW'
+  | 'STUDENT_CREATE'
+  | 'STUDENT_UPDATE'
+  | 'STUDENT_DELETE'
+  | 'TEACHER_VIEW'
+  | 'TEACHER_CREATE'
+  | 'TEACHER_UPDATE'
+  | 'TEACHER_DELETE'
+  | 'STAFF_VIEW'
+  | 'STAFF_CREATE'
+  | 'STAFF_UPDATE'
+  | 'STAFF_DELETE'
+  | 'CLASS_MANAGE'
+  | 'SECTION_MANAGE'
+  | 'SUBJECT_MANAGE'
+  | 'ATTENDANCE_VIEW'
+  | 'ATTENDANCE_MARK'
+  | 'ATTENDANCE_REPORT'
+  | 'FEE_VIEW'
+  | 'FEE_COLLECT'
+  | 'FEE_STRUCTURE_MANAGE'
+  | 'FEE_REPORT'
+  | 'LIBRARY_VIEW'
+  | 'LIBRARY_ISSUE'
+  | 'LIBRARY_MANAGE'
+  | 'TRANSPORT_VIEW'
+  | 'TRANSPORT_MANAGE'
+  | 'HOSTEL_VIEW'
+  | 'HOSTEL_MANAGE'
+  | 'EXAM_VIEW'
+  | 'EXAM_MANAGE'
+  | 'MARKS_ENTRY'
+  | 'MARKS_VIEW'
+  | 'ASSIGNMENT_VIEW'
+  | (string & {});
 
 export interface AuthResponse {
   accessToken: string;
@@ -149,6 +205,24 @@ export interface ClassSubjectTeacher {
 }
 
 /**
+ * One class/section/subject a teacher is assigned to, as returned by
+ * `/teachers/{id}` and `/teachers/me/assignments`.
+ *
+ * Deliberately not reusing `ClassSubjectTeacher`: the backend's
+ * TeacherAssignmentDto carries `className` and omits `teacherId` (the teacher is
+ * already implied by the route), so the two shapes only look alike.
+ */
+export interface TeacherAssignment {
+  id: number;
+  classId: number;
+  className?: string;
+  sectionId: number;
+  sectionName?: string;
+  subjectId: number;
+  subjectName?: string;
+}
+
+/**
  * A teacher is a `users` row joined to a `teachers` row. The exact response
  * shape (flattened vs. nested `user`) is a point to reconcile with the
  * backend once it lands — this type supports both by making the flattened
@@ -182,7 +256,48 @@ export interface Teacher {
   phone?: string | null;
   firstName?: string;
   lastName?: string;
+  photoUrl?: string | null;
   user?: User;
+  /**
+   * Class/section/subject rows, returned by `/teachers/{id}` and `/teachers/me`.
+   * Absent from the paginated list response.
+   */
+  assignments?: TeacherAssignment[];
+}
+
+export type MaterialType = 'NOTES' | 'PRESENTATION' | 'WORKSHEET' | 'REFERENCE' | 'VIDEO' | 'OTHER';
+
+/**
+ * A teaching resource shared with a class or a single section.
+ *
+ * `sectionId: null` is meaningful rather than merely absent — it means the material
+ * is shared with every section of the class, and student visibility is derived
+ * from it. Exactly one of `fileUrl`/`externalUrl` is populated.
+ */
+export interface StudyMaterial {
+  id: number;
+  classId: number;
+  className?: string;
+  sectionId: number | null;
+  sectionName?: string | null;
+  subjectId: number;
+  subjectName?: string;
+  teacherId: number | null;
+  teacherName?: string | null;
+  title: string;
+  description: string | null;
+  materialType: MaterialType;
+  fileUrl: string | null;
+  externalUrl: string | null;
+  published: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  /**
+   * Whether the signed-in user may edit or delete this material. Computed by the
+   * backend from the same ownership rule it enforces, so the UI never has to
+   * re-derive "did I upload this?".
+   */
+  canManage: boolean;
 }
 
 export interface Guardian {

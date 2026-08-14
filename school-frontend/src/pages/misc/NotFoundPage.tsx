@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
+import AppFooter from '@/components/common/AppFooter';
 import SchoolIcon from '@mui/icons-material/School';
 
 /** Styled 404 page shown for any unmatched route. */
@@ -35,6 +36,8 @@ export function NotFoundPage() {
           Back to Home
         </Button>
       </Box>
+      {/* Rendered outside any layout — see ForbiddenPage. */}
+      <AppFooter variant="bare" />
     </Container>
   );
 }

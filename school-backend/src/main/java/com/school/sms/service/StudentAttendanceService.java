@@ -22,5 +22,8 @@ public interface StudentAttendanceService {
 
     StudentAttendanceSummaryDto getSummary(Long studentId, LocalDate startDate, LocalDate endDate);
 
+    /** The signed-in student's own attendance summary, resolved from the security context. */
+    StudentAttendanceSummaryDto getOwnSummary(LocalDate startDate, LocalDate endDate);
+
     List<MonthlyAttendanceRowDto> getMonthly(Long classId, Long sectionId, int year, int month);
 }

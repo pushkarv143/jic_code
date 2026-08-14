@@ -26,13 +26,17 @@ import DashboardPage from '@/pages/dashboard/DashboardPage';
 import StudentListPage from '@/pages/students/StudentListPage';
 import StudentFormPage from '@/pages/students/StudentFormPage';
 import StudentProfilePage from '@/pages/students/StudentProfilePage';
+import MyStudentProfilePage from '@/pages/students/MyStudentProfilePage';
 
 import TeacherListPage from '@/pages/teachers/TeacherListPage';
 import TeacherFormPage from '@/pages/teachers/TeacherFormPage';
 import TeacherProfilePage from '@/pages/teachers/TeacherProfilePage';
+import MyTeacherProfilePage from '@/pages/teachers/MyTeacherProfilePage';
 
 import ClassListPage from '@/pages/classes/ClassListPage';
 import ClassDetailPage from '@/pages/classes/ClassDetailPage';
+
+import StudyMaterialsPage from '@/pages/materials/StudyMaterialsPage';
 
 import AttendanceLayout from '@/pages/attendance/AttendanceLayout';
 import MarkAttendancePage from '@/pages/attendance/MarkAttendancePage';
@@ -107,10 +111,30 @@ import ForbiddenPage from '@/pages/misc/ForbiddenPage';
 import ErrorPage from '@/pages/misc/ErrorPage';
 
 import type { Role } from '@/types';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const MANAGEMENT_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'];
 const EXAM_STAFF_ROLES: Role[] = [...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER'];
 const ADMISSION_STAFF_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'RECEPTIONIST'];
+
+/**
+ * One path, two pages: /app/students is the directory for anyone who supervises
+ * students and the student's own record for a STUDENT. Keeping the path shared
+ * means the sidebar, breadcrumbs and deep links stay identical across roles.
+ */
+function StudentsIndexRoute() {
+  const { is } = usePermissions();
+  return is('STUDENT') ? <MyStudentProfilePage /> : <StudentListPage />;
+}
+
+/**
+ * Same split for staff: /app/teachers is the directory for management and the
+ * teacher's own record — plus the classes they teach — for a teacher.
+ */
+function TeachersIndexRoute() {
+  const { isTeaching } = usePermissions();
+  return isTeaching ? <MyTeacherProfilePage /> : <TeacherListPage />;
+}
 
 const router = createBrowserRouter([
   {
@@ -153,23 +177,43 @@ const router = createBrowserRouter([
           { index: true, element: <DashboardPage /> },
           { path: 'dashboard', element: <DashboardPage /> },
           {
+            // STUDENT is allowed in, but lands on their own profile rather than the
+            // directory — StudentsIndexRoute picks the page. The create/edit routes
+            // stay behind MANAGEMENT_ROLES, matching the backend's WRITE_ROLES.
             path: 'students',
-            element: <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER', 'RECEPTIONIST']} />,
+            element: (
+              <RoleBasedRoute
+                allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER', 'RECEPTIONIST', 'STUDENT']}
+              />
+            ),
             children: [
-              { index: true, element: <StudentListPage /> },
-              { path: 'new', element: <StudentFormPage /> },
+              { index: true, element: <StudentsIndexRoute /> },
+              {
+                element: <RoleBasedRoute allowedRoles={MANAGEMENT_ROLES} />,
+                children: [
+                  { path: 'new', element: <StudentFormPage /> },
+                  { path: ':id/edit', element: <StudentFormPage /> },
+                ],
+              },
               { path: ':id', element: <StudentProfilePage /> },
-              { path: ':id/edit', element: <StudentFormPage /> },
             ],
           },
           {
+            // Teaching roles are allowed in, but land on their own profile rather
+            // than the staff directory. The create/edit routes stay behind
+            // MANAGEMENT_ROLES, matching the backend's WRITE_ROLES.
             path: 'teachers',
-            element: <RoleBasedRoute allowedRoles={MANAGEMENT_ROLES} />,
+            element: <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER']} />,
             children: [
-              { index: true, element: <TeacherListPage /> },
-              { path: 'new', element: <TeacherFormPage /> },
+              { index: true, element: <TeachersIndexRoute /> },
+              {
+                element: <RoleBasedRoute allowedRoles={MANAGEMENT_ROLES} />,
+                children: [
+                  { path: 'new', element: <TeacherFormPage /> },
+                  { path: ':id/edit', element: <TeacherFormPage /> },
+                ],
+              },
               { path: ':id', element: <TeacherProfilePage /> },
-              { path: ':id/edit', element: <TeacherFormPage /> },
             ],
           },
           {
@@ -294,6 +338,10 @@ const router = createBrowserRouter([
             ],
           },
           { path: 'assignments', element: <AssignmentListPage /> },
+          // No RoleBasedRoute: access is decided by the MATERIAL_VIEW permission,
+          // which the sidebar already filters on and the API enforces. Adding a
+          // role list here would be a second, drifting copy of the same rule.
+          { path: 'study-materials', element: <StudyMaterialsPage /> },
           { path: 'online-classes', element: <OnlineClassesPage /> },
           { path: 'notices', element: <NoticeBoardPage /> },
           { path: 'calendar', element: <CalendarPage /> },

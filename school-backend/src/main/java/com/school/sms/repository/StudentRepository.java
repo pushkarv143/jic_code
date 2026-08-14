@@ -38,6 +38,19 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
             "WHERE p.user_id = :userId", nativeQuery = true)
     List<Student> findAllByParentUserId(@Param("userId") Long userId);
 
+    // Teacher scoping (StudentAccessGuard): the students a teacher is entitled to see —
+    // those in a section they are homeroom teacher of, plus those in any class/section
+    // they are mapped to teach a subject in. Returns ids only: the guard compares
+    // membership and the service re-fetches whichever rows it actually needs.
+    @Query("SELECT DISTINCT s.id FROM Student s " +
+            "WHERE s.deleted = false AND (" +
+            "  s.section.classTeacher.id = :teacherId " +
+            "  OR EXISTS (SELECT 1 FROM ClassSubjectTeacher cst " +
+            "             WHERE cst.teacher.id = :teacherId " +
+            "               AND cst.schoolClass.id = s.schoolClass.id " +
+            "               AND cst.section.id = s.section.id))")
+    List<Long> findIdsTaughtByTeacherId(@Param("teacherId") Long teacherId);
+
     // Calendar / birthdays widget: active students born in a given month, in day-of-month order.
     @Query("SELECT s FROM Student s WHERE s.deleted = false AND s.dateOfBirth IS NOT NULL " +
             "AND MONTH(s.dateOfBirth) = :month ORDER BY DAY(s.dateOfBirth) ASC")

@@ -27,6 +27,7 @@ import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { useThemeMode } from '@/theme/ThemeModeProvider';
+import { COPYRIGHT_TEXT } from '@/components/common/AppFooter';
 
 const NAV_LINKS = [
   { label: 'Home', path: '/' },
@@ -190,9 +191,18 @@ export function PublicLayout() {
             </Grid>
           </Grid>
           <Divider sx={{ my: 3, borderColor: 'rgba(230,233,242,0.15)' }} />
-          <Typography variant="caption" color="rgba(230,233,242,0.55)">
-            © {new Date().getFullYear()} Greenwood International School. All rights reserved.
-          </Typography>
+          {/* The school's own notice stays; the attribution is added beneath it
+              rather than replacing it. Text comes from AppFooter's constant so all
+              three layouts stay in step. Rendered inline instead of via <AppFooter>
+              because this footer sits on a dark panel with its own palette. */}
+          <Stack spacing={0.5}>
+            <Typography variant="caption" color="rgba(230,233,242,0.55)">
+              © {new Date().getFullYear()} Greenwood International School. All rights reserved.
+            </Typography>
+            <Typography variant="caption" color="rgba(230,233,242,0.55)">
+              © {new Date().getFullYear()} {COPYRIGHT_TEXT}
+            </Typography>
+          </Stack>
         </Container>
       </Box>
     </Box>

@@ -1,0 +1,88 @@
+package com.greenwood.school.data.remote.dto
+
+import kotlinx.serialization.Serializable
+
+/**
+ * `com.school.sms.dto.response.UserDto`.
+ *
+ * `studentId` / `teacherId` / `classId` / `sectionId` are populated **only** on
+ * `/auth/login`, `/auth/refresh-token` and `/auth/me` — never on the admin
+ * `/users` endpoints. They answer "which student/teacher am I", which the
+ * self-service screens need before they can call anything scoped to a person.
+ */
+@Serializable
+data class UserDto(
+    val id: Long,
+    val username: String,
+    val email: String? = null,
+    val firstName: String? = null,
+    val lastName: String? = null,
+    val phone: String? = null,
+    val gender: String? = null,
+    val role: String,
+    val active: Boolean = true,
+    val profileImage: String? = null,
+    val lastLogin: String? = null,
+    val createdAt: String? = null,
+    val studentId: Long? = null,
+    val teacherId: Long? = null,
+    val classId: Long? = null,
+    val sectionId: Long? = null,
+    /**
+     * Permission names granted to this user's role (e.g. `STUDENT_VIEW`), returned by
+     * `/auth/login`, `/auth/refresh-token` and `/auth/me`. Defaults to empty so a
+     * session persisted before this field existed still deserializes; see
+     * [com.greenwood.school.core.session.UserSession.permissions] for how an empty
+     * set is interpreted.
+     */
+    val permissions: List<String> = emptyList(),
+) {
+    val fullName: String
+        get() = listOfNotNull(firstName?.takeIf { it.isNotBlank() }, lastName?.takeIf { it.isNotBlank() })
+            .joinToString(" ")
+            .ifBlank { username }
+
+    val initials: String
+        get() = fullName.split(' ')
+            .filter { it.isNotBlank() }
+            .take(2)
+            .joinToString("") { it.first().uppercase() }
+            .ifBlank { username.take(2).uppercase() }
+}
+
+/** `com.school.sms.dto.response.JwtAuthResponse`. `expiresIn` is in **seconds** (900). */
+@Serializable
+data class JwtAuthResponseDto(
+    val accessToken: String,
+    val refreshToken: String,
+    val tokenType: String = "Bearer",
+    val expiresIn: Long = 0,
+    val user: UserDto,
+)
+
+@Serializable
+data class LoginRequestDto(val username: String, val password: String)
+
+@Serializable
+data class RefreshTokenRequestDto(val refreshToken: String)
+
+@Serializable
+data class RegisterRequestDto(
+    val firstName: String,
+    val lastName: String,
+    val email: String,
+    val phone: String,
+    val username: String,
+    val password: String,
+    /** The backend only accepts self-registration for STUDENT or PARENT. */
+    val role: String,
+)
+
+@Serializable
+data class ForgotPasswordRequestDto(val email: String)
+
+@Serializable
+data class ResetPasswordRequestDto(val token: String, val newPassword: String)
+
+@Serializable
+data class ChangePasswordRequestDto(val currentPassword: String, val newPassword: String)

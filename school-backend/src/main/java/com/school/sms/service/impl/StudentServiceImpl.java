@@ -4,6 +4,7 @@ import com.school.sms.dto.request.GuardianRequest;
 import com.school.sms.dto.request.MedicalDetailsRequest;
 import com.school.sms.dto.request.PromoteStudentsRequest;
 import com.school.sms.dto.request.StudentCreateRequest;
+import com.school.sms.dto.request.StudentSelfUpdateRequest;
 import com.school.sms.dto.request.StudentStatusRequest;
 import com.school.sms.dto.request.StudentUpdateRequest;
 import com.school.sms.dto.request.TransferStudentRequest;
@@ -38,6 +39,8 @@ import com.school.sms.repository.StudentDocumentRepository;
 import com.school.sms.repository.StudentMedicalDetailsRepository;
 import com.school.sms.repository.StudentRepository;
 import com.school.sms.repository.UserRepository;
+import com.school.sms.security.SecurityUtils;
+import com.school.sms.security.StudentAccessGuard;
 import com.school.sms.service.AuditLogService;
 import com.school.sms.service.EmailService;
 import com.school.sms.service.FileStorageService;
@@ -78,6 +81,7 @@ public class StudentServiceImpl implements StudentService {
     private final EmailService emailService;
     private final FileStorageService fileStorageService;
     private final AuditLogService auditLogService;
+    private final StudentAccessGuard studentAccessGuard;
     private final StudentMapper studentMapper;
     private final GuardianMapper guardianMapper;
     private final MedicalDetailsMapper medicalDetailsMapper;
@@ -98,6 +102,18 @@ public class StudentServiceImpl implements StudentService {
                 .with(StringUtils.hasText(status), "status", SearchOperation.EQUALS,
                         StringUtils.hasText(status) ? StudentStatus.valueOf(status.toUpperCase()) : null)
                 .build();
+
+        // Row-level scoping, applied as a predicate rather than a post-filter so the
+        // page count and the page contents agree. null = caller sees everyone; an
+        // empty list = caller legitimately sees nobody, which must stay empty rather
+        // than degrade into "no filter".
+        List<Long> scopedIds = studentAccessGuard.resolveStudentDirectoryScope();
+        if (scopedIds != null) {
+            Specification<Student> scopeSpec = scopedIds.isEmpty()
+                    ? (root, query, cb) -> cb.disjunction()
+                    : (root, query, cb) -> root.get("id").in(scopedIds);
+            spec = spec == null ? scopeSpec : spec.and(scopeSpec);
+        }
 
         if (StringUtils.hasText(search)) {
             String term = search.trim().toLowerCase();
@@ -223,6 +239,61 @@ public class StudentServiceImpl implements StudentService {
         Student saved = studentRepository.save(student);
         auditLogService.record("UPDATE_STUDENT", "Student", saved.getId(), null, null);
         return toFullDto(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StudentDto getOwnProfile() {
+        return toFullDto(findOwnEntity());
+    }
+
+    @Override
+    @Transactional
+    public StudentDto updateOwnProfile(StudentSelfUpdateRequest request) {
+        Student student = findOwnEntity();
+
+        // Only the contact fields on StudentSelfUpdateRequest are copied. Everything
+        // academic (class, section, roll number, status, academic year) is untouched
+        // here and remains editable through the office-only update(...) path.
+        if (request.getAddress() != null) {
+            student.setAddress(request.getAddress());
+        }
+        if (request.getCity() != null) {
+            student.setCity(request.getCity());
+        }
+        if (request.getState() != null) {
+            student.setState(request.getState());
+        }
+        if (request.getPincode() != null) {
+            student.setPincode(request.getPincode());
+        }
+        if (request.getBloodGroup() != null) {
+            student.setBloodGroup(request.getBloodGroup());
+        }
+        Student saved = studentRepository.save(student);
+
+        if (request.getPhone() != null && saved.getUser() != null) {
+            User user = saved.getUser();
+            user.setPhone(request.getPhone());
+            userRepository.save(user);
+        }
+
+        auditLogService.record("UPDATE_OWN_STUDENT_PROFILE", "Student", saved.getId(), null, null);
+        return toFullDto(saved);
+    }
+
+    /**
+     * Resolves "me" from the security context rather than from a client-supplied id,
+     * so the self-service endpoints have no id to tamper with in the first place.
+     * A PARENT has no single own record, so they are steered to the by-id endpoints
+     * (which the guard already narrows to their own children).
+     */
+    private Student findOwnEntity() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return studentRepository.findByUserId(userId)
+                .filter(s -> !s.isDeleted())
+                .orElseThrow(() -> new BadRequestException(
+                        "Your login is not linked to a student record"));
     }
 
     @Override
@@ -445,10 +516,22 @@ public class StudentServiceImpl implements StudentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Guardian", "id", guardianId));
     }
 
+    /**
+     * The single lookup every by-id operation in this service funnels through, which
+     * is why the row-level check lives here rather than in each caller: a new endpoint
+     * that forgets to ask is scoped anyway. The guard is a no-op for management/office
+     * roles, so this costs nothing on the admin paths.
+     *
+     * <p>Existence is checked before access on purpose — a caller asking for a student
+     * id that does not exist gets 404 regardless of role, so the response cannot be
+     * used to probe which ids are real.
+     */
     private Student findEntity(Long id) {
-        return studentRepository.findById(id)
+        Student student = studentRepository.findById(id)
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
+        studentAccessGuard.verifyCanViewStudentRecord(id);
+        return student;
     }
 
     private SchoolClass findClass(Long id) {

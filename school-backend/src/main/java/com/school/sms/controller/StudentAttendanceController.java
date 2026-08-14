@@ -43,9 +43,14 @@ public class StudentAttendanceController {
     private static final String MARK_ROLES =
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER')";
     // /report and /summary are also opened to STUDENT/PARENT; the service layer
-    // (StudentAccessGuard) restricts them to viewing only their own record.
+    // (StudentAccessGuard) restricts them to their own record, and likewise narrows
+    // TEACHER/CLASS_TEACHER to the students they teach.
     private static final String REPORT_READ_ROLES =
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
+    // Self-service: a student reads their own percentage without passing an id.
+    // PARENT is excluded — they have no single "own" record and use the by-id
+    // endpoint, which the guard already narrows to their own children.
+    private static final String SELF_SERVICE_ROLES = "hasRole('STUDENT')";
 
     @GetMapping
     @PreAuthorize(STAFF_READ_ROLES)
@@ -80,6 +85,17 @@ public class StudentAttendanceController {
                 studentAttendanceService.getReport(studentId, classId, sectionId, startDate, endDate, pageable)));
     }
 
+    @GetMapping("/me/summary")
+    @PreAuthorize(SELF_SERVICE_ROLES)
+    @Operation(summary = "The signed-in student's own attendance summary (no id to tamper with)")
+    public ResponseEntity<ApiResponse<StudentAttendanceSummaryDto>> getOwnSummary(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(ApiResponse.success("Attendance summary retrieved successfully",
+                studentAttendanceService.getOwnSummary(startDate, endDate)));
+    }
+
+    // Mapped after /me/summary so Spring never treats the literal "me" as a {studentId}.
     @GetMapping("/{studentId}/summary")
     @PreAuthorize(REPORT_READ_ROLES)
     @Operation(summary = "Attendance percentage/day-count summary for a student over a date range")

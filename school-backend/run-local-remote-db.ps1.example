@@ -1,0 +1,31 @@
+# =====================================================================
+# Template for running the backend against a remote MySQL server.
+#
+# Copy to `run-local-remote-db.ps1` and fill in the real values. The copy
+# is gitignored; this template is tracked and must never contain a real
+# password.
+#
+#     cp run-local-remote-db.ps1.example run-local-remote-db.ps1
+# =====================================================================
+
+$ErrorActionPreference = 'Stop'
+
+$DbHost = 'your.db.host'
+$DbPort = '3306'
+$DbName = 'school_management_system'
+
+# allowPublicKeyRetrieval=true is required by MySQL 8's default
+# caching_sha2_password auth when SSL is disabled.
+$env:DB_URL      = "jdbc:mysql://${DbHost}:${DbPort}/${DbName}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+$env:DB_USERNAME = 'root'
+$env:DB_PASSWORD = 'your_password_here'
+
+Write-Host "Checking $DbHost`:$DbPort ..." -ForegroundColor Cyan
+$reachable = Test-NetConnection -ComputerName $DbHost -Port $DbPort -WarningAction SilentlyContinue
+if (-not $reachable.TcpTestSucceeded) {
+    Write-Host "Cannot reach $DbHost`:$DbPort - see REMOTE_DB_SETUP.md" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "Reachable. Starting backend against $DbHost ..." -ForegroundColor Green
+& .\mvnw.cmd spring-boot:run

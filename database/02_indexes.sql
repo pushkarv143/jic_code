@@ -63,6 +63,12 @@ CREATE INDEX idx_events_event_date ON events(event_date);
 -- Assignments: "assignments due this week" per section/subject.
 CREATE INDEX idx_assignments_due_date ON assignments(due_date);
 
+-- Study materials: every read is "what has been shared with my class/section",
+-- which is the query a student's materials list runs on every page load.
+CREATE INDEX idx_study_materials_class_section ON study_materials(class_id, section_id);
+-- Teachers filter their own uploads to manage them.
+CREATE INDEX idx_study_materials_teacher ON study_materials(teacher_id);
+
 -- Leave applications: pending-approval queues filtered by status.
 CREATE INDEX idx_leave_applications_status ON leave_applications(status);
 

@@ -14,12 +14,14 @@ import com.school.sms.entity.Student;
 import com.school.sms.entity.StudentAttendance;
 import com.school.sms.entity.StudentStatus;
 import com.school.sms.entity.User;
+import com.school.sms.exception.BadRequestException;
 import com.school.sms.exception.ResourceNotFoundException;
 import com.school.sms.repository.SchoolClassRepository;
 import com.school.sms.repository.SectionRepository;
 import com.school.sms.repository.StudentAttendanceRepository;
 import com.school.sms.repository.StudentRepository;
 import com.school.sms.repository.UserRepository;
+import com.school.sms.security.SectionAccessGuard;
 import com.school.sms.security.SecurityUtils;
 import com.school.sms.security.StudentAccessGuard;
 import com.school.sms.service.StudentAttendanceService;
@@ -49,10 +51,13 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
     private final SectionRepository sectionRepository;
     private final UserRepository userRepository;
     private final StudentAccessGuard studentAccessGuard;
+    private final SectionAccessGuard sectionAccessGuard;
 
     @Override
     @Transactional(readOnly = true)
     public List<StudentAttendanceRowDto> getGrid(Long classId, Long sectionId, LocalDate date) {
+        sectionAccessGuard.verifyCanAccessSection(classId, sectionId);
+
         List<Student> students = studentRepository
                 .findAllBySchoolClassIdAndSectionIdAndDeletedFalseAndStatusOrderByRollNumberAsc(
                         classId, sectionId, StudentStatus.ACTIVE);
@@ -83,6 +88,11 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
     @Override
     @Transactional
     public int mark(MarkStudentAttendanceRequest request) {
+        // Checked before anything is read or written: marking is a batch operation,
+        // so an unauthorised caller must be stopped up front rather than part-way
+        // through a partially-applied batch.
+        sectionAccessGuard.verifyCanAccessSection(request.getClassId(), request.getSectionId());
+
         SchoolClass schoolClass = findClass(request.getClassId());
         Section section = findSection(request.getSectionId());
         Long markedBy = SecurityUtils.getCurrentUserId();
@@ -91,6 +101,12 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
         for (StudentAttendanceRecordItem item : request.getRecords()) {
             Student student = studentRepository.findById(item.getStudentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Student", "id", item.getStudentId()));
+
+            // The class/section on the record comes from the request, not from the
+            // student, so without this a caller authorised for section A could submit
+            // a student from section B and have their attendance filed under A —
+            // corrupting the roster and side-stepping the section check above.
+            verifyStudentBelongsToSection(student, schoolClass, section);
 
             StudentAttendance record = studentAttendanceRepository
                     .findByStudentIdAndAttendanceDate(student.getId(), request.getAttendanceDate())
@@ -117,9 +133,14 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
     @Transactional(readOnly = true)
     public PageResponse<StudentAttendanceRecordDto> getReport(Long studentId, Long classId, Long sectionId,
                                                                LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        // A scoped caller (STUDENT/PARENT) must pass their own studentId — verifyCanView
-        // rejects both a missing studentId and someone else's for that caller.
-        studentAccessGuard.verifyCanView(studentId);
+        // Full scope, not the self-only one: a STUDENT/PARENT is held to their own
+        // records and a teacher to the students they teach. When a studentId is given
+        // it is checked directly; when it is omitted the caller's whole scope is
+        // applied as a predicate below, so an unfiltered report cannot be used to
+        // read past it.
+        if (studentId != null) {
+            studentAccessGuard.verifyCanViewStudentRecord(studentId);
+        }
 
         Specification<StudentAttendance> spec = new SpecificationBuilder<StudentAttendance>()
                 .with(studentId != null, "student.id", SearchOperation.EQUALS, studentId)
@@ -129,6 +150,16 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
                 .with(endDate != null, "attendanceDate", SearchOperation.LESS_THAN_EQUAL, endDate)
                 .build();
 
+        // null = caller sees everyone; an empty list means they legitimately see
+        // nobody and must stay empty rather than degrade into "no filter".
+        List<Long> scopedIds = studentAccessGuard.resolveStudentDirectoryScope();
+        if (scopedIds != null) {
+            Specification<StudentAttendance> scopeSpec = scopedIds.isEmpty()
+                    ? (root, query, cb) -> cb.disjunction()
+                    : (root, query, cb) -> root.get("student").get("id").in(scopedIds);
+            spec = spec == null ? scopeSpec : spec.and(scopeSpec);
+        }
+
         Page<StudentAttendance> page = studentAttendanceRepository.findAll(spec, pageable);
         Page<StudentAttendanceRecordDto> dtoPage = page.map(this::toRecordDto);
         return PageResponse.from(dtoPage);
@@ -137,8 +168,8 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
     @Override
     @Transactional(readOnly = true)
     public StudentAttendanceSummaryDto getSummary(Long studentId, LocalDate startDate, LocalDate endDate) {
-        studentAccessGuard.verifyCanView(studentId);
         findEntity(studentId);
+        studentAccessGuard.verifyCanViewStudentRecord(studentId);
 
         List<StudentAttendance> records = studentAttendanceRepository
                 .findAllByStudentIdAndAttendanceDateBetween(studentId, startDate, endDate);
@@ -167,7 +198,23 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
 
     @Override
     @Transactional(readOnly = true)
+    public StudentAttendanceSummaryDto getOwnSummary(LocalDate startDate, LocalDate endDate) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Student student = studentRepository.findByUserId(userId)
+                .filter(s -> !s.isDeleted())
+                .orElseThrow(() -> new BadRequestException("Your login is not linked to a student record"));
+
+        // Reuses getSummary rather than duplicating the percentage arithmetic; the
+        // guard call inside it is a no-op here since this is by definition their own
+        // record, but leaving it in place keeps a single enforced path.
+        return getSummary(student.getId(), startDate, endDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MonthlyAttendanceRowDto> getMonthly(Long classId, Long sectionId, int year, int month) {
+        sectionAccessGuard.verifyCanAccessSection(classId, sectionId);
+
         List<Student> students = studentRepository
                 .findAllBySchoolClassIdAndSectionIdAndDeletedFalseAndStatusOrderByRollNumberAsc(
                         classId, sectionId, StudentStatus.ACTIVE);
@@ -199,6 +246,23 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
                             .build();
                 })
                 .toList();
+    }
+
+    /**
+     * Rejects a student who is not actually enrolled in the class/section being
+     * marked. A 400 rather than a 403: the caller is entitled to mark this section,
+     * they have simply sent a student who does not belong to it.
+     */
+    private void verifyStudentBelongsToSection(Student student, SchoolClass schoolClass, Section section) {
+        boolean sameClass = student.getSchoolClass() != null
+                && student.getSchoolClass().getId().equals(schoolClass.getId());
+        boolean sameSection = student.getSection() != null
+                && student.getSection().getId().equals(section.getId());
+
+        if (!sameClass || !sameSection) {
+            throw new BadRequestException("Student " + student.getId()
+                    + " is not enrolled in the class/section being marked");
+        }
     }
 
     private long countByStatus(List<StudentAttendance> records, AttendanceStatus status) {

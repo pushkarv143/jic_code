@@ -71,6 +71,8 @@ INSERT INTO permissions (name, module, description) VALUES
   ('ASSIGNMENT_CREATE','ASSIGNMENT','Create/assign assignments'),
   ('ASSIGNMENT_SUBMIT','ASSIGNMENT','Submit assignment work'),
   ('ASSIGNMENT_GRADE','ASSIGNMENT','Grade assignment submissions'),
+  ('MATERIAL_VIEW','MATERIAL','View and download study materials'),
+  ('MATERIAL_MANAGE','MATERIAL','Upload and manage study materials'),
   ('NOTICE_VIEW','NOTICE','View notices'),
   ('NOTICE_PUBLISH','NOTICE','Publish notices'),
   ('ADMISSION_VIEW','ADMISSION','View admission enquiries'),
@@ -104,7 +106,8 @@ WHERE name IN (
   'FEE_VIEW','FEE_REPORT',
   'LIBRARY_VIEW','TRANSPORT_VIEW','HOSTEL_VIEW',
   'EXAM_VIEW','EXAM_MANAGE','MARKS_VIEW',
-  'ASSIGNMENT_VIEW',
+  'ASSIGNMENT_VIEW','ASSIGNMENT_CREATE','ASSIGNMENT_GRADE',
+  'MATERIAL_VIEW','MATERIAL_MANAGE',
   'NOTICE_VIEW','NOTICE_PUBLISH',
   'ADMISSION_VIEW','ADMISSION_MANAGE',
   'PAYROLL_VIEW',
@@ -112,14 +115,24 @@ WHERE name IN (
   'SETTINGS_VIEW','REPORT_VIEW'
 );
 
--- VICE_PRINCIPAL: similar to principal, fewer administrative rights.
+-- VICE_PRINCIPAL: academic management. Narrower than PRINCIPAL on the
+-- administrative side (no user/role visibility, no admission management, no
+-- payroll or settings), but a full peer on students, teachers and academics —
+-- which is what StudentController/TeacherController's WRITE_ROLES already let
+-- them do. Keeping the grants narrower than the endpoints would only mean the UI
+-- hides buttons for requests the API accepts.
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT (SELECT id FROM roles WHERE name = 'VICE_PRINCIPAL'), id FROM permissions
 WHERE name IN (
-  'STUDENT_VIEW','STUDENT_UPDATE','TEACHER_VIEW','STAFF_VIEW',
-  'ATTENDANCE_VIEW','ATTENDANCE_REPORT',
-  'EXAM_VIEW','EXAM_MANAGE','MARKS_VIEW',
-  'ASSIGNMENT_VIEW','NOTICE_VIEW','NOTICE_PUBLISH',
+  'STUDENT_VIEW','STUDENT_CREATE','STUDENT_UPDATE','STUDENT_DELETE',
+  'TEACHER_VIEW','TEACHER_CREATE','TEACHER_UPDATE','TEACHER_DELETE',
+  'STAFF_VIEW',
+  'CLASS_MANAGE','SECTION_MANAGE','SUBJECT_MANAGE',
+  'ATTENDANCE_VIEW','ATTENDANCE_MARK','ATTENDANCE_REPORT',
+  'EXAM_VIEW','EXAM_MANAGE','MARKS_ENTRY','MARKS_VIEW',
+  'ASSIGNMENT_VIEW','ASSIGNMENT_CREATE','ASSIGNMENT_GRADE',
+  'MATERIAL_VIEW','MATERIAL_MANAGE',
+  'NOTICE_VIEW','NOTICE_PUBLISH',
   'ADMISSION_VIEW','REPORT_VIEW'
 );
 
@@ -131,6 +144,7 @@ WHERE name IN (
   'ATTENDANCE_VIEW','ATTENDANCE_MARK',
   'EXAM_VIEW','MARKS_ENTRY','MARKS_VIEW',
   'ASSIGNMENT_VIEW','ASSIGNMENT_CREATE','ASSIGNMENT_GRADE',
+  'MATERIAL_VIEW','MATERIAL_MANAGE',
   'NOTICE_VIEW','REPORT_VIEW'
 );
 
@@ -144,6 +158,7 @@ WHERE name IN (
   'ATTENDANCE_VIEW','ATTENDANCE_MARK','ATTENDANCE_REPORT',
   'EXAM_VIEW','MARKS_ENTRY','MARKS_VIEW',
   'ASSIGNMENT_VIEW','ASSIGNMENT_CREATE','ASSIGNMENT_GRADE',
+  'MATERIAL_VIEW','MATERIAL_MANAGE',
   'NOTICE_VIEW','NOTICE_PUBLISH','REPORT_VIEW'
 );
 
@@ -177,7 +192,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT (SELECT id FROM roles WHERE name = 'STUDENT'), id FROM permissions
 WHERE name IN (
   'STUDENT_VIEW','ATTENDANCE_VIEW','EXAM_VIEW','MARKS_VIEW',
-  'ASSIGNMENT_VIEW','ASSIGNMENT_SUBMIT','NOTICE_VIEW',
+  'ASSIGNMENT_VIEW','ASSIGNMENT_SUBMIT','MATERIAL_VIEW','NOTICE_VIEW',
   'FEE_VIEW','LIBRARY_VIEW'
 );
 
@@ -186,7 +201,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT (SELECT id FROM roles WHERE name = 'PARENT'), id FROM permissions
 WHERE name IN (
   'STUDENT_VIEW','ATTENDANCE_VIEW','FEE_VIEW','EXAM_VIEW',
-  'MARKS_VIEW','NOTICE_VIEW','ASSIGNMENT_VIEW'
+  'MARKS_VIEW','NOTICE_VIEW','ASSIGNMENT_VIEW','MATERIAL_VIEW'
 );
 
 -- SECURITY_GUARD: gate/notice board visibility only.

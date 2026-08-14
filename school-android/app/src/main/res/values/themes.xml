@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Only the pre-Compose window theme lives here (what the user sees for the few
+  frames before setContent runs). Everything visual after that is defined in
+  ui/theme/Theme.kt.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.School" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/surface_light</item>
+        <item name="android:statusBarColor">@color/brand_indigo_dark</item>
+        <item name="android:navigationBarColor">@color/surface_light</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+    </style>
+</resources>

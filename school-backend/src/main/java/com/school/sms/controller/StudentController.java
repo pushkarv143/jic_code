@@ -4,6 +4,7 @@ import com.school.sms.dto.request.GuardianRequest;
 import com.school.sms.dto.request.MedicalDetailsRequest;
 import com.school.sms.dto.request.PromoteStudentsRequest;
 import com.school.sms.dto.request.StudentCreateRequest;
+import com.school.sms.dto.request.StudentSelfUpdateRequest;
 import com.school.sms.dto.request.StudentStatusRequest;
 import com.school.sms.dto.request.StudentUpdateRequest;
 import com.school.sms.dto.request.TransferStudentRequest;
@@ -56,9 +57,20 @@ public class StudentController {
     private final PdfService pdfService;
     private final ExcelService excelService;
 
+    // Who may call the read endpoints at all. STUDENT/PARENT are included because
+    // they have a legitimate view of student data — but only of their own record;
+    // which rows they actually get back is decided by StudentAccessGuard inside the
+    // service, which likewise narrows TEACHER/CLASS_TEACHER to the students they
+    // teach. Role here, row-level scope there: neither check substitutes for the other.
     private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
     private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
+    // Self-service: a student maintains their own contact details. PARENT is excluded
+    // because a parent has no single "own" record — they use the by-id endpoints,
+    // which the guard already narrows to their own children.
+    private static final String SELF_SERVICE_ROLES = "hasRole('STUDENT')";
+    private static final String BULK_EXPORT_ROLES =
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','RECEPTIONIST','ACCOUNTANT')";
     // Photo/document uploads are also allowed for TEACHER/CLASS_TEACHER (e.g. a homeroom
     // teacher completing a student's file); we do not further restrict this to only the
     // student's own homeroom teacher — see deviations note in the round report.
@@ -84,6 +96,23 @@ public class StudentController {
                 studentService.getAll(search, classId, sectionId, status, page, size, sortBy, sortDirection)));
     }
 
+    @GetMapping("/me")
+    @PreAuthorize(SELF_SERVICE_ROLES)
+    @Operation(summary = "Get the signed-in student's own profile (no id to tamper with)")
+    public ResponseEntity<ApiResponse<StudentDto>> getOwnProfile() {
+        return ResponseEntity.ok(ApiResponse.success("Profile retrieved successfully", studentService.getOwnProfile()));
+    }
+
+    @PatchMapping("/me")
+    @PreAuthorize(SELF_SERVICE_ROLES)
+    @Operation(summary = "Update the contact details a student is permitted to maintain themselves")
+    public ResponseEntity<ApiResponse<StudentDto>> updateOwnProfile(
+            @Valid @RequestBody StudentSelfUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully",
+                studentService.updateOwnProfile(request)));
+    }
+
+    // Mapped after /me so Spring never treats the literal "me" as an {id} candidate.
     @GetMapping("/{id}")
     @PreAuthorize(READ_ROLES)
     @Operation(summary = "Get a student's full profile, including guardians, medical details and documents")
@@ -242,8 +271,11 @@ public class StudentController {
                 .body(pdf);
     }
 
+    // Not READ_ROLES: ExcelService queries the repository directly and so is not
+    // narrowed by StudentAccessGuard. Rather than let a student export the whole
+    // directory, bulk export stays with the roles that are entitled to all rows.
     @GetMapping("/export/excel")
-    @PreAuthorize(READ_ROLES)
+    @PreAuthorize(BULK_EXPORT_ROLES)
     @Operation(summary = "Export the filtered student list as an Excel (.xlsx) workbook")
     public ResponseEntity<byte[]> exportExcel(
             @RequestParam(required = false) Long classId,

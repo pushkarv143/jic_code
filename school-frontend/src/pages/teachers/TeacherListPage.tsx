@@ -35,6 +35,7 @@ import designationsApi from '@/api/designationsApi';
 import type { Department, Designation, StaffStatus, Teacher } from '@/types';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { exportRowsToCsv } from '@/utils/csvExport';
+import { usePermissions } from '@/hooks/usePermissions';
 import { downloadBlob } from '@/utils/downloadBlob';
 
 const STATUS_OPTIONS: Array<{ label: string; value: StaffStatus | '' }> = [
@@ -48,6 +49,17 @@ const STATUS_OPTIONS: Array<{ label: string; value: StaffStatus | '' }> = [
 /** Server-paginated teacher directory: filter by department/designation/status, search, deactivate/delete. */
 export function TeacherListPage() {
   const navigate = useNavigate();
+
+  // Which controls to render. The API enforces the same grants independently, and
+  // additionally blanks salary/DOB/address on colleagues' rows — so hiding these
+  // only stops the UI offering a request that would 403.
+  const { can, isManagement } = usePermissions();
+  const canCreate = can('TEACHER_CREATE');
+  const canUpdate = can('TEACHER_UPDATE');
+  const canDelete = can('TEACHER_DELETE');
+  // Excel export returns unredacted rows (salary included), so the backend keeps it
+  // on management and the accountant; match that here.
+  const canBulkExport = isManagement;
   const { enqueueSnackbar } = useSnackbar();
 
   const [rows, setRows] = useState<Teacher[]>([]);
@@ -225,26 +237,32 @@ export function TeacherListPage() {
                 <VisibilityOutlinedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Edit">
-              <IconButton size="small" onClick={() => navigate(`/app/teachers/${params.row.id}/edit`)}>
-                <EditOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={params.row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}>
-              <IconButton size="small" onClick={() => setDeactivateTarget(params.row)}>
-                <BlockOutlinedIcon fontSize="small" color={params.row.status === 'ACTIVE' ? 'warning' : 'success'} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton size="small" onClick={() => setDeleteTarget(params.row)}>
-                <DeleteOutlineOutlinedIcon fontSize="small" color="error" />
-              </IconButton>
-            </Tooltip>
+            {canUpdate && (
+              <Tooltip title="Edit">
+                <IconButton size="small" onClick={() => navigate(`/app/teachers/${params.row.id}/edit`)}>
+                  <EditOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {canUpdate && (
+              <Tooltip title={params.row.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}>
+                <IconButton size="small" onClick={() => setDeactivateTarget(params.row)}>
+                  <BlockOutlinedIcon fontSize="small" color={params.row.status === 'ACTIVE' ? 'warning' : 'success'} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {canDelete && (
+              <Tooltip title="Delete">
+                <IconButton size="small" onClick={() => setDeleteTarget(params.row)}>
+                  <DeleteOutlineOutlinedIcon fontSize="small" color="error" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
         ),
       },
     ],
-    [navigate],
+    [navigate, canUpdate, canDelete],
   );
 
   return (
@@ -254,9 +272,11 @@ export function TeacherListPage() {
         subtitle="Manage teaching staff records, qualifications and status"
         breadcrumbs={[{ label: 'Dashboard', to: '/app/dashboard' }, { label: 'Teachers' }]}
         action={
-          <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={() => navigate('/app/teachers/new')}>
-            Add Teacher
-          </Button>
+          canCreate ? (
+            <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={() => navigate('/app/teachers/new')}>
+              Add Teacher
+            </Button>
+          ) : undefined
         }
       />
 
@@ -356,15 +376,17 @@ export function TeacherListPage() {
           onSortModelChange={setSortModel}
           onExport={handleExport}
           toolbarExtra={
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={exportingExcel ? <CircularProgress size={14} color="inherit" /> : <FileDownloadOutlinedIcon />}
-              onClick={handleExportExcel}
-              disabled={exportingExcel}
-            >
-              Export Excel
-            </Button>
+            canBulkExport ? (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={exportingExcel ? <CircularProgress size={14} color="inherit" /> : <FileDownloadOutlinedIcon />}
+                onClick={handleExportExcel}
+                disabled={exportingExcel}
+              >
+                Export Excel
+              </Button>
+            ) : undefined
           }
           emptyTitle="No teachers found"
           emptyDescription="Try adjusting the filters, or add a new teacher to get started."

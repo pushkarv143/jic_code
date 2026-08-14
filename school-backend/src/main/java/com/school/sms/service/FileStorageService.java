@@ -21,6 +21,16 @@ public interface FileStorageService {
     String storeDocument(MultipartFile file);
 
     /**
+     * Validates and stores a study material under the {@code materials/} subfolder.
+     * Accepts the document/slide/spreadsheet formats teachers share, plus images and
+     * zip archives, up to 25MB — a wider list and a higher ceiling than
+     * {@link #storeDocument}, which is for scanned student paperwork.
+     *
+     * @return the relative URL path (e.g. {@code /uploads/materials/<uuid>.pdf}) to persist on the entity.
+     */
+    String storeMaterial(MultipartFile file);
+
+    /**
      * Deletes a previously stored file given its relative URL path (as returned
      * by {@link #storePhoto} / {@link #storeDocument}). Silently no-ops if the
      * file cannot be found.

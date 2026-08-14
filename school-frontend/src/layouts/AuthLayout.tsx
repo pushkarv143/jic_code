@@ -12,6 +12,7 @@ import IconButton from '@mui/material/IconButton';
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import { useThemeMode } from '@/theme/ThemeModeProvider';
+import AppFooter from '@/components/common/AppFooter';
 
 const HIGHLIGHTS = [
   { icon: <EventAvailableOutlinedIcon />, text: 'Real-time attendance tracking for every class' },
@@ -142,6 +143,10 @@ export function AuthLayout() {
         >
           <Outlet />
         </Paper>
+
+        {/* On the sign-in side too, so the attribution is present before a user
+            has authenticated as well as after. */}
+        <AppFooter variant="bare" />
       </Box>
     </Box>
   );

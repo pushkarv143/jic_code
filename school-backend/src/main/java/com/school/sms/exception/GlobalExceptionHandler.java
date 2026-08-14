@@ -17,7 +17,9 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -117,6 +119,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
         return respond(HttpStatus.BAD_REQUEST, "Malformed JSON request body", request);
+    }
+
+    /**
+     * A multipart request missing a required part is a client mistake, not a server
+     * fault. Without this it falls through to the catch-all below and answers 500,
+     * which tells the caller nothing about what to fix — every multipart endpoint
+     * (student photos and documents, assignments, study materials) is affected.
+     */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ErrorResponse> handleMissingPart(MissingServletRequestPartException ex,
+                                                            HttpServletRequest request) {
+        return respond(HttpStatus.BAD_REQUEST,
+                "Required request part '" + ex.getRequestPartName() + "' is missing", request);
+    }
+
+    /** Likewise for a missing query/form parameter. */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParameter(MissingServletRequestParameterException ex,
+                                                                 HttpServletRequest request) {
+        return respond(HttpStatus.BAD_REQUEST,
+                "Required parameter '" + ex.getParameterName() + "' is missing", request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

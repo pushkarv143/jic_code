@@ -1,6 +1,14 @@
 import axiosInstance from './axiosInstance';
 import { ENDPOINTS } from './endpoints';
-import type { ApiResponse, EmploymentType, Gender, PageResponse, StaffStatus, Teacher } from '@/types';
+import type {
+  ApiResponse,
+  TeacherAssignment,
+  EmploymentType,
+  Gender,
+  PageResponse,
+  StaffStatus,
+  Teacher,
+} from '@/types';
 
 export interface TeacherListParams {
   page?: number;
@@ -37,6 +45,22 @@ export interface TeacherPayload {
   employmentType: EmploymentType;
 }
 
+/**
+ * The narrow slice of their own profile a teacher may edit. Mirrors the backend's
+ * TeacherSelfUpdateRequest exactly — department, designation, salary, employment
+ * type and status are absent from both, since those are HR decisions.
+ */
+export interface TeacherSelfPayload {
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  bloodGroup?: string;
+  emergencyContact?: string;
+  qualification?: string;
+}
+
 /** Typed wrappers around every /api/v1/teachers/** endpoint from the schema contract. */
 export const teachersApi = {
   list: async (params: TeacherListParams = {}): Promise<ApiResponse<PageResponse<Teacher>>> => {
@@ -49,6 +73,26 @@ export const teachersApi = {
 
   getById: async (id: number): Promise<ApiResponse<Teacher>> => {
     const { data } = await axiosInstance.get<ApiResponse<Teacher>>(ENDPOINTS.TEACHERS.BY_ID(id));
+    return data;
+  },
+
+  /** The signed-in teacher's own record, unredacted. TEACHER/CLASS_TEACHER only. */
+  getOwnProfile: async (): Promise<ApiResponse<Teacher>> => {
+    const { data } = await axiosInstance.get<ApiResponse<Teacher>>(ENDPOINTS.TEACHERS.ME);
+    return data;
+  },
+
+  /** Updates only the contact/qualification fields a teacher may maintain themselves. */
+  updateOwnProfile: async (payload: TeacherSelfPayload): Promise<ApiResponse<Teacher>> => {
+    const { data } = await axiosInstance.patch<ApiResponse<Teacher>>(ENDPOINTS.TEACHERS.ME, payload);
+    return data;
+  },
+
+  /** The classes, sections and subjects the signed-in teacher is assigned to. */
+  getOwnAssignments: async (): Promise<ApiResponse<TeacherAssignment[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<TeacherAssignment[]>>(
+      ENDPOINTS.TEACHERS.ME_ASSIGNMENTS,
+    );
     return data;
   },
 

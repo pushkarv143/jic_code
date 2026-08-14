@@ -6,6 +6,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,6 +28,7 @@ class JwtTokenProviderTest {
     @Test
     void generatesAndValidatesAccessToken() {
         UserPrincipal principal = new UserPrincipal(1L, "admin", "admin@school.edu", "hash", true,
+                "SUPER_ADMIN", Set.of(),
                 List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
 
         String token = jwtTokenProvider.generateAccessToken(principal);
@@ -39,6 +41,7 @@ class JwtTokenProviderTest {
     @Test
     void rejectsTamperedToken() {
         UserPrincipal principal = new UserPrincipal(1L, "admin", "admin@school.edu", "hash", true,
+                "SUPER_ADMIN", Set.of(),
                 List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
 
         String token = jwtTokenProvider.generateAccessToken(principal);

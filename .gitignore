@@ -28,3 +28,14 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Secrets — never commit real credentials ###
+# .env is read by docker compose and holds MYSQL_ROOT_PASSWORD / JWT_SECRET.
+# It was NOT ignored before, so a filled-in copy would have been committed.
+# .env.example stays tracked as the template.
+.env
+.env.local
+*.env.local
+# Local run scripts hold real DB credentials for pointing at a remote server.
+run-local*
+!run-local*.example

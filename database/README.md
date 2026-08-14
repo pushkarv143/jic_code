@@ -25,10 +25,13 @@ mysql -u root -p school_management_system  < 04_triggers.sql
 mysql -u root -p school_management_system  < 05_procedures.sql
 mysql -u root -p school_management_system  < 06_seed_reference_data.sql
 mysql -u root -p school_management_system  < 07_sample_data.sql
+mysql -u root -p school_management_system  < 08_rbac_demo_data.sql
+mysql -u root -p school_management_system  < 09_study_materials.sql
+mysql -u root -p school_management_system  < 10_admin_permissions.sql
 ```
 
 Each file also issues its own `USE school_management_system;`, so piping
-all eight files through a single `mysql -u root -p < 00_create_database.sql
+all eleven files through a single `mysql -u root -p < 00_create_database.sql
 < 01_schema.sql ...` style invocation is not necessary - running them one
 at a time, in numeric order, against a fresh server is the supported path.
 `07_sample_data.sql` in particular calls several stored procedures that
@@ -36,7 +39,12 @@ loop hundreds of times; it can take anywhere from a few seconds to a
 couple of minutes depending on hardware.
 
 To start over, simply `DROP DATABASE school_management_system;` and
-re-run 00 through 07.
+re-run 00 through 10.
+
+Files 08-10 are also safe to run against an existing database: each is
+guarded so re-running it is a no-op rather than an error. Re-run
+`10_admin_permissions.sql` after adding any new permission, so the
+administrator picks it up.
 
 ## File-by-file summary
 
@@ -50,6 +58,9 @@ re-run 00 through 07.
 | `05_procedures.sql` | `sp_calculate_student_attendance_percentage`, `sp_generate_fee_receipt_number`, `sp_promote_students` - the permanent, application-facing stored procedures. |
 | `06_seed_reference_data.sql` | Roles, permissions + RBAC mapping, academic years, departments, designations, 20 classes / 54 sections / subjects, fee categories & structures, exam types, grades, book categories, transport (drivers/buses/routes/pickup points), 2 hostels + 40 rooms, school info, system settings, 8 demo login users, sample notices/events/admission enquiries. |
 | `07_sample_data.sql` | Procedural bulk generator (WHILE loops + name-pool lookup tables) producing 50 teachers, 30 staff, 500 students (with guardians, medical details), 2000 attendance records and 1000 fee records with real payments. |
+| `08_rbac_demo_data.sql` | RBAC demo fixtures: `student.demo`, `student.other` (a different section, the control case), `parent.demo` linked to `student.demo` only, `classteacher.demo` as homeroom teacher of one section, and `class_subject_teacher` rows for `teacher.demo` — without which row-level scoping leaves the demo teacher with an empty student list. Re-runnable. |
+| `09_study_materials.sql` | Migration for an already-deployed database: creates `study_materials` and its indexes if absent, adds the `MATERIAL_*` permissions and role grants, and seeds three demo materials (published/draft/other-section) that between them demonstrate both visibility rules. A fresh install gets the table from `01_schema.sql` and the permissions from `06_seed_reference_data.sql`, so this is a no-op there. Re-runnable. |
+| `10_admin_permissions.sql` | Guarantees `SUPER_ADMIN` holds **every** permission (written as "all permissions not already granted", so it also picks up permissions added by later modules), and reconciles `PRINCIPAL`/`VICE_PRINCIPAL` grants with the role gates their endpoints already enforce. Ends with a verification query that must return 0 missing admin permissions. Re-runnable. |
 
 ## Demo logins
 

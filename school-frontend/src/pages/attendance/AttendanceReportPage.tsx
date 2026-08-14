@@ -124,21 +124,33 @@ export function AttendanceReportPage() {
     setPaginationModel((m) => ({ ...m, page: 0 }));
   }, [effectiveStudentId, classId, sectionId, startDate, endDate]);
 
+  const isOwnStudentView = user?.role === 'STUDENT';
+
   useEffect(() => {
-    if (!effectiveStudentId) {
+    // A student asks for "mine" rather than for their own id. The by-id endpoint
+    // would work too — the guard allows it — but not sending an id at all means
+    // there is nothing to tamper with, and it keeps working if studentId is
+    // missing from a stale cached session.
+    if (!isOwnStudentView && !effectiveStudentId) {
       setSummary(null);
       return;
     }
+
+    const range = {
+      startDate: startDate.format('YYYY-MM-DD'),
+      endDate: endDate.format('YYYY-MM-DD'),
+    };
+
     setSummaryLoading(true);
-    attendanceApi
-      .getStudentSummary(effectiveStudentId, {
-        startDate: startDate.format('YYYY-MM-DD'),
-        endDate: endDate.format('YYYY-MM-DD'),
-      })
+    const request = isOwnStudentView
+      ? attendanceApi.getOwnSummary(range)
+      : attendanceApi.getStudentSummary(effectiveStudentId!, range);
+
+    request
       .then((res) => setSummary(res.data))
       .catch(() => setSummary(null))
       .finally(() => setSummaryLoading(false));
-  }, [effectiveStudentId, startDate, endDate]);
+  }, [isOwnStudentView, effectiveStudentId, startDate, endDate]);
 
   const handleExport = () => {
     exportRowsToCsv(

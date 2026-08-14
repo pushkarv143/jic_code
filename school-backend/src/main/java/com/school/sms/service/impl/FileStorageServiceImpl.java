@@ -26,6 +26,24 @@ public class FileStorageServiceImpl implements FileStorageService {
     private static final Set<String> DOCUMENT_CONTENT_TYPES = Set.of("application/pdf", "image/jpeg", "image/png");
     private static final long DOCUMENT_MAX_BYTES = 5L * 1024 * 1024;
 
+    // Study materials are the formats teachers actually hand out — slide decks and
+    // worksheets alongside PDFs — so the list is wider and the ceiling higher than
+    // for student documents. Deliberately still an allow-list: anything executable
+    // or unrecognised is rejected rather than stored.
+    private static final Set<String> MATERIAL_CONTENT_TYPES = Set.of(
+            "application/pdf",
+            "image/jpeg", "image/png", "image/webp", "image/gif",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/plain",
+            "application/zip"
+    );
+    private static final long MATERIAL_MAX_BYTES = 25L * 1024 * 1024;
+
     @Value("${app.upload.dir}")
     private String uploadDir;
 
@@ -39,6 +57,12 @@ public class FileStorageServiceImpl implements FileStorageService {
     public String storeDocument(MultipartFile file) {
         validate(file, DOCUMENT_CONTENT_TYPES, DOCUMENT_MAX_BYTES, "Document");
         return store(file, "documents");
+    }
+
+    @Override
+    public String storeMaterial(MultipartFile file) {
+        validate(file, MATERIAL_CONTENT_TYPES, MATERIAL_MAX_BYTES, "Study material");
+        return store(file, "materials");
     }
 
     @Override

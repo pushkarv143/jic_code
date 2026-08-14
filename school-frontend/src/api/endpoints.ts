@@ -61,6 +61,11 @@ export const ENDPOINTS = {
 
   TEACHERS: {
     BASE: '/teachers',
+    // Self-service: resolved from the caller's token, and returned unredacted —
+    // the by-id endpoints blank salary/DOB/address for anyone but management,
+    // the accountant, or the teacher themselves.
+    ME: '/teachers/me',
+    ME_ASSIGNMENTS: '/teachers/me/assignments',
     BY_ID: (id: number | string) => `/teachers/${id}`,
     STATUS: (id: number | string) => `/teachers/${id}/status`,
     ID_CARD_PDF: (id: number | string) => `/teachers/${id}/id-card/pdf`,
@@ -71,8 +76,17 @@ export const ENDPOINTS = {
     BASE: '/staff',
   },
 
+  STUDY_MATERIALS: {
+    BASE: '/study-materials',
+    BY_ID: (id: number | string) => `/study-materials/${id}`,
+    DOWNLOAD: (id: number | string) => `/study-materials/${id}/download`,
+  },
+
   STUDENTS: {
     BASE: '/students',
+    // Self-service: resolves the caller from their token, so a student never
+    // sends (and cannot tamper with) their own id.
+    ME: '/students/me',
     BY_ID: (id: number | string) => `/students/${id}`,
     STATUS: (id: number | string) => `/students/${id}/status`,
     PHOTO: (id: number | string) => `/students/${id}/photo`,
@@ -96,6 +110,9 @@ export const ENDPOINTS = {
     STUDENTS_MARK: '/attendance/students/mark',
     STUDENTS_REPORT: '/attendance/students/report',
     STUDENT_SUMMARY: (studentId: number | string) => `/attendance/students/${studentId}/summary`,
+    // Self-service: resolved from the caller's token, so a student never sends
+    // (and cannot tamper with) their own id.
+    OWN_SUMMARY: '/attendance/students/me/summary',
     STUDENTS_MONTHLY: '/attendance/students/monthly',
     TEACHERS: '/attendance/teachers',
     TEACHERS_MARK: '/attendance/teachers/mark',

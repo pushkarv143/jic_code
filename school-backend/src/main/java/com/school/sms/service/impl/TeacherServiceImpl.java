@@ -1,6 +1,7 @@
 package com.school.sms.service.impl;
 
 import com.school.sms.dto.request.TeacherCreateRequest;
+import com.school.sms.dto.request.TeacherSelfUpdateRequest;
 import com.school.sms.dto.request.TeacherStatusRequest;
 import com.school.sms.dto.request.TeacherUpdateRequest;
 import com.school.sms.dto.response.PageResponse;
@@ -22,6 +23,7 @@ import com.school.sms.repository.DesignationRepository;
 import com.school.sms.repository.RoleRepository;
 import com.school.sms.repository.TeacherRepository;
 import com.school.sms.repository.UserRepository;
+import com.school.sms.security.TeacherAccessGuard;
 import com.school.sms.service.EmailService;
 import com.school.sms.service.TeacherService;
 import com.school.sms.util.AppConstants;
@@ -55,6 +57,7 @@ public class TeacherServiceImpl implements TeacherService {
     private final ClassSubjectTeacherRepository classSubjectTeacherRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final TeacherAccessGuard teacherAccessGuard;
     private final TeacherMapper teacherMapper;
 
     @Override
@@ -86,7 +89,11 @@ public class TeacherServiceImpl implements TeacherService {
         }
 
         Page<Teacher> teacherPage = teacherRepository.findAll(spec, pageable);
-        Page<TeacherDto> dtoPage = teacherPage.map(teacherMapper::toDto);
+        // Every entitled role sees the whole staff list; what varies is how much of
+        // each row. Redaction is per-row, not per-page, so a teacher's own record
+        // still comes back complete inside an otherwise redacted list.
+        Page<TeacherDto> dtoPage = teacherPage.map(teacher ->
+                teacherAccessGuard.redactUnlessPermitted(teacherMapper.toDto(teacher)));
         return PageResponse.from(dtoPage);
     }
 
@@ -94,9 +101,65 @@ public class TeacherServiceImpl implements TeacherService {
     @Transactional(readOnly = true)
     public TeacherDto getById(Long id) {
         Teacher teacher = findEntity(id);
-        TeacherDto dto = teacherMapper.toDto(teacher);
+        TeacherDto dto = teacherAccessGuard.redactUnlessPermitted(teacherMapper.toDto(teacher));
         dto.setAssignments(getAssignments(id));
         return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TeacherDto getOwnProfile() {
+        Long teacherId = teacherAccessGuard.requireOwnTeacherId();
+        // No redaction call needed — the guard permits a teacher their own fields —
+        // but getById is reused so the assignment list is assembled the same way.
+        return getById(teacherId);
+    }
+
+    @Override
+    @Transactional
+    public TeacherDto updateOwnProfile(TeacherSelfUpdateRequest request) {
+        Long teacherId = teacherAccessGuard.requireOwnTeacherId();
+        Teacher teacher = findEntity(teacherId);
+
+        // Contact details only. Department, designation, salary, employment type and
+        // status stay with the office: a teacher editing their own salary or
+        // reinstating their own employment would defeat the point of the module.
+        if (request.getAddress() != null) {
+            teacher.setAddress(request.getAddress());
+        }
+        if (request.getCity() != null) {
+            teacher.setCity(request.getCity());
+        }
+        if (request.getState() != null) {
+            teacher.setState(request.getState());
+        }
+        if (request.getPincode() != null) {
+            teacher.setPincode(request.getPincode());
+        }
+        if (request.getBloodGroup() != null) {
+            teacher.setBloodGroup(request.getBloodGroup());
+        }
+        if (request.getEmergencyContact() != null) {
+            teacher.setEmergencyContact(request.getEmergencyContact());
+        }
+        if (request.getQualification() != null) {
+            teacher.setQualification(request.getQualification());
+        }
+        Teacher saved = teacherRepository.save(teacher);
+
+        if (request.getPhone() != null && saved.getUser() != null) {
+            User user = saved.getUser();
+            user.setPhone(request.getPhone());
+            userRepository.save(user);
+        }
+
+        return getById(saved.getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TeacherAssignmentDto> getOwnAssignments() {
+        return getAssignments(teacherAccessGuard.requireOwnTeacherId());
     }
 
     @Override

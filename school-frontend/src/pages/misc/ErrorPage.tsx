@@ -6,6 +6,7 @@ import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
+import AppFooter from '@/components/common/AppFooter';
 
 /** Generic error boundary page used as the router's errorElement. */
 export function ErrorPage() {
@@ -47,6 +48,8 @@ export function ErrorPage() {
           Back to Home
         </Button>
       </Box>
+      {/* Rendered outside any layout — see ForbiddenPage. */}
+      <AppFooter variant="bare" />
     </Container>
   );
 }

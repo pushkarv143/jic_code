@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -36,4 +37,12 @@ public class UserDto {
     private Long teacherId;
     private Long classId;
     private Long sectionId;
+
+    // The role's granted permission names (e.g. STUDENT_VIEW), resolved from
+    // role_permissions. Populated alongside the fields above on /auth/login,
+    // /auth/refresh-token and /auth/me so the web and Android clients can build
+    // their menus from the same grants the backend enforces, instead of each
+    // maintaining its own hard-coded role->menu table. Never the sole gate:
+    // every endpoint still checks the grant server-side.
+    private List<String> permissions;
 }

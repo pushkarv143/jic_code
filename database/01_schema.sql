@@ -744,6 +744,45 @@ CREATE TABLE marks (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================================
+-- MODULE: Study materials
+-- =====================================================================
+
+-- Teaching resources a teacher shares with a class: notes, slides, worksheets,
+-- or a link to an external resource.
+--
+-- section_id is NULLABLE and that nullability carries meaning: NULL = shared with
+-- every section of the class, a value = that one section only. Student visibility
+-- is derived from it, so it is not merely a convenience.
+--
+-- Exactly one of file_url / external_url is expected to be set; the application
+-- enforces that, since a CHECK constraint would not tell the user which one is
+-- missing.
+CREATE TABLE study_materials (
+  id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+  class_id       BIGINT NOT NULL,
+  section_id     BIGINT NULL,
+  subject_id     BIGINT NOT NULL,
+  teacher_id     BIGINT NULL,
+  title          VARCHAR(255) NOT NULL,
+  description    TEXT,
+  material_type  ENUM('NOTES','PRESENTATION','WORKSHEET','REFERENCE','VIDEO','OTHER')
+                 NOT NULL DEFAULT 'NOTES',
+  file_url       VARCHAR(255),
+  external_url   VARCHAR(500),
+  -- Drafts stay invisible to students until the teacher publishes.
+  is_published   TINYINT(1) NOT NULL DEFAULT 1,
+  is_deleted     TINYINT(1) NOT NULL DEFAULT 0,
+  created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_by     BIGINT NULL,
+  updated_by     BIGINT NULL,
+  CONSTRAINT fk_material_class   FOREIGN KEY (class_id)   REFERENCES classes(id)  ON DELETE RESTRICT,
+  CONSTRAINT fk_material_section FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE,
+  CONSTRAINT fk_material_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_material_teacher FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================================
 -- MODULE: Assignments / Online classes
 -- =====================================================================
 
