@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Cleartext HTTP is OFF by default for every host. The two exceptions below exist
-  only because the currently deployed backend terminates plain HTTP on an IP
-  (see README > "Backend/API gaps", item 1).
+  Cleartext HTTP is OFF by default for every host.
 
-  When TLS is put in front of the API:
-    1. change prodApiUrl to https://...
-    2. delete the 132.226.191.38 entry from this file
-  Nothing else in the app needs to change.
+  The prod flavour now talks HTTPS to https://132-226-191-38.nip.io (Caddy
+  terminates TLS in front of the backend), so it needs no exemption here and
+  gets none.
+
+  The IP entry below is retained solely for the qa flavour, which still points
+  at http://132.226.191.38:8080 — bypassing the proxy is useful for testing the
+  backend directly. Remove it if qa is ever moved to HTTPS too; prod does not
+  depend on it.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
@@ -17,7 +19,7 @@
     </base-config>
 
     <domain-config cleartextTrafficPermitted="true">
-        <!-- Deployed API server (plain HTTP today). -->
+        <!-- qa flavour only: direct HTTP to the backend port, bypassing Caddy. -->
         <domain includeSubdomains="false">132.226.191.38</domain>
         <!-- Local development: emulator host loopback + adb reverse. -->
         <domain includeSubdomains="false">10.0.2.2</domain>

@@ -27,8 +27,12 @@ android {
         applicationId = "com.greenwood.school"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        // Bumped for the RBAC/study-material release: permission-aware menus,
+        // teacher and student self-service, study materials, the launch screen and
+        // the HTTPS switch. A new versionCode is what lets the device recognise
+        // this as an upgrade rather than refusing to install over 1.0.0.
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
@@ -83,16 +87,19 @@ android {
         create("prod") {
             dimension = "environment"
             resValue("string", "app_name", "Greenwood School")
-            // The deployed backend today is plain HTTP on an IP (see README "Known gaps").
-            // Point this at https:// the moment TLS is terminated in front of it, and flip
-            // ALLOW_CLEARTEXT to false — network_security_config.xml already enforces
-            // cleartext-off for every host except the ones listed there.
+            // TLS is now terminated by Caddy in front of the backend (sms-caddy
+            // reverse-proxies this hostname to backend:8080 and manages the
+            // certificate), so prod talks HTTPS and needs no cleartext exemption.
+            //
+            // The hostname is nip.io, which resolves 132-226-191-38.nip.io to
+            // 132.226.191.38 — a real DNS name is required because a certificate
+            // cannot be issued for a bare IP.
             buildConfigField(
                 "String",
                 "BASE_URL",
-                "\"${providers.gradleProperty("prodApiUrl").getOrElse("http://132.226.191.38:8080/api/v1/")}\"",
+                "\"${providers.gradleProperty("prodApiUrl").getOrElse("https://132-226-191-38.nip.io/api/v1/")}\"",
             )
-            buildConfigField("boolean", "ALLOW_CLEARTEXT", "true")
+            buildConfigField("boolean", "ALLOW_CLEARTEXT", "false")
         }
     }
 
