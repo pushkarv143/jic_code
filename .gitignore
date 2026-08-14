@@ -46,6 +46,11 @@ school-backend.env
 # SSH keys, in case one is ever copied into the repo to run a deploy.
 *.pem
 *.ppk
+# Working directory for deploy keys and database dumps. Dumps contain the full
+# users table including bcrypt password hashes, so none of this belongs in git.
+.keys/
+*.sql.gz
+db-backups/
 
 ### Runtime data — user uploads are not source ###
 # Photos, student documents and study materials land here at runtime. They are

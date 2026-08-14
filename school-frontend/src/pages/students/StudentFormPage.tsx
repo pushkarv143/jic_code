@@ -23,7 +23,7 @@ import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import PhotoCameraOutlinedIcon from '@mui/icons-material/PhotoCameraOutlined';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, type Control } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useSnackbar } from 'notistack';
@@ -43,6 +43,62 @@ const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const emptyGuardian = { name: '', relation: '', occupation: '', phone: '', email: '', address: '', isPrimary: true };
 
 /** Add/edit student: personal, guardians, address, academic sections + photo upload. Used for `new` and `:id/edit`. */
+/**
+ * A `<TextField select>` wired through react-hook-form's Controller.
+ *
+ * MUI's Select is controlled: `register()` supplies name/onChange/ref, but the
+ * displayed value comes from the `value` prop, which register never sets. Bound
+ * that way a select works while typing yet renders **empty** after `reset()` —
+ * which is exactly why editing a student showed blank Gender, Blood Group,
+ * Class, Section and Academic Year, while the Date of Birth beside them (already
+ * using Controller) populated correctly.
+ *
+ * `value ?? ''` matters as well: passing undefined makes MUI treat the field as
+ * uncontrolled and warn the first time a real value arrives.
+ */
+function ControlledSelect({
+  name,
+  control,
+  label,
+  children,
+  disabled,
+  errorMessage,
+  onAfterChange,
+}: {
+  name: string;
+  control: Control<StudentFormValues>;
+  label: string;
+  children: React.ReactNode;
+  disabled?: boolean;
+  errorMessage?: string;
+  onAfterChange?: (value: string) => void;
+}) {
+  return (
+    <Controller
+      name={name as never}
+      control={control}
+      render={({ field }) => (
+        <TextField
+          select
+          fullWidth
+          label={label}
+          disabled={disabled}
+          error={!!errorMessage}
+          helperText={errorMessage}
+          {...field}
+          value={(field.value as string | undefined) ?? ''}
+          onChange={(event) => {
+            field.onChange(event);
+            onAfterChange?.(event.target.value);
+          }}
+        >
+          {children}
+        </TextField>
+      )}
+    />
+  );
+}
+
 export function StudentFormPage() {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id && id !== 'new';
@@ -469,20 +525,17 @@ export function StudentFormPage() {
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      select
+                    <ControlledSelect
+                      name="gender"
+                      control={control}
                       label="Gender"
-                      fullWidth
-                      defaultValue=""
-                      {...register('gender')}
-                      error={!!errors.gender}
-                      helperText={errors.gender?.message}
+                      errorMessage={errors.gender?.message as string | undefined}
                     >
                       <MenuItem value="">Select gender</MenuItem>
                       <MenuItem value="MALE">Male</MenuItem>
                       <MenuItem value="FEMALE">Female</MenuItem>
                       <MenuItem value="OTHER">Other</MenuItem>
-                    </TextField>
+                    </ControlledSelect>
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <Controller
@@ -506,20 +559,14 @@ export function StudentFormPage() {
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      select
-                      label="Blood Group"
-                      fullWidth
-                      defaultValue=""
-                      {...register('bloodGroup')}
-                    >
+                    <ControlledSelect name="bloodGroup" control={control} label="Blood Group">
                       <MenuItem value="">Not specified</MenuItem>
                       {BLOOD_GROUP_OPTIONS.map((bg) => (
                         <MenuItem key={bg} value={bg}>
                           {bg}
                         </MenuItem>
                       ))}
-                    </TextField>
+                    </ControlledSelect>
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField label="Religion" fullWidth {...register('religion')} />
@@ -585,15 +632,11 @@ export function StudentFormPage() {
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={2}>
-                        <TextField
-                          select
+                        <ControlledSelect
+                          name={`guardians.${index}.relation`}
+                          control={control}
                           label="Relation"
-                          fullWidth
-                          size="small"
-                          defaultValue={field.relation ?? ''}
-                          {...register(`guardians.${index}.relation`)}
-                          error={!!errors.guardians?.[index]?.relation}
-                          helperText={errors.guardians?.[index]?.relation?.message}
+                          errorMessage={errors.guardians?.[index]?.relation?.message as string | undefined}
                         >
                           <MenuItem value="">Select</MenuItem>
                           {RELATION_OPTIONS.map((r) => (
@@ -601,7 +644,7 @@ export function StudentFormPage() {
                               {r}
                             </MenuItem>
                           ))}
-                        </TextField>
+                        </ControlledSelect>
                       </Grid>
                       <Grid item xs={12} sm={6} md={2}>
                         <TextField label="Occupation" fullWidth size="small" {...register(`guardians.${index}.occupation`)} />
@@ -751,14 +794,11 @@ export function StudentFormPage() {
                     </Grid>
                   )}
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      select
+                    <ControlledSelect
+                      name="classId"
+                      control={control}
                       label="Class"
-                      fullWidth
-                      defaultValue=""
-                      {...register('classId')}
-                      error={!!errors.classId}
-                      helperText={errors.classId?.message}
+                      errorMessage={errors.classId?.message as string | undefined}
                     >
                       <MenuItem value="">Select a class</MenuItem>
                       {classes.map((cls) => (
@@ -766,18 +806,15 @@ export function StudentFormPage() {
                           {cls.className}
                         </MenuItem>
                       ))}
-                    </TextField>
+                    </ControlledSelect>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      select
+                    <ControlledSelect
+                      name="sectionId"
+                      control={control}
                       label="Section"
-                      fullWidth
-                      defaultValue=""
                       disabled={!watchedClassId}
-                      {...register('sectionId')}
-                      error={!!errors.sectionId}
-                      helperText={errors.sectionId?.message}
+                      errorMessage={errors.sectionId?.message as string | undefined}
                     >
                       <MenuItem value="">Select a section</MenuItem>
                       {sections.map((sec) => (
@@ -785,17 +822,14 @@ export function StudentFormPage() {
                           {sec.sectionName}
                         </MenuItem>
                       ))}
-                    </TextField>
+                    </ControlledSelect>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      select
+                    <ControlledSelect
+                      name="academicYearId"
+                      control={control}
                       label="Academic Year"
-                      fullWidth
-                      defaultValue=""
-                      {...register('academicYearId')}
-                      error={!!errors.academicYearId}
-                      helperText={errors.academicYearId?.message}
+                      errorMessage={errors.academicYearId?.message as string | undefined}
                     >
                       <MenuItem value="">Select an academic year</MenuItem>
                       {years.map((year) => (
@@ -804,7 +838,7 @@ export function StudentFormPage() {
                           {year.isCurrent ? ' (current)' : ''}
                         </MenuItem>
                       ))}
-                    </TextField>
+                    </ControlledSelect>
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField

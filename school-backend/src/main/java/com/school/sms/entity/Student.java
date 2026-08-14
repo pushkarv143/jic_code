@@ -38,6 +38,28 @@ public class Student extends AuditableEntity {
     @JoinColumn(name = "user_id", unique = true)
     private User user;
 
+    /*
+     * Identity fields live here, not only on `user`.
+     *
+     * A login is optional at admission (user_id is nullable), so sourcing the
+     * name from the account meant a student admitted without one had no name at
+     * all — the API returned nulls and the UI fell back to showing the guardian's
+     * name in the student's place. A student's name is an attribute of the
+     * student; where an account does exist, StudentServiceImpl keeps the two in
+     * step on write.
+     */
+    @Column(name = "first_name", length = 100)
+    private String firstName;
+
+    @Column(name = "last_name", length = 100)
+    private String lastName;
+
+    @Column(name = "email", length = 150)
+    private String email;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
     @Column(name = "admission_number", nullable = false, unique = true, length = 30)
     private String admissionNumber;
 

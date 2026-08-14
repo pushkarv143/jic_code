@@ -51,6 +51,16 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
             "               AND cst.section.id = s.section.id))")
     List<Long> findIdsTaughtByTeacherId(@Param("teacherId") Long teacherId);
 
+    // Roll-number allocation: the highest roll number currently used in a
+    // class/section, so the next admission continues the sequence. Deleted students
+    // are included on purpose — reusing a withdrawn student's roll number would make
+    // historical attendance and marks ambiguous.
+    @Query("SELECT MAX(s.rollNumber) FROM Student s "
+            + "WHERE s.schoolClass.id = :classId AND s.section.id = :sectionId")
+    Integer findMaxRollNumberInSection(@Param("classId") Long classId, @Param("sectionId") Long sectionId);
+
+    boolean existsBySchoolClassIdAndSectionIdAndRollNumber(Long classId, Long sectionId, Integer rollNumber);
+
     // Calendar / birthdays widget: active students born in a given month, in day-of-month order.
     @Query("SELECT s FROM Student s WHERE s.deleted = false AND s.dateOfBirth IS NOT NULL " +
             "AND MONTH(s.dateOfBirth) = :month ORDER BY DAY(s.dateOfBirth) ASC")

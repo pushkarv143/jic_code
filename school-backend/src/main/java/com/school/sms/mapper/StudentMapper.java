@@ -19,10 +19,13 @@ public interface StudentMapper {
     @Mapping(target = "academicYearName", source = "academicYear.yearName")
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "username", source = "user.username")
-    @Mapping(target = "firstName", source = "user.firstName")
-    @Mapping(target = "lastName", source = "user.lastName")
-    @Mapping(target = "email", source = "user.email")
-    @Mapping(target = "phone", source = "user.phone")
+    // Identity now comes from the student, not the optional login account, so a
+    // student admitted without a login still has a name in the response. These
+    // four lines previously read user.* and returned null for such students.
+    @Mapping(target = "firstName", source = "firstName")
+    @Mapping(target = "lastName", source = "lastName")
+    @Mapping(target = "email", source = "email")
+    @Mapping(target = "phone", source = "phone")
     @Mapping(target = "primaryGuardianName", ignore = true)
     @Mapping(target = "primaryGuardianPhone", ignore = true)
     @Mapping(target = "guardians", ignore = true)

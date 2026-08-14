@@ -6,7 +6,7 @@ import com.school.sms.entity.SchoolClass;
 import com.school.sms.entity.Section;
 import com.school.sms.entity.Student;
 import com.school.sms.entity.User;
-import com.school.sms.exception.BadRequestException;
+
 import com.school.sms.exception.DuplicateResourceException;
 import com.school.sms.mapper.GuardianMapper;
 import com.school.sms.mapper.MedicalDetailsMapper;
@@ -191,17 +191,35 @@ class StudentUpdateIdentityTest {
     }
 
     /**
-     * students.user_id is nullable, so a student can exist with no login. There is
-     * nowhere to store a name in that case — and failing loudly is the whole point,
-     * since silently accepting the field is the bug this class covers.
+     * students.user_id is nullable, so a student can exist with no login — four did
+     * in the live database, and they had no name anywhere because the name was only
+     * ever stored on the account.
+     *
+     * The name now lives on the student row, so this must succeed rather than be
+     * rejected. An earlier version of this fix threw here, which made exactly those
+     * records permanently uneditable.
      */
     @Test
-    void reportsClearlyWhenTheStudentHasNoLoginAccount() {
+    void namesAStudentWhoHasNoLoginAccount() {
         student.setUser(null);
 
-        assertThatThrownBy(() -> service.update(STUDENT_ID, request(r -> r.setFirstName("Nobody"))))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("no login account");
+        service.update(STUDENT_ID, request(r -> {
+            r.setFirstName("No");
+            r.setLastName("Login");
+        }));
+
+        assertThat(student.getFirstName()).isEqualTo("No");
+        assertThat(student.getLastName()).isEqualTo("Login");
+        verify(userRepository, never()).save(any());
+    }
+
+    /** With an account present, both rows are written so the two cannot drift apart. */
+    @Test
+    void mirrorsTheNameOntoTheLinkedAccountWhenOneExists() {
+        service.update(STUDENT_ID, request(r -> r.setFirstName("Mirrored")));
+
+        assertThat(student.getFirstName()).isEqualTo("Mirrored");
+        assertThat(user.getFirstName()).isEqualTo("Mirrored");
     }
 
     /* --------------------------------------------------------------- */

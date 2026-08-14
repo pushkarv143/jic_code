@@ -185,10 +185,16 @@ public class StudentServiceImpl implements StudentService {
 
         Student student = Student.builder()
                 .user(user)
+                // Recorded on the student regardless of whether a login was created,
+                // so admitting without an account no longer produces a nameless record.
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
                 .admissionNumber(admissionNumber)
                 .schoolClass(schoolClass)
                 .section(section)
-                .rollNumber(request.getRollNumber())
+                .rollNumber(resolveRollNumber(schoolClass.getId(), section.getId(), request.getRollNumber()))
                 .admissionDate(request.getAdmissionDate())
                 .dateOfBirth(request.getDateOfBirth())
                 .gender(request.getGender())
@@ -247,7 +253,14 @@ public class StudentServiceImpl implements StudentService {
     }
 
     /**
-     * Copies the identity fields onto the student's login account.
+     * Applies the identity fields to the student, and mirrors them onto the linked
+     * login account when one exists.
+     *
+     * The student row is the source of truth: it is always present, whereas the
+     * account is optional. The mirror keeps the two consistent so that signing in
+     * shows the same name the office sees, but its absence is never an error —
+     * an earlier version rejected the edit outright when there was no account,
+     * which made the four login-less students in the database uneditable.
      *
      * A null field means "leave unchanged", so a caller can update only the
      * academic details without echoing the name back.
@@ -262,26 +275,35 @@ public class StudentServiceImpl implements StudentService {
         }
 
         User user = student.getUser();
-        if (user == null) {
-            // A student may be admitted without a login (students.user_id is
-            // nullable), and there is nowhere else to put a name. Failing loudly is
-            // the point: silently accepting the field is the bug being fixed here.
-            throw new BadRequestException(
-                    "This student has no login account, so name, email and phone cannot be stored. "
-                            + "Create a login for them first.");
-        }
 
-        if (StringUtils.hasText(request.getEmail()) && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
-            // users.email is UNIQUE; checking here turns a 500-level constraint
-            // violation into a message naming the actual problem.
+        if (StringUtils.hasText(request.getEmail())) {
+            // users.email is UNIQUE. Checked before writing either row so a clash
+            // surfaces as a message naming the field rather than a constraint
+            // violation from deep in the persistence layer.
             userRepository.findByEmail(request.getEmail())
-                    .filter(existing -> !existing.getId().equals(user.getId()))
+                    .filter(existing -> user == null || !existing.getId().equals(user.getId()))
                     .ifPresent(existing -> {
                         throw new DuplicateResourceException("User", "email", request.getEmail());
                     });
+            student.setEmail(request.getEmail());
+        }
+        if (StringUtils.hasText(request.getFirstName())) {
+            student.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            student.setLastName(request.getLastName());
+        }
+        if (request.getPhone() != null) {
+            student.setPhone(request.getPhone());
+        }
+        studentRepository.save(student);
+
+        if (user == null) {
+            return;
+        }
+        if (StringUtils.hasText(request.getEmail())) {
             user.setEmail(request.getEmail());
         }
-
         if (StringUtils.hasText(request.getFirstName())) {
             user.setFirstName(request.getFirstName());
         }
@@ -291,7 +313,6 @@ public class StudentServiceImpl implements StudentService {
         if (request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
-
         userRepository.save(user);
     }
 
@@ -580,6 +601,29 @@ public class StudentServiceImpl implements StudentService {
      * id that does not exist gets 404 regardless of role, so the response cannot be
      * used to probe which ids are real.
      */
+    /**
+     * Resolves the roll number for an admission.
+     *
+     * Left to the caller, this field produced duplicates and values like 151611 —
+     * it was free text with nothing checking it. When omitted it now continues the
+     * section's sequence; when supplied it is rejected if already taken, so a roll
+     * number identifies exactly one student in a section either way.
+     */
+    private Integer resolveRollNumber(Long classId, Long sectionId, Integer requested) {
+        if (requested == null) {
+            Integer highest = studentRepository.findMaxRollNumberInSection(classId, sectionId);
+            return highest == null ? 1 : highest + 1;
+        }
+        if (requested < 1) {
+            throw new BadRequestException("Roll number must be 1 or greater");
+        }
+        if (studentRepository.existsBySchoolClassIdAndSectionIdAndRollNumber(classId, sectionId, requested)) {
+            throw new BadRequestException(
+                    "Roll number " + requested + " is already used in this class/section");
+        }
+        return requested;
+    }
+
     private Student findEntity(Long id) {
         Student student = studentRepository.findById(id)
                 .filter(s -> !s.isDeleted())
