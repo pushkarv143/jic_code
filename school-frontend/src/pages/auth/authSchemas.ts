@@ -54,6 +54,32 @@ export const forgotPasswordSchema = yup.object({
 });
 export type ForgotPasswordFormValues = yup.InferType<typeof forgotPasswordSchema>;
 
+/**
+ * Step 1 of a passcode flow. One field for either an email address or a mobile
+ * number, because the server works out which it is and the user should not have to
+ * say. Kept separate from forgotPasswordSchema, which is email-only and still used
+ * by the older reset-link flow.
+ */
+export const otpDestinationSchema = yup.object({
+  destination: yup
+    .string()
+    .required('Enter your email address or mobile number')
+    .test(
+      'email-or-phone',
+      'Enter a valid email address or 10-digit mobile number',
+      (value) => {
+        if (!value) return false;
+        const trimmed = value.trim();
+        return trimmed.includes('@')
+          ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
+          // Permissive on purpose, matching the API: digits with optional + - ( )
+          // and spaces, and at least ten digits once those are stripped.
+          : /^[0-9+\-\s()]+$/.test(trimmed) && trimmed.replace(/[^0-9]/g, '').length >= 10;
+      },
+    ),
+});
+export type OtpDestinationFormValues = yup.InferType<typeof otpDestinationSchema>;
+
 /** Step 2 of recovery: the six digits sent to the address given in step 1. */
 export const otpCodeSchema = yup.object({
   code: yup

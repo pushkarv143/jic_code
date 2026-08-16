@@ -152,7 +152,7 @@ class OtpServiceTest {
     @Test
     void sms_is_refused_outright_while_no_gateway_exists() {
         when(smsService.isAvailable()).thenReturn(false);
-        when(userRepository.findAllByPhone("9810011122")).thenReturn(List.of(user));
+        when(userRepository.findAllByPhoneDigits("9810011122")).thenReturn(List.of(user));
 
         assertThatThrownBy(() -> service.send(request("9810011122"), IP))
                 .isInstanceOf(BadRequestException.class)
@@ -163,7 +163,7 @@ class OtpServiceTest {
     void sms_is_refused_the_same_way_whether_or_not_the_number_is_registered() {
         when(smsService.isAvailable()).thenReturn(false);
         // Nobody has this number.
-        when(userRepository.findAllByPhone("9000000000")).thenReturn(List.of());
+        when(userRepository.findAllByPhoneDigits("9000000000")).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.send(request("9000000000"), IP))
                 .isInstanceOf(BadRequestException.class)
@@ -172,7 +172,7 @@ class OtpServiceTest {
         // Answering a registered number with the SMS refusal and an unregistered one
         // with the neutral success would be a way to find out whose number is on
         // file, so the refusal has to come first and the lookup must not happen.
-        verify(userRepository, never()).findAllByPhone(anyString());
+        verify(userRepository, never()).findAllByPhoneDigits(anyString());
     }
 
     @Test
@@ -181,7 +181,7 @@ class OtpServiceTest {
         // refused ahead of it when there is none.
         when(smsService.isAvailable()).thenReturn(true);
         User sibling = userWith(8L, "other@example.com", "Ravi");
-        when(userRepository.findAllByPhone("9810011122")).thenReturn(List.of(user, sibling));
+        when(userRepository.findAllByPhoneDigits("9810011122")).thenReturn(List.of(user, sibling));
 
         service.send(request("9810011122"), IP);
 

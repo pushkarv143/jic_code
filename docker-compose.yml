@@ -63,6 +63,13 @@ services:
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # SMS gateway for one-time passcodes. All three must be set for SMS to be
+      # offered at all; leave them blank and passcodes by phone are refused with
+      # a clear message rather than silently dropped.
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      SMS_DEFAULT_COUNTRY_CODE: ${SMS_DEFAULT_COUNTRY_CODE:-+91}
       # These two are used server-side to build links (e.g. password-reset
       # emails) and to populate the CORS allow-list - both must be a URL
       # the end user's BROWSER can actually reach, i.e. wherever the

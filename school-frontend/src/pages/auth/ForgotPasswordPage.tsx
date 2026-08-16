@@ -16,15 +16,15 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { useSnackbar } from 'notistack';
 import { authApi } from '@/api/authApi';
 import {
-  forgotPasswordSchema,
+  otpDestinationSchema,
   otpCodeSchema,
   resetPasswordSchema,
-  type ForgotPasswordFormValues,
+  type OtpDestinationFormValues,
   type OtpCodeFormValues,
   type ResetPasswordFormValues,
 } from './authSchemas';
 
-const STEPS = ['Your email', 'Enter code', 'New password'];
+const STEPS = ['Your details', 'Enter code', 'New password'];
 
 /**
  * Password recovery by one-time passcode.
@@ -46,7 +46,7 @@ export function ForgotPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resendIn, setResendIn] = useState(0);
 
-  const emailForm = useForm<ForgotPasswordFormValues>({ resolver: yupResolver(forgotPasswordSchema) });
+  const emailForm = useForm<OtpDestinationFormValues>({ resolver: yupResolver(otpDestinationSchema) });
   const codeForm = useForm<OtpCodeFormValues>({ resolver: yupResolver(otpCodeSchema) });
   const passwordForm = useForm<ResetPasswordFormValues>({ resolver: yupResolver(resetPasswordSchema) });
 
@@ -81,7 +81,7 @@ export function ForgotPasswordPage() {
     [enqueueSnackbar],
   );
 
-  const onEmailSubmit = (values: ForgotPasswordFormValues) => sendCode(values.email);
+  const onEmailSubmit = (values: OtpDestinationFormValues) => sendCode(values.destination);
 
   const onCodeSubmit = async (values: OtpCodeFormValues) => {
     setSubmitting(true);
@@ -136,21 +136,22 @@ export function ForgotPasswordPage() {
       {step === 0 && (
         <>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Enter the email associated with your account and we&apos;ll send you a 6-digit code.
+            Enter the email address or mobile number on your account and we&apos;ll send you a
+            6-digit code.
           </Typography>
           <Alert severity="info" sx={{ mb: 2 }}>
-            For your security we&apos;ll always show the same confirmation, whether or not the email
-            is registered.
+            For your security we&apos;ll always show the same confirmation, whether or not it is
+            registered.
           </Alert>
           <Box component="form" onSubmit={emailForm.handleSubmit(onEmailSubmit)} noValidate>
             <TextField
-              label="Email Address"
+              label="Email or mobile number"
               fullWidth
               margin="normal"
               autoFocus
-              {...emailForm.register('email')}
-              error={!!emailForm.formState.errors.email}
-              helperText={emailForm.formState.errors.email?.message}
+              {...emailForm.register('destination')}
+              error={!!emailForm.formState.errors.destination}
+              helperText={emailForm.formState.errors.destination?.message}
             />
             <Button
               type="submit"

@@ -98,7 +98,7 @@ fun ForgotPasswordScreen(
                 .padding(16.dp),
         ) {
             Text(
-                "Enter the email address on your account. We'll send you a 6-digit code.",
+                "Enter the email address or mobile number on your account. We'll send you a 6-digit code.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -107,7 +107,7 @@ fun ForgotPasswordScreen(
             AppTextField(
                 value = state.destination,
                 onValueChange = viewModel::onDestinationChange,
-                label = "Email",
+                label = "Email or mobile number",
                 required = true,
                 error = state.destinationError,
                 keyboardType = KeyboardType.Email,

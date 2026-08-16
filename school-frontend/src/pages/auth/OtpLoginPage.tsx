@@ -15,9 +15,9 @@ import { authApi } from '@/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/authSlice';
 import {
-  forgotPasswordSchema,
+  otpDestinationSchema,
   otpCodeSchema,
-  type ForgotPasswordFormValues,
+  type OtpDestinationFormValues,
   type OtpCodeFormValues,
 } from './authSchemas';
 
@@ -41,7 +41,7 @@ export function OtpLoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resendIn, setResendIn] = useState(0);
 
-  const emailForm = useForm<ForgotPasswordFormValues>({ resolver: yupResolver(forgotPasswordSchema) });
+  const emailForm = useForm<OtpDestinationFormValues>({ resolver: yupResolver(otpDestinationSchema) });
   const codeForm = useForm<OtpCodeFormValues>({ resolver: yupResolver(otpCodeSchema) });
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export function OtpLoginPage() {
     [enqueueSnackbar],
   );
 
-  const onEmailSubmit = (values: ForgotPasswordFormValues) => sendCode(values.email);
+  const onEmailSubmit = (values: OtpDestinationFormValues) => sendCode(values.destination);
 
   const onCodeSubmit = async (values: OtpCodeFormValues) => {
     setSubmitting(true);
@@ -101,24 +101,25 @@ export function OtpLoginPage() {
         Sign in with a code
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        We&apos;ll email a 6-digit code to the address on your account. No password needed.
+        We&apos;ll send a 6-digit code to the email address or mobile number on your account. No
+        password needed.
       </Typography>
 
       {!codeSent ? (
         <>
           <Alert severity="info" sx={{ mb: 2 }}>
-            For your security we&apos;ll always show the same confirmation, whether or not the email
-            is registered.
+            For your security we&apos;ll always show the same confirmation, whether or not it is
+            registered.
           </Alert>
           <Box component="form" onSubmit={emailForm.handleSubmit(onEmailSubmit)} noValidate>
             <TextField
-              label="Email Address"
+              label="Email or mobile number"
               fullWidth
               margin="normal"
               autoFocus
-              {...emailForm.register('email')}
-              error={!!emailForm.formState.errors.email}
-              helperText={emailForm.formState.errors.email?.message}
+              {...emailForm.register('destination')}
+              error={!!emailForm.formState.errors.destination}
+              helperText={emailForm.formState.errors.destination?.message}
             />
             <Button
               type="submit"

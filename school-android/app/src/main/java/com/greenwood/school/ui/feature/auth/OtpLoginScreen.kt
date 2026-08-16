@@ -94,7 +94,8 @@ fun OtpLoginScreen(
                 .padding(16.dp),
         ) {
             Text(
-                "We'll email a 6-digit code to the address on your account. No password needed.",
+                "We'll send a 6-digit code to the email address or mobile number on your account. " +
+                    "No password needed.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -103,7 +104,7 @@ fun OtpLoginScreen(
             AppTextField(
                 value = state.destination,
                 onValueChange = viewModel::onDestinationChange,
-                label = "Email",
+                label = "Email or mobile number",
                 required = true,
                 error = state.destinationError,
                 keyboardType = KeyboardType.Email,

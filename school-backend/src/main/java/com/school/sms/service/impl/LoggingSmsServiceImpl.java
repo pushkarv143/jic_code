@@ -2,8 +2,6 @@ package com.school.sms.service.impl;
 
 import com.school.sms.service.SmsService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Service;
 
 /**
  * The stand-in used until a gateway is configured.
@@ -12,12 +10,12 @@ import org.springframework.stereotype.Service;
  * send an OTP by SMS is refused with a clear message instead of leaving someone
  * waiting for a text that was never going to arrive.
  *
- * {@code @ConditionalOnMissingBean} means adding a real implementation replaces
- * this one automatically, with nothing to unregister.
+ * Instantiated by {@code SmsConfig}, which decides between this and the real
+ * gateway. It used to carry {@code @ConditionalOnMissingBean(name = "smsGateway")}
+ * — a bean name nothing ever defined, so the condition always held and this stub
+ * would have kept winning even after a gateway was added.
  */
 @Slf4j
-@Service
-@ConditionalOnMissingBean(name = "smsGateway")
 public class LoggingSmsServiceImpl implements SmsService {
 
     @Override

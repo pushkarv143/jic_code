@@ -18,6 +18,7 @@ import com.school.sms.service.AuthService;
 import com.school.sms.service.EmailService;
 import com.school.sms.service.OtpService;
 import com.school.sms.service.SmsService;
+import com.school.sms.util.PhoneNumbers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -244,10 +245,17 @@ public class OtpServiceImpl implements OtpService {
         if (destination.contains("@")) {
             return userRepository.findByEmail(destination);
         }
-        // users.phone has no unique constraint, so a number may sit on several
+        // Matched on the last ten digits rather than the string, because the column
+        // holds both "+91-9999900001" and "9999900004" and nobody types their number
+        // the way it happens to be stored. Comparing literally found almost no one,
+        // which for OTP means silently sending nothing.
+        if (!PhoneNumbers.isPlausible(destination)) {
+            return Optional.empty();
+        }
+        // No unique constraint on the column, so a number may sit on several
         // accounts. Picking one would send a stranger's code to whoever asked,
         // so an ambiguous number is treated as no match at all.
-        List<User> byPhone = userRepository.findAllByPhone(destination);
+        List<User> byPhone = userRepository.findAllByPhoneDigits(PhoneNumbers.national(destination));
         return byPhone.size() == 1 ? Optional.of(byPhone.get(0)) : Optional.empty();
     }
 
