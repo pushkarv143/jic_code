@@ -86,6 +86,10 @@ export function ProfilePage() {
       await authApi.changePassword({
         currentPassword: values.currentPassword,
         newPassword: values.newPassword,
+        // The form has always collected this and dropped it here; the API
+        // validates it as mandatory, so the request failed before reaching the
+        // password check.
+        confirmPassword: values.confirmPassword,
       });
       enqueueSnackbar('Password changed successfully.', { variant: 'success' });
       resetPasswordForm();

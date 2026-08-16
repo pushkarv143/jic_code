@@ -54,6 +54,15 @@ export const forgotPasswordSchema = yup.object({
 });
 export type ForgotPasswordFormValues = yup.InferType<typeof forgotPasswordSchema>;
 
+/** Step 2 of recovery: the six digits sent to the address given in step 1. */
+export const otpCodeSchema = yup.object({
+  code: yup
+    .string()
+    .required('Enter the 6-digit code')
+    .matches(/^[0-9]{6}$/, 'The code is 6 digits'),
+});
+export type OtpCodeFormValues = yup.InferType<typeof otpCodeSchema>;
+
 export const resetPasswordSchema = yup.object({
   newPassword: passwordComplexity,
   confirmPassword: yup

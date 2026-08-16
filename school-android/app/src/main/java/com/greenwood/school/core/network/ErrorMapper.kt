@@ -51,6 +51,10 @@ class ErrorMapper @Inject constructor(
             404 -> AppError.NotFound(serverMessage ?: string(R.string.error_not_found))
             409 -> AppError.Conflict(serverMessage ?: string(R.string.error_conflict))
 
+            // The server's own wording carries the useful part here — which limit was
+            // hit and roughly how long to wait — so it is preferred over generic copy.
+            429 -> AppError.RateLimited(serverMessage ?: string(R.string.error_rate_limited))
+
             // A 5xx message from the server may leak internals; the handler already
             // scrubs it, but we still prefer our own copy for anything unrecognised.
             in 500..599 -> AppError.Server(string(R.string.error_server), status)

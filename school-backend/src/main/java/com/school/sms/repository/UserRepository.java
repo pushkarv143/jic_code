@@ -15,6 +15,15 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     Optional<User> findByUsernameOrEmail(String username, String email);
 
+    /**
+     * Phone lookup for OTP. Returns a list rather than an Optional on purpose:
+     * users.phone carries no unique constraint, so a number can legitimately sit
+     * on more than one row — a parent sharing a number with their child, say.
+     * The caller treats an ambiguous match as no match rather than guessing which
+     * account someone meant.
+     */
+    List<User> findAllByPhone(String phone);
+
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);

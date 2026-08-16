@@ -38,6 +38,14 @@ sealed interface AppError {
         val fieldErrors: Map<String, String> = emptyMap(),
     ) : AppError
 
+    /**
+     * 429 — the caller is going too fast. Distinct from [Client] because it is the
+     * one 4xx that means "this would have worked, try again shortly", so a screen
+     * can disable its retry rather than presenting the failure as a dead end.
+     * Raised by the OTP endpoints, which throttle both sends and guesses.
+     */
+    data class RateLimited(override val userMessage: String) : AppError
+
     /** Any other 4xx the app has no specific handling for. */
     data class Client(override val userMessage: String, val status: Int) : AppError
 

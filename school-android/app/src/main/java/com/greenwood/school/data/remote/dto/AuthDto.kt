@@ -84,6 +84,45 @@ data class ForgotPasswordRequestDto(val email: String)
 @Serializable
 data class ResetPasswordRequestDto(val token: String, val newPassword: String)
 
+/* ---- One-time passcodes ----------------------------------------------------- */
+
+/**
+ * `destination` is an email address or a phone number in one field — the server
+ * decides which it is, so the screen does not have to ask.
+ *
+ * `purpose` is always sent explicitly: the API refuses to default it, so a client
+ * cannot obtain a login code by leaving a field out.
+ */
+@Serializable
+data class SendOtpRequestDto(val destination: String, val purpose: String)
+
+@Serializable
+data class VerifyOtpRequestDto(val destination: String, val purpose: String, val code: String)
+
+/**
+ * Says nothing about whether the account exists — that is deliberate on the
+ * server side. Only the two timings the screen needs to run its countdown.
+ */
+@Serializable
+data class OtpSendResponseDto(
+    val expiresInSeconds: Int = 300,
+    val resendAfterSeconds: Int = 60,
+)
+
+/** For `PASSWORD_RESET` the reset token is set; `auth` is reserved for OTP login. */
+@Serializable
+data class OtpVerifyResponseDto(
+    val resetToken: String? = null,
+    val auth: JwtAuthResponseDto? = null,
+)
+
+/** Mirrors the backend's OtpPurpose enum; sent as its name. */
+object OtpPurpose {
+    const val PASSWORD_RESET = "PASSWORD_RESET"
+    const val LOGIN = "LOGIN"
+    const val PHONE_VERIFY = "PHONE_VERIFY"
+}
+
 @Serializable
 data class ChangePasswordRequestDto(
     val currentPassword: String,

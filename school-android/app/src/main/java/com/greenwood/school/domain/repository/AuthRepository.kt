@@ -1,6 +1,8 @@
 package com.greenwood.school.domain.repository
 
 import com.greenwood.school.core.network.ApiResult
+import com.greenwood.school.data.remote.dto.OtpSendResponseDto
+import com.greenwood.school.data.remote.dto.OtpVerifyResponseDto
 import com.greenwood.school.data.remote.dto.UserDto
 import kotlinx.coroutines.flow.StateFlow
 
@@ -36,6 +38,17 @@ interface AuthRepository {
     suspend fun forgotPassword(email: String): ApiResult<Unit>
 
     suspend fun resetPassword(token: String, newPassword: String): ApiResult<Unit>
+
+    /**
+     * Asks for a passcode at [destination] — an email address or a phone number.
+     *
+     * Success does not mean the address is registered; the server answers the same
+     * way either way, so the screen must not imply otherwise.
+     */
+    suspend fun requestOtp(destination: String, purpose: String): ApiResult<OtpSendResponseDto>
+
+    /** Returns a single-use reset token when [code] is right. */
+    suspend fun verifyOtp(destination: String, purpose: String, code: String): ApiResult<OtpVerifyResponseDto>
 
     suspend fun changePassword(
         currentPassword: String,

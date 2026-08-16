@@ -12,6 +12,8 @@ export const ENDPOINTS = {
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
     CHANGE_PASSWORD: '/auth/change-password',
+    OTP_REQUEST: '/auth/otp/request',
+    OTP_VERIFY: '/auth/otp/verify',
     ME: '/auth/me',
   },
 

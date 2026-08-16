@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -14,6 +16,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,11 +31,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.greenwood.school.core.common.Validators
 import com.greenwood.school.core.network.ApiResult
+import com.greenwood.school.data.remote.dto.OtpPurpose
 import com.greenwood.school.domain.repository.AuthRepository
 import com.greenwood.school.ui.components.AppTextField
 import com.greenwood.school.ui.components.AppTopBar
 import com.greenwood.school.ui.components.PasswordField
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,14 +46,19 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Password recovery, in the same two steps as the web app:
+ * Password recovery by one-time passcode, in three steps on one screen:
  *
- *  1. request a reset link by email (`POST /auth/forgot-password`)
- *  2. paste the token from that email and set a new password
- *     (`POST /auth/reset-password`)
+ *  1. give the email or phone on the account (`POST /auth/otp/request`)
+ *  2. type the six digits that arrive     (`POST /auth/otp/verify`)
+ *  3. choose a new password               (`POST /auth/reset-password`)
  *
- * Both live on one screen because on mobile the user is switching to their mail app
- * and back; making them re-navigate would lose the entered email.
+ * It replaces a flow that mailed a reset *link*. The link pointed at the web
+ * frontend, which an Android user has no way to open usefully, so recovering a
+ * password on a phone did not really work. A code can be retyped from any mail
+ * client, which is what makes this the mobile-appropriate shape.
+ *
+ * One screen rather than three, because the user leaves for their mail app and
+ * comes back — re-navigating would lose what they had typed.
  */
 @Composable
 fun ForgotPasswordScreen(
@@ -66,6 +76,15 @@ fun ForgotPasswordScreen(
         }
     }
 
+    // Drives the "Resend in Ns" label. Runs only while there is time left, so it
+    // stops on its own rather than ticking for the life of the screen.
+    LaunchedEffect(state.resendInSeconds) {
+        if (state.resendInSeconds > 0) {
+            delay(1_000)
+            viewModel.tickResendCountdown()
+        }
+    }
+
     Scaffold(
         topBar = { AppTopBar(title = "Reset your password", onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -75,64 +94,110 @@ fun ForgotPasswordScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .imePadding()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
             Text(
-                "Enter the email on your account and we'll send a reset link.",
+                "Enter the email address on your account. We'll send you a 6-digit code.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(16.dp))
 
             AppTextField(
-                value = state.email,
-                onValueChange = viewModel::onEmailChange,
+                value = state.destination,
+                onValueChange = viewModel::onDestinationChange,
                 label = "Email",
                 required = true,
-                error = state.emailError,
+                error = state.destinationError,
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Done,
-                enabled = !state.linkSent,
+                // Locked once a code is out, so the code and the address cannot
+                // drift apart — the server checks them together.
+                enabled = !state.codeSent,
             )
 
             Spacer(Modifier.height(16.dp))
 
-            Button(
-                onClick = viewModel::sendLink,
-                enabled = !state.isSubmitting && !state.linkSent,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-            ) {
-                if (state.isSubmitting && !state.linkSent) {
-                    CircularProgressIndicator(Modifier.height(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text("Send reset link")
+            if (!state.codeSent) {
+                Button(
+                    onClick = viewModel::sendCode,
+                    enabled = !state.isSubmitting,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) {
+                    if (state.isSubmitting) {
+                        CircularProgressIndicator(Modifier.height(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Send code")
+                    }
                 }
             }
 
-            if (state.linkSent) {
-                Spacer(Modifier.height(28.dp))
-                Text("Step 2 — set a new password", style = MaterialTheme.typography.titleMedium)
+            if (state.codeSent && !state.codeVerified) {
+                Text("Step 2 — enter the code", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Paste the token from the email we just sent.",
+                    "It expires in 5 minutes. Check your spam folder if it hasn't arrived.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(12.dp))
 
                 AppTextField(
-                    value = state.token,
-                    onValueChange = viewModel::onTokenChange,
-                    label = "Reset token",
+                    value = state.code,
+                    onValueChange = viewModel::onCodeChange,
+                    label = "6-digit code",
                     required = true,
-                    error = state.tokenError,
+                    error = state.codeError,
+                    keyboardType = KeyboardType.NumberPassword,
+                    imeAction = ImeAction.Done,
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = viewModel::verifyCode,
+                    enabled = !state.isSubmitting,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) {
+                    if (state.isSubmitting) {
+                        CircularProgressIndicator(Modifier.height(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Verify code")
+                    }
+                }
+
+                TextButton(
+                    onClick = viewModel::sendCode,
+                    // The server enforces its own cooldown; matching it here turns a
+                    // guaranteed 429 into a label that says how long is left.
+                    enabled = state.resendInSeconds == 0 && !state.isSubmitting,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (state.resendInSeconds > 0) {
+                            "Resend in ${state.resendInSeconds}s"
+                        } else {
+                            "Resend code"
+                        },
+                    )
+                }
+            }
+
+            if (state.codeVerified) {
+                Text("Step 3 — set a new password", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(12.dp))
+
                 PasswordField(
                     value = state.newPassword,
                     onValueChange = viewModel::onNewPasswordChange,
                     label = "New password",
                     error = state.newPasswordError,
+                )
+                Spacer(Modifier.height(10.dp))
+                PasswordField(
+                    value = state.confirmPassword,
+                    onValueChange = viewModel::onConfirmPasswordChange,
+                    label = "Confirm new password",
+                    error = state.confirmPasswordError,
                 )
                 Spacer(Modifier.height(16.dp))
                 Button(
@@ -143,6 +208,8 @@ fun ForgotPasswordScreen(
                     Text("Set new password")
                 }
             }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -155,33 +222,91 @@ class ForgotPasswordViewModel @Inject constructor(
     private val _state = MutableStateFlow(ForgotPasswordUiState())
     val state: StateFlow<ForgotPasswordUiState> = _state.asStateFlow()
 
-    fun onEmailChange(value: String) = _state.update { it.copy(email = value, emailError = null) }
-    fun onTokenChange(value: String) = _state.update { it.copy(token = value, tokenError = null) }
-    fun onNewPasswordChange(value: String) = _state.update { it.copy(newPassword = value, newPasswordError = null) }
+    fun onDestinationChange(value: String) =
+        _state.update { it.copy(destination = value, destinationError = null) }
+
+    /** Digits only, capped at six — the field cannot hold anything the API would reject. */
+    fun onCodeChange(value: String) = _state.update {
+        it.copy(code = value.filter(Char::isDigit).take(CODE_LENGTH), codeError = null)
+    }
+
+    fun onNewPasswordChange(value: String) =
+        _state.update { it.copy(newPassword = value, newPasswordError = null) }
+
+    fun onConfirmPasswordChange(value: String) =
+        _state.update { it.copy(confirmPassword = value, confirmPasswordError = null) }
+
     fun consumeMessage() = _state.update { it.copy(message = null) }
 
-    fun sendLink() {
+    fun tickResendCountdown() =
+        _state.update { it.copy(resendInSeconds = (it.resendInSeconds - 1).coerceAtLeast(0)) }
+
+    fun sendCode() {
         val current = _state.value
-        val emailError = Validators.email(current.email)
-        if (emailError != null) {
-            _state.update { it.copy(emailError = emailError) }
+        if (current.isSubmitting) return
+
+        val error = validateDestination(current.destination)
+        if (error != null) {
+            _state.update { it.copy(destinationError = error) }
             return
         }
 
         _state.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
-            val result = authRepository.forgotPassword(current.email)
+            val result = authRepository.requestOtp(current.destination.trim(), OtpPurpose.PASSWORD_RESET)
             _state.update {
                 when (result) {
-                    // The backend deliberately answers the same way whether or not the
-                    // address exists, so we must not imply the account was found.
+                    // The server answers identically for a registered address and an
+                    // unknown one, so the wording must not imply the account was found.
                     is ApiResult.Success -> it.copy(
                         isSubmitting = false,
-                        linkSent = true,
-                        message = "If an account exists for that email, a reset link has been sent.",
+                        codeSent = true,
+                        code = "",
+                        resendInSeconds = result.data.resendAfterSeconds,
+                        message = "If an account matches, a code has been sent.",
                     )
 
-                    is ApiResult.Failure -> it.copy(isSubmitting = false, message = result.error.userMessage)
+                    is ApiResult.Failure -> it.copy(
+                        isSubmitting = false,
+                        message = result.error.userMessage,
+                    )
+                }
+            }
+        }
+    }
+
+    fun verifyCode() {
+        val current = _state.value
+        if (current.isSubmitting) return
+
+        if (current.code.length != CODE_LENGTH) {
+            _state.update { it.copy(codeError = "Enter the 6-digit code") }
+            return
+        }
+
+        _state.update { it.copy(isSubmitting = true) }
+        viewModelScope.launch {
+            val result = authRepository.verifyOtp(
+                destination = current.destination.trim(),
+                purpose = OtpPurpose.PASSWORD_RESET,
+                code = current.code,
+            )
+            _state.update {
+                when (result) {
+                    is ApiResult.Success -> it.copy(
+                        isSubmitting = false,
+                        codeVerified = true,
+                        // Held only long enough to complete step 3.
+                        resetToken = result.data.resetToken.orEmpty(),
+                        resendInSeconds = 0,
+                    )
+
+                    is ApiResult.Failure -> it.copy(
+                        isSubmitting = false,
+                        // Shown against the field rather than as a snackbar: the code is
+                        // what was wrong, and it is what they need to retype.
+                        codeError = result.error.userMessage,
+                    )
                 }
             }
         }
@@ -189,21 +314,24 @@ class ForgotPasswordViewModel @Inject constructor(
 
     fun resetPassword() {
         val current = _state.value
-        val tokenError = Validators.required(current.token, "Reset token")
+        if (current.isSubmitting) return
+
         val passwordError = Validators.password(current.newPassword)
-        if (tokenError != null || passwordError != null) {
-            _state.update { it.copy(tokenError = tokenError, newPasswordError = passwordError) }
+        val confirmError = Validators.confirmPassword(current.newPassword, current.confirmPassword)
+        if (passwordError != null || confirmError != null) {
+            _state.update { it.copy(newPasswordError = passwordError, confirmPasswordError = confirmError) }
             return
         }
 
         _state.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
-            val result = authRepository.resetPassword(current.token.trim(), current.newPassword)
+            val result = authRepository.resetPassword(current.resetToken, current.newPassword)
             _state.update {
                 when (result) {
                     is ApiResult.Success -> it.copy(
                         isSubmitting = false,
                         isComplete = true,
+                        resetToken = "",
                         message = "Password reset. Sign in with your new password.",
                     )
 
@@ -212,16 +340,42 @@ class ForgotPasswordViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * The field takes an email or a phone number, so which check applies depends on
+     * what was typed. Phone is accepted here because the API supports it; it will
+     * be refused with a clear message until an SMS gateway exists.
+     */
+    private fun validateDestination(value: String): String? {
+        val trimmed = value.trim()
+        if (trimmed.isBlank()) return "Enter your email address"
+        return if (trimmed.contains("@")) {
+            Validators.email(trimmed)
+        } else {
+            Validators.phone(trimmed)
+        }
+    }
+
+    private companion object {
+        const val CODE_LENGTH = 6
+    }
 }
 
 data class ForgotPasswordUiState(
-    val email: String = "",
-    val token: String = "",
+    val destination: String = "",
+    val code: String = "",
+    val resetToken: String = "",
     val newPassword: String = "",
-    val emailError: String? = null,
-    val tokenError: String? = null,
+    val confirmPassword: String = "",
+
+    val destinationError: String? = null,
+    val codeError: String? = null,
     val newPasswordError: String? = null,
-    val linkSent: Boolean = false,
+    val confirmPasswordError: String? = null,
+
+    val codeSent: Boolean = false,
+    val codeVerified: Boolean = false,
+    val resendInSeconds: Int = 0,
     val isSubmitting: Boolean = false,
     val isComplete: Boolean = false,
     val message: String? = null,

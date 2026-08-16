@@ -45,7 +45,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/v1/auth/refresh-token",
             "/api/v1/auth/logout",
             "/api/v1/auth/forgot-password",
-            "/api/v1/auth/reset-password"
+            "/api/v1/auth/reset-password",
+            // Account recovery, so necessarily reachable by someone who cannot
+            // sign in. Both are throttled and neither discloses whether an
+            // account exists — see OtpServiceImpl.
+            "/api/v1/auth/otp/request",
+            "/api/v1/auth/otp/verify"
     );
 
     private static final List<String> EXCLUDED_PATHS = Stream.concat(

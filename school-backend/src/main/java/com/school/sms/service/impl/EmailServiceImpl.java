@@ -31,6 +31,17 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     @Async("taskExecutor")
+    public void sendOtpEmail(String to, String recipientName, String code, int minutesValid, String purposeText) {
+        // The code stays out of the subject on purpose. Putting it there is common
+        // and does show it on a lock screen, but send() logs every subject and
+        // mail relays log them too, so it would defeat the rule that the digits
+        // are never written down anywhere but the message body.
+        String subject = "Your School Management System verification code";
+        send(to, subject, buildOtpHtml(recipientName, code, minutesValid, purposeText));
+    }
+
+    @Override
+    @Async("taskExecutor")
     public void sendWelcomeEmail(String to, String name, String username) {
         String subject = "Welcome to the School Management System";
         String body = buildWelcomeHtml(name, username);
@@ -111,6 +122,56 @@ public class EmailServiceImpl implements EmailService {
                 </body>
                 </html>
                 """.formatted(recipientName, resetLink, resetLink, resetLink);
+    }
+
+    private String buildOtpHtml(String recipientName, String code, int minutesValid, String purposeText) {
+        return """
+                <!DOCTYPE html>
+                <html>
+                <body style="margin:0;padding:0;background-color:#f4f5f7;font-family:Arial,Helvetica,sans-serif;">
+                  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7;padding:24px 0;">
+                    <tr>
+                      <td align="center">
+                        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
+                          <tr>
+                            <td style="background-color:#1f2a44;padding:20px 32px;">
+                              <h2 style="color:#ffffff;margin:0;font-size:18px;">School Management System</h2>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:32px;">
+                              <p style="font-size:15px;color:#333333;">Hello %s,</p>
+                              <p style="font-size:15px;color:#333333;">
+                                Use this code to %s. It expires in %d minutes.
+                              </p>
+                              <p style="text-align:center;margin:28px 0;">
+                                <span style="display:inline-block;background-color:#f4f5f7;border:1px solid #dde4ea;
+                                       border-radius:6px;padding:14px 28px;font-size:30px;letter-spacing:8px;
+                                       font-family:'Courier New',Courier,monospace;color:#1f2a44;font-weight:bold;">%s</span>
+                              </p>
+                              <p style="font-size:13px;color:#666666;">
+                                Do not share this code with anyone. Staff of the school will never ask you for it.
+                              </p>
+                              <p style="font-size:13px;color:#666666;">
+                                If you did not request this, you can safely ignore this email — nothing has changed
+                                on your account.
+                              </p>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:16px 32px;background-color:#f4f5f7;">
+                              <p style="font-size:12px;color:#999999;margin:0;">
+                                This is an automated message, please do not reply.
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </body>
+                </html>
+                """.formatted(recipientName, purposeText, minutesValid, code);
     }
 
     private String buildWelcomeHtml(String name, String username) {

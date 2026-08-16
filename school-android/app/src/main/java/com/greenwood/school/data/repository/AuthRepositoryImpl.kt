@@ -10,7 +10,11 @@ import com.greenwood.school.data.remote.api.AuthApi
 import com.greenwood.school.data.remote.dto.ChangePasswordRequestDto
 import com.greenwood.school.data.remote.dto.ForgotPasswordRequestDto
 import com.greenwood.school.data.remote.dto.LoginRequestDto
+import com.greenwood.school.data.remote.dto.OtpSendResponseDto
+import com.greenwood.school.data.remote.dto.OtpVerifyResponseDto
 import com.greenwood.school.data.remote.dto.RefreshTokenRequestDto
+import com.greenwood.school.data.remote.dto.SendOtpRequestDto
+import com.greenwood.school.data.remote.dto.VerifyOtpRequestDto
 import com.greenwood.school.data.remote.dto.RegisterRequestDto
 import com.greenwood.school.data.remote.dto.ResetPasswordRequestDto
 import com.greenwood.school.data.remote.dto.UserDto
@@ -82,6 +86,16 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun resetPassword(token: String, newPassword: String): ApiResult<Unit> =
         ack { api.resetPassword(ResetPasswordRequestDto(token, newPassword)) }
+
+    override suspend fun requestOtp(destination: String, purpose: String): ApiResult<OtpSendResponseDto> =
+        call { api.requestOtp(SendOtpRequestDto(destination, purpose)) }
+
+    override suspend fun verifyOtp(
+        destination: String,
+        purpose: String,
+        code: String,
+    ): ApiResult<OtpVerifyResponseDto> =
+        call { api.verifyOtp(VerifyOtpRequestDto(destination, purpose, code)) }
 
     override suspend fun changePassword(
         currentPassword: String,

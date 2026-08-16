@@ -3,6 +3,8 @@ package com.greenwood.school.ui.feature.auth
 import app.cash.turbine.test
 import com.greenwood.school.core.network.ApiResult
 import com.greenwood.school.core.network.AppError
+import com.greenwood.school.data.remote.dto.OtpSendResponseDto
+import com.greenwood.school.data.remote.dto.OtpVerifyResponseDto
 import com.greenwood.school.data.remote.dto.UserDto
 import com.greenwood.school.domain.repository.AuthRepository
 import kotlinx.coroutines.Dispatchers
@@ -158,6 +160,15 @@ private class FakeAuthRepository : AuthRepository {
         newPassword: String,
         confirmPassword: String,
     ): ApiResult<Unit> = ApiResult.Success(Unit)
+
+    override suspend fun requestOtp(destination: String, purpose: String): ApiResult<OtpSendResponseDto> =
+        ApiResult.Success(OtpSendResponseDto())
+
+    override suspend fun verifyOtp(
+        destination: String,
+        purpose: String,
+        code: String,
+    ): ApiResult<OtpVerifyResponseDto> = ApiResult.Success(OtpVerifyResponseDto(resetToken = "token"))
 
     override suspend fun refreshProfile(): ApiResult<UserDto> = loginResult
 }

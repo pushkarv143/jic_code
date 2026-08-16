@@ -27,15 +27,15 @@ android {
         applicationId = "com.greenwood.school"
         minSdk = 26
         targetSdk = 35
-        // Bumped for the integration-fix release: teacher add/edit and a reachable
-        // student edit form, plus the client half of seven defects — the missing
-        // confirmPassword on change-password, the report and attendance calls that
-        // omitted required parameters, and the self-service student route that threw
-        // instead of opening the student's own record. A new versionCode is what lets
-        // the device recognise this as an upgrade rather than refusing to install
-        // over 1.1.0.
-        versionCode = 3
-        versionName = "1.2.0"
+        // Bumped for password recovery by one-time passcode, which replaces a flow
+        // that emailed a reset link — the link pointed at the web frontend, so
+        // resetting a password from the phone never really worked. Carries the
+        // 1.2.0 contents too: teacher add/edit, the reachable student edit form,
+        // and the client half of seven defects. A new versionCode is what lets the
+        // device recognise this as an upgrade rather than refusing to install over
+        // the previous build.
+        versionCode = 4
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
