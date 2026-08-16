@@ -63,6 +63,7 @@ class OtpServiceTest {
     @Mock private EmailService emailService;
     @Mock private SmsService smsService;
     @Mock private OtpRateLimiter rateLimiter;
+    @Mock private com.school.sms.service.AuthService authService;
 
     @InjectMocks private OtpServiceImpl service;
 
@@ -255,6 +256,44 @@ class OtpServiceTest {
         service.send(request("  " + EMAIL.toUpperCase() + " "), IP);
 
         verify(emailService).sendOtpEmail(eq(EMAIL), anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), anyString());
+    }
+
+    /* ---- signing in with a code -------------------------------------------- */
+
+    @Test
+    void a_correct_login_code_returns_the_same_token_pair_a_password_would() {
+        OtpCode live = liveCode();
+        live.setPurpose(OtpPurpose.LOGIN);
+        when(otpCodeRepository.findFirstByUserAndPurposeAndConsumedAtIsNullOrderByIdDesc(user, OtpPurpose.LOGIN))
+                .thenReturn(Optional.of(live));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+
+        var tokens = com.school.sms.dto.response.JwtAuthResponse.builder().accessToken("access").build();
+        when(authService.loginWithVerifiedOtp(user)).thenReturn(tokens);
+
+        OtpVerifyResponse response = service.verify(new VerifyOtpRequest(EMAIL, OtpPurpose.LOGIN, "482915"));
+
+        // Reusing the ordinary response means refresh, logout and the clients'
+        // session handling need no special case for a code-issued session.
+        assertThat(response.getAuth()).isSameAs(tokens);
+        assertThat(response.getResetToken()).isNull();
+        assertThat(live.getConsumedAt()).isNotNull();
+    }
+
+    @Test
+    void a_login_code_never_bypasses_the_deactivated_account_check() {
+        OtpCode live = liveCode();
+        live.setPurpose(OtpPurpose.LOGIN);
+        when(otpCodeRepository.findFirstByUserAndPurposeAndConsumedAtIsNullOrderByIdDesc(user, OtpPurpose.LOGIN))
+                .thenReturn(Optional.of(live));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+        // Password login gets this refusal from Spring Security; the code path has
+        // to ask for it, so this proves it does.
+        when(authService.loginWithVerifiedOtp(user))
+                .thenThrow(new org.springframework.security.authentication.DisabledException("Your account is not active."));
+
+        assertThatThrownBy(() -> service.verify(new VerifyOtpRequest(EMAIL, OtpPurpose.LOGIN, "482915")))
+                .isInstanceOf(org.springframework.security.authentication.DisabledException.class);
     }
 
     /* ---- fixtures ---------------------------------------------------------- */

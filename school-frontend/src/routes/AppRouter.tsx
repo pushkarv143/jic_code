@@ -19,6 +19,7 @@ import FacultyPage from '@/pages/public/FacultyPage';
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
+import OtpLoginPage from '@/pages/auth/OtpLoginPage';
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage';
 
 import DashboardPage from '@/pages/dashboard/DashboardPage';
@@ -157,6 +158,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/otp-login', element: <OtpLoginPage /> },
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
     ],

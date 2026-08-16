@@ -52,6 +52,8 @@ fun LoginScreen(
     onSignedIn: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: () -> Unit,
+    /** Passwordless sign-in — a code emailed to the address on the account. */
+    onNavigateToOtpLogin: () -> Unit = {},
     viewModel: LoginViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -142,6 +144,10 @@ fun LoginScreen(
                 }
 
                 Spacer(Modifier.height(4.dp))
+
+                TextButton(onClick = onNavigateToOtpLogin, enabled = !state.isSubmitting) {
+                    Text(stringResource(R.string.sign_in_with_code))
+                }
 
                 TextButton(onClick = onNavigateToForgotPassword, enabled = !state.isSubmitting) {
                     Text(stringResource(R.string.forgot_password))

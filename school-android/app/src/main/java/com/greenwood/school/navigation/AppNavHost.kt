@@ -28,6 +28,7 @@ import com.greenwood.school.data.remote.dto.UserDto
 import com.greenwood.school.ui.feature.attendance.AttendanceScreen
 import com.greenwood.school.ui.feature.auth.ForgotPasswordScreen
 import com.greenwood.school.ui.feature.auth.LoginScreen
+import com.greenwood.school.ui.feature.auth.OtpLoginScreen
 import com.greenwood.school.ui.feature.auth.RegisterScreen
 import com.greenwood.school.ui.feature.classes.ClassDetailScreen
 import com.greenwood.school.ui.feature.classes.ClassListScreen
@@ -125,6 +126,19 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
                 },
                 onNavigateToRegister = { navController.navigate(Routes.REGISTER) },
                 onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
+                onNavigateToOtpLogin = { navController.navigate(Routes.OTP_LOGIN) },
+            )
+        }
+        composable(Routes.OTP_LOGIN) {
+            OtpLoginScreen(
+                onSignedIn = {
+                    navController.navigate(Routes.MAIN_GRAPH) {
+                        // Same as the password path: clear the auth graph so Back
+                        // from the dashboard exits rather than returning to sign-in.
+                        popUpTo(Routes.AUTH_GRAPH) { inclusive = true }
+                    }
+                },
+                onBack = navController::popBackStack,
             )
         }
         composable(Routes.REGISTER) {

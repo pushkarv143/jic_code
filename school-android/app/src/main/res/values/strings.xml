@@ -73,6 +73,7 @@
     <string name="error_not_found">We couldn\'t find what you were looking for.</string>
     <string name="error_conflict">That record already exists.</string>
     <string name="error_rate_limited">Too many attempts. Please wait a moment and try again.</string>
+    <string name="sign_in_with_code">Sign in with a code</string>
     <string name="error_validation">Please check the highlighted fields.</string>
     <string name="error_server">Something went wrong on our end. Please try again later.</string>
     <string name="error_unknown">Something went wrong. Please try again.</string>

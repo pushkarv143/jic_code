@@ -109,9 +109,14 @@ export function LoginPage() {
 
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
           <FormControlLabel control={<Checkbox defaultChecked {...register('remember')} />} label="Remember me" />
-          <Link component={RouterLink} to="/forgot-password" variant="body2" underline="hover">
-            Forgot password?
-          </Link>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Link component={RouterLink} to="/otp-login" variant="body2" underline="hover">
+              Sign in with a code
+            </Link>
+            <Link component={RouterLink} to="/forgot-password" variant="body2" underline="hover">
+              Forgot password?
+            </Link>
+          </Box>
         </Box>
 
         <Button

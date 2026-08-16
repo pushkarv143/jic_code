@@ -14,6 +14,7 @@ import com.school.sms.exception.TooManyRequestsException;
 import com.school.sms.repository.OtpCodeRepository;
 import com.school.sms.repository.PasswordResetTokenRepository;
 import com.school.sms.repository.UserRepository;
+import com.school.sms.service.AuthService;
 import com.school.sms.service.EmailService;
 import com.school.sms.service.OtpService;
 import com.school.sms.service.SmsService;
@@ -76,6 +77,7 @@ public class OtpServiceImpl implements OtpService {
     private final EmailService emailService;
     private final SmsService smsService;
     private final OtpRateLimiter rateLimiter;
+    private final AuthService authService;
 
     @Override
     @Transactional
@@ -158,9 +160,19 @@ public class OtpServiceImpl implements OtpService {
             case PASSWORD_RESET -> OtpVerifyResponse.builder()
                     .resetToken(issueResetToken(user))
                     .build();
-            // Reachable only if a client asks for a purpose no endpoint completes
-            // yet. Better an explicit refusal than a success carrying nothing.
-            case LOGIN, PHONE_VERIFY -> throw new BadRequestException(
+
+            // Signing in with a code grants nothing that the password-reset flow
+            // did not already: both are gated on control of the same mailbox, so
+            // anyone who can read the code could equally have reset the password
+            // and taken the account that way. It is a shorter path to the same
+            // place, not a weaker one.
+            case LOGIN -> OtpVerifyResponse.builder()
+                    .auth(authService.loginWithVerifiedOtp(user))
+                    .build();
+
+            // No endpoint completes this one yet. Better an explicit refusal than
+            // a success carrying nothing.
+            case PHONE_VERIFY -> throw new BadRequestException(
                     "That code is valid, but this feature is not enabled yet.");
         };
     }

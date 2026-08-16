@@ -35,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -252,6 +253,25 @@ public class AuthServiceImpl implements AuthService {
         teacherRepository.findByUserId(user.getId()).ifPresent(teacher -> dto.setTeacherId(teacher.getId()));
 
         return dto;
+    }
+
+    @Override
+    @Transactional
+    public JwtAuthResponse loginWithVerifiedOtp(User user) {
+        // The AuthenticationManager is what refuses a disabled account on the
+        // password path, and it is not involved here at all. Without this a
+        // deactivated user could still sign in with a code.
+        if (!user.isActive()) {
+            throw new DisabledException("Your account is not active. Please contact the school administrator.");
+        }
+
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
+        // Recorded distinctly from a password login so the audit trail shows how
+        // the session was obtained.
+        auditLogService.record("LOGIN_OTP", "User", user.getId(), null, null);
+
+        return issueTokenPair(user);
     }
 
     private JwtAuthResponse issueTokenPair(User user) {

@@ -96,6 +96,10 @@ class AuthRepositoryImpl @Inject constructor(
         code: String,
     ): ApiResult<OtpVerifyResponseDto> =
         call { api.verifyOtp(VerifyOtpRequestDto(destination, purpose, code)) }
+            // A LOGIN code comes back with the same token pair /auth/login returns,
+            // so the session is stored here exactly as it is there. Anything else —
+            // a password-reset code — carries no auth and leaves the session alone.
+            .onSuccess { response -> response.auth?.let { sessionManager.save(it) } }
 
     override suspend fun changePassword(
         currentPassword: String,

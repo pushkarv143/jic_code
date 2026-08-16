@@ -44,6 +44,7 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val FORGOT_PASSWORD = "forgot-password"
+    const val OTP_LOGIN = "otp-login"
     const val RESET_PASSWORD = "reset-password"
     const val PUBLIC_ENQUIRY = "public-admission-enquiry"
 
