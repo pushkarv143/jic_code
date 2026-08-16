@@ -48,6 +48,8 @@ import javax.inject.Inject
 fun TeacherListScreen(
     onOpenTeacher: (Long) -> Unit,
     onBack: (() -> Unit)? = null,
+    /** Null hides the add button for roles the API would reject anyway. */
+    onAddTeacher: (() -> Unit)? = null,
     viewModel: TeacherListViewModel = hiltViewModel(),
 ) {
     val filters by viewModel.filters.collectAsStateWithLifecycle()
@@ -65,6 +67,8 @@ fun TeacherListScreen(
         hasActiveFilters = filters.hasActiveFilters,
         emptyTitle = "No teachers found",
         emptyMessage = "Try a different search or clear the filters.",
+        onAdd = onAddTeacher,
+        addContentDescription = "Add teacher",
         key = { it.id },
         filterSheet = { dismiss ->
             TeacherFilterSheet(

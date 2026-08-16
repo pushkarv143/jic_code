@@ -56,6 +56,7 @@ import com.greenwood.school.ui.feature.payroll.PayrollScreen
 import com.greenwood.school.ui.feature.people.MyChildrenScreen
 import com.greenwood.school.ui.feature.people.StaffListScreen
 import com.greenwood.school.ui.feature.people.TeacherDetailScreen
+import com.greenwood.school.ui.feature.people.TeacherFormScreen
 import com.greenwood.school.ui.feature.people.TeacherListScreen
 import com.greenwood.school.ui.feature.people.UserListScreen
 import com.greenwood.school.ui.feature.profile.ProfileScreen
@@ -154,6 +155,10 @@ private fun MainShell(
     val currentRoute = backStackEntry?.destination?.route
 
     val showBottomBar = remember(currentRoute) { currentRoute in BOTTOM_TABS.map { it.route } }
+
+    // The role half of WRITE_ROLES on TeacherController; each call site pairs it with
+    // the specific permission it needs.
+    val canWriteTeachers = role in Role.MANAGEMENT
 
     /**
      * Guarded navigation. Navigating to a route with no registered composable throws,
@@ -282,6 +287,17 @@ private fun MainShell(
                         TeacherListScreen(
                             onOpenTeacher = { nav.navigate(Routes.teacherDetail(it)) },
                             onBack = nav::popBackStack,
+                            // WRITE_ROLES on TeacherController is management-only, so
+                            // anyone else would be rejected after filling in the form.
+                            // TEACHER_CREATE is checked too, so revoking the grant hides
+                            // the button without needing an app release.
+                            onAddTeacher = if (canWriteTeachers &&
+                                (permissions.isEmpty() || "TEACHER_CREATE" in permissions)
+                            ) {
+                                { nav.navigate(Routes.teacherForm()) }
+                            } else {
+                                null
+                            },
                         )
                     }
                 }
@@ -289,8 +305,31 @@ private fun MainShell(
                 composable(
                     route = Routes.TEACHER_DETAIL,
                     arguments = listOf(navArgument(Routes.ARG_TEACHER_ID) { type = NavType.LongType }),
+                ) { entry ->
+                    val teacherId = entry.arguments?.getLong(Routes.ARG_TEACHER_ID) ?: 0L
+                    TeacherDetailScreen(
+                        onBack = nav::popBackStack,
+                        onEdit = if (canWriteTeachers &&
+                            (permissions.isEmpty() || "TEACHER_UPDATE" in permissions)
+                        ) {
+                            { nav.navigate(Routes.teacherForm(teacherId)) }
+                        } else {
+                            null
+                        },
+                    )
+                }
+
+                composable(
+                    route = Routes.TEACHER_FORM,
+                    arguments = listOf(
+                        navArgument(Routes.ARG_TEACHER_ID) {
+                            type = NavType.LongType
+                            // -1 means "new teacher"; see TeacherFormViewModel.
+                            defaultValue = -1L
+                        },
+                    ),
                 ) {
-                    TeacherDetailScreen(onBack = nav::popBackStack)
+                    TeacherFormScreen(onSaved = nav::popBackStack, onBack = nav::popBackStack)
                 }
 
                 composable(Routes.STAFF) { StaffListScreen(onBack = nav::popBackStack) }

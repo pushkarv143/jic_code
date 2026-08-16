@@ -330,6 +330,7 @@ val IMPLEMENTED_ROUTES: Set<String> = setOf(
     Routes.STUDENT_FORM,
     Routes.TEACHERS,
     Routes.TEACHER_DETAIL,
+    Routes.TEACHER_FORM,
     Routes.STAFF,
     Routes.USERS,
     Routes.CLASSES,
