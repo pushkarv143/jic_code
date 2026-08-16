@@ -76,7 +76,7 @@ class OtpServiceTest {
         when(rateLimiter.tryAcquire(anyString(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(true);
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
-        when(otpCodeRepository.findFirstByDestinationOrderByIdDesc(anyString())).thenReturn(Optional.empty());
+        when(otpCodeRepository.findFirstByUserOrderByIdDesc(any())).thenReturn(Optional.empty());
     }
 
     /* ---- sending ----------------------------------------------------------- */
@@ -123,7 +123,7 @@ class OtpServiceTest {
     @Test
     void a_second_code_within_the_cooldown_is_refused() {
         OtpCode justSent = OtpCode.builder().createdAt(LocalDateTime.now().minusSeconds(5)).build();
-        when(otpCodeRepository.findFirstByDestinationOrderByIdDesc(EMAIL)).thenReturn(Optional.of(justSent));
+        when(otpCodeRepository.findFirstByUserOrderByIdDesc(user)).thenReturn(Optional.of(justSent));
 
         assertThatThrownBy(() -> service.send(request(EMAIL), IP))
                 .isInstanceOf(TooManyRequestsException.class);
@@ -131,7 +131,7 @@ class OtpServiceTest {
 
     @Test
     void too_many_codes_in_an_hour_are_refused() {
-        when(otpCodeRepository.countByDestinationAndCreatedAtAfter(eq(EMAIL), any())).thenReturn(5L);
+        when(otpCodeRepository.countByUserAndCreatedAtAfter(eq(user), any())).thenReturn(5L);
 
         assertThatThrownBy(() -> service.send(request(EMAIL), IP))
                 .isInstanceOf(TooManyRequestsException.class);
@@ -150,36 +150,73 @@ class OtpServiceTest {
     }
 
     @Test
-    void sms_is_refused_outright_while_no_gateway_exists() {
-        when(smsService.isAvailable()).thenReturn(false);
-        when(userRepository.findAllByPhoneDigits("9810011122")).thenReturn(List.of(user));
+    void one_code_goes_to_both_the_email_and_the_phone_on_the_account() {
+        user.setPhone("+91-9810011122");
+        when(smsService.isAvailable()).thenReturn(true);
 
-        assertThatThrownBy(() -> service.send(request("9810011122"), IP))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("cannot be sent by SMS yet");
+        service.send(request(EMAIL), IP);
+
+        var emailed = ArgumentCaptor.forClass(String.class);
+        var texted = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendOtpEmail(eq(EMAIL), anyString(), emailed.capture(), org.mockito.ArgumentMatchers.anyInt(), anyString());
+        verify(smsService).send(eq("+91-9810011122"), texted.capture());
+
+        // One code, two messages — not two codes, which would mean whichever
+        // arrived second silently invalidated the first.
+        assertThat(texted.getValue()).contains(emailed.getValue());
+
+        var saved = ArgumentCaptor.forClass(OtpCode.class);
+        verify(otpCodeRepository).save(saved.capture());
+        assertThat(saved.getValue().getChannel()).isEqualTo(OtpChannel.BOTH);
     }
 
     @Test
-    void sms_is_refused_the_same_way_whether_or_not_the_number_is_registered() {
+    void the_code_goes_to_the_accounts_own_details_not_to_whatever_was_typed() {
+        user.setPhone("+91-9810011122");
+        when(smsService.isAvailable()).thenReturn(true);
+        when(userRepository.findAllByPhoneDigits("9810011122")).thenReturn(List.of(user));
+
+        // Started from the phone number…
+        service.send(request("9810011122"), IP);
+
+        // …and the email still goes out, so someone who signs in with their number
+        // does not have to remember which detail the code was sent to.
+        verify(emailService).sendOtpEmail(eq(EMAIL), anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), anyString());
+        verify(smsService).send(eq("+91-9810011122"), anyString());
+    }
+
+    @Test
+    void email_alone_still_works_when_there_is_no_gateway() {
+        user.setPhone("+91-9810011122");
         when(smsService.isAvailable()).thenReturn(false);
-        // Nobody has this number.
-        when(userRepository.findAllByPhoneDigits("9000000000")).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.send(request("9000000000"), IP))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("cannot be sent by SMS yet");
+        service.send(request(EMAIL), IP);
 
-        // Answering a registered number with the SMS refusal and an unregistered one
-        // with the neutral success would be a way to find out whose number is on
-        // file, so the refusal has to come first and the lookup must not happen.
-        verify(userRepository, never()).findAllByPhoneDigits(anyString());
+        // No longer refused: the other channel carries it. The whole request used
+        // to fail when SMS was unavailable.
+        verify(emailService).sendOtpEmail(eq(EMAIL), anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(), anyString());
+        verify(smsService, never()).send(anyString(), anyString());
+
+        var saved = ArgumentCaptor.forClass(OtpCode.class);
+        verify(otpCodeRepository).save(saved.capture());
+        assertThat(saved.getValue().getChannel()).isEqualTo(OtpChannel.EMAIL);
+    }
+
+    @Test
+    void an_account_with_nowhere_to_reach_it_still_answers_like_every_other() {
+        user.setEmail("");
+        user.setPhone(null);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+
+        var response = service.send(request(EMAIL), IP);
+
+        // Saying "this account has no contact details" would confirm it exists.
+        assertThat(response.getExpiresInSeconds()).isEqualTo(300);
+        verify(otpCodeRepository, never()).save(any());
     }
 
     @Test
     void a_phone_number_on_more_than_one_account_is_treated_as_no_match() {
-        // A gateway has to exist for the lookup to be reached at all, since SMS is
-        // refused ahead of it when there is none.
-        when(smsService.isAvailable()).thenReturn(true);
         User sibling = userWith(8L, "other@example.com", "Ravi");
         when(userRepository.findAllByPhoneDigits("9810011122")).thenReturn(List.of(user, sibling));
 

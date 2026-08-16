@@ -9,5 +9,7 @@ package com.school.sms.entity;
  */
 public enum OtpChannel {
     EMAIL,
-    SMS
+    SMS,
+    /** Sent to both contact points on the account, which is the usual case. */
+    BOTH
 }

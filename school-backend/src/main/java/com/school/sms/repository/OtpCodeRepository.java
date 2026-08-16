@@ -31,11 +31,17 @@ public interface OtpCodeRepository extends JpaRepository<OtpCode, Long> {
                            @Param("purpose") OtpPurpose purpose,
                            @Param("now") LocalDateTime now);
 
-    /** Send throttling: how many codes this destination has been sent recently. */
-    long countByDestinationAndCreatedAtAfter(String destination, LocalDateTime since);
+    /**
+     * Send throttling, counted per account rather than per typed address.
+     *
+     * Keyed on the user because one account has several identifiers — an email and
+     * a phone number, either of which can start the flow. Counting what was typed
+     * let someone alternate between the two and get twice the allowance.
+     */
+    long countByUserAndCreatedAtAfter(User user, LocalDateTime since);
 
-    /** The most recent code sent anywhere to this destination, used for the resend cooldown. */
-    Optional<OtpCode> findFirstByDestinationOrderByIdDesc(String destination);
+    /** The most recent code issued to this account, used for the resend cooldown. */
+    Optional<OtpCode> findFirstByUserOrderByIdDesc(User user);
 
     /** Housekeeping for the scheduled purge of long-dead rows. */
     @Modifying

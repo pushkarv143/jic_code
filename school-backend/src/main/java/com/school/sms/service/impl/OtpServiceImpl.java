@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -58,8 +59,8 @@ public class OtpServiceImpl implements OtpService {
     /** Wrong guesses a single code will absorb before it dies. */
     private static final int MAX_ATTEMPTS = 5;
 
-    /** Codes per destination per hour. Each one is an email or a paid SMS. */
-    private static final int MAX_SENDS_PER_DESTINATION_PER_HOUR = 5;
+    /** Codes per account per hour. Each one is an email and, once configured, a paid SMS. */
+    private static final int MAX_SENDS_PER_ACCOUNT_PER_HOUR = 5;
 
     /** Codes per IP per hour, to stop one caller enumerating many destinations. */
     private static final int MAX_SENDS_PER_IP_PER_HOUR = 15;
@@ -92,18 +93,6 @@ public class OtpServiceImpl implements OtpService {
             throw new TooManyRequestsException("Too many requests. Please wait a few minutes and try again.");
         }
 
-        OtpChannel channel = channelFor(destination);
-
-        // Refused before the account is looked at, and that ordering is the point.
-        // Checking after would answer a registered number with "no SMS gateway" and
-        // an unregistered one with the neutral success — and the difference between
-        // those two replies is exactly how you discover whose number is on file.
-        // As the first check it discloses nothing: it is a property of the server.
-        if (channel == OtpChannel.SMS && !smsService.isAvailable()) {
-            throw new BadRequestException(
-                    "Codes cannot be sent by SMS yet. Please use the email address on your account.");
-        }
-
         Optional<User> match = findUser(destination);
         if (match.isEmpty()) {
             // Nothing to send. Report success anyway — telling the caller this
@@ -113,24 +102,43 @@ public class OtpServiceImpl implements OtpService {
 
         User user = match.get();
 
-        enforceSendLimits(destination);
+        // The code goes to every contact point the account has, not to whichever
+        // one was typed. Someone signing in with their phone number should not have
+        // to remember which detail the code was sent to, and one channel being
+        // unavailable no longer sinks the request — the other still carries it.
+        boolean toEmail = StringUtils.hasText(user.getEmail());
+        boolean toSms = StringUtils.hasText(user.getPhone()) && smsService.isAvailable();
+
+        if (!toEmail && !toSms) {
+            // The account exists but has nowhere to reach it — no email on file and
+            // either no number or no gateway. Still the neutral answer: saying so
+            // would confirm the account is real.
+            log.warn("No usable channel for user {}; nothing sent", user.getId());
+            return response();
+        }
+
+        enforceSendLimits(user);
 
         String code = generateCode();
         // Replace rather than accumulate: two live codes would double the number
         // of guesses that work, so asking for a new one retires the old one.
         otpCodeRepository.consumeOutstanding(user, request.getPurpose(), LocalDateTime.now());
 
+        OtpChannel channel = toEmail && toSms ? OtpChannel.BOTH : (toEmail ? OtpChannel.EMAIL : OtpChannel.SMS);
+
         otpCodeRepository.save(OtpCode.builder()
                 .user(user)
                 .codeHash(passwordEncoder.encode(code))
                 .purpose(request.getPurpose())
                 .channel(channel)
+                // What they typed, kept for auditing — the code itself went to the
+                // account's own contact details, which may be different.
                 .destination(destination)
                 .expiresAt(LocalDateTime.now().plusMinutes(CODE_TTL_MINUTES))
                 .attempts(0)
                 .build());
 
-        deliver(user, channel, destination, code, request.getPurpose());
+        deliver(user, code, request.getPurpose(), toEmail, toSms);
 
         // Note what happened, never what the code was.
         log.info("OTP issued for user {} purpose {} via {}", user.getId(), request.getPurpose(), channel);
@@ -186,17 +194,24 @@ public class OtpServiceImpl implements OtpService {
 
     /* ---- delivery ---------------------------------------------------------- */
 
-    private void deliver(User user, OtpChannel channel, String destination, String code, OtpPurpose purpose) {
+    /**
+     * Sends the one code to each channel that is usable. Both calls are
+     * fire-and-forget: the email is {@code @Async} and the SMS swallows gateway
+     * failures, so one channel failing does not stop the other or change what the
+     * caller is told.
+     */
+    private void deliver(User user, String code, OtpPurpose purpose, boolean toEmail, boolean toSms) {
         String purposeText = switch (purpose) {
             case PASSWORD_RESET -> "reset your password";
             case LOGIN -> "sign in";
             case PHONE_VERIFY -> "confirm your phone number";
         };
 
-        if (channel == OtpChannel.EMAIL) {
-            emailService.sendOtpEmail(destination, user.getFirstName(), code, CODE_TTL_MINUTES, purposeText);
-        } else {
-            smsService.send(destination,
+        if (toEmail) {
+            emailService.sendOtpEmail(user.getEmail(), user.getFirstName(), code, CODE_TTL_MINUTES, purposeText);
+        }
+        if (toSms) {
+            smsService.send(user.getPhone(),
                     "%s is your School Management System code to %s. It expires in %d minutes. Do not share it."
                             .formatted(code, purposeText, CODE_TTL_MINUTES));
         }
@@ -237,10 +252,6 @@ public class OtpServiceImpl implements OtpService {
         return trimmed.contains("@") ? trimmed.toLowerCase() : trimmed.replaceAll("[\\s()\\-]", "");
     }
 
-    private OtpChannel channelFor(String destination) {
-        return destination.contains("@") ? OtpChannel.EMAIL : OtpChannel.SMS;
-    }
-
     private Optional<User> findUser(String destination) {
         if (destination.contains("@")) {
             return userRepository.findByEmail(destination);
@@ -259,18 +270,23 @@ public class OtpServiceImpl implements OtpService {
         return byPhone.size() == 1 ? Optional.of(byPhone.get(0)) : Optional.empty();
     }
 
-    private void enforceSendLimits(String destination) {
+    /**
+     * Counted per account, not per typed address: one account has both an email and
+     * a phone, and keying on what was typed let someone alternate between the two
+     * and collect twice the allowance.
+     */
+    private void enforceSendLimits(User user) {
         LocalDateTime now = LocalDateTime.now();
 
-        if (otpCodeRepository.countByDestinationAndCreatedAtAfter(destination, now.minusHours(1))
-                >= MAX_SENDS_PER_DESTINATION_PER_HOUR) {
+        if (otpCodeRepository.countByUserAndCreatedAtAfter(user, now.minusHours(1))
+                >= MAX_SENDS_PER_ACCOUNT_PER_HOUR) {
             throw new TooManyRequestsException(
                     "Too many codes requested for this account. Please try again in an hour.");
         }
 
         // Stops a held-down "resend" button turning into a mailbox full of codes,
         // and gives the previous message time to actually arrive.
-        otpCodeRepository.findFirstByDestinationOrderByIdDesc(destination).ifPresent(latest -> {
+        otpCodeRepository.findFirstByUserOrderByIdDesc(user).ifPresent(latest -> {
             if (latest.getCreatedAt() != null
                     && latest.getCreatedAt().isAfter(now.minusSeconds(RESEND_COOLDOWN_SECONDS))) {
                 throw new TooManyRequestsException(
