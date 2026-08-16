@@ -221,12 +221,23 @@ private fun MainShell(
                 composable(Routes.STUDENTS) {
                     // A STUDENT has no directory to browse — the same menu entry opens
                     // their own record instead, mirroring the web's StudentsIndexRoute.
-                    // Reuses StudentDetailScreen: /students/{id} already refuses any id
-                    // but their own, so this is a shortcut, not the access decision.
-                    if (role == Role.STUDENT && ownStudentId != null) {
-                        StudentDetailScreen(studentId = ownStudentId, onBack = nav::popBackStack)
-                        return@composable
+                    // /students/{id} already refuses any id but their own, so this is a
+                    // shortcut, not the access decision.
+                    //
+                    // It has to be a redirect rather than rendering the screen here:
+                    // StudentDetailViewModel reads its id from the route arguments, and
+                    // this route has none, so rendering inline threw. Same shape as the
+                    // teacher redirect below.
+                    val redirectToOwnRecord = role == Role.STUDENT && ownStudentId != null
+                    LaunchedEffect(redirectToOwnRecord) {
+                        if (redirectToOwnRecord) {
+                            nav.navigate(Routes.studentDetail(ownStudentId)) {
+                                popUpTo(Routes.STUDENTS) { inclusive = true }
+                            }
+                        }
                     }
+                    if (redirectToOwnRecord) return@composable
+
                     StudentListScreen(
                         onOpenStudent = { nav.navigate(Routes.studentDetail(it)) },
                         onBack = nav::popBackStack,
@@ -247,10 +258,19 @@ private fun MainShell(
                 composable(
                     route = Routes.STUDENT_DETAIL,
                     arguments = listOf(navArgument(Routes.ARG_STUDENT_ID) { type = NavType.LongType }),
-                ) {
+                ) { entry ->
+                    val studentId = entry.arguments?.getLong(Routes.ARG_STUDENT_ID) ?: 0L
                     StudentDetailScreen(
-                        studentId = it.arguments?.getLong(Routes.ARG_STUDENT_ID) ?: 0L,
                         onBack = nav::popBackStack,
+                        // WRITE_ROLES on StudentController is management-only, the same
+                        // guard the add button uses.
+                        onEdit = if (role in Role.MANAGEMENT &&
+                            (permissions.isEmpty() || "STUDENT_UPDATE" in permissions)
+                        ) {
+                            { nav.navigate(Routes.studentForm(studentId)) }
+                        } else {
+                            null
+                        },
                     )
                 }
 
