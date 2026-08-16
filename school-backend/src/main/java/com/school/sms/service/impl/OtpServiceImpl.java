@@ -90,6 +90,18 @@ public class OtpServiceImpl implements OtpService {
             throw new TooManyRequestsException("Too many requests. Please wait a few minutes and try again.");
         }
 
+        OtpChannel channel = channelFor(destination);
+
+        // Refused before the account is looked at, and that ordering is the point.
+        // Checking after would answer a registered number with "no SMS gateway" and
+        // an unregistered one with the neutral success — and the difference between
+        // those two replies is exactly how you discover whose number is on file.
+        // As the first check it discloses nothing: it is a property of the server.
+        if (channel == OtpChannel.SMS && !smsService.isAvailable()) {
+            throw new BadRequestException(
+                    "Codes cannot be sent by SMS yet. Please use the email address on your account.");
+        }
+
         Optional<User> match = findUser(destination);
         if (match.isEmpty()) {
             // Nothing to send. Report success anyway — telling the caller this
@@ -98,14 +110,6 @@ public class OtpServiceImpl implements OtpService {
         }
 
         User user = match.get();
-        OtpChannel channel = channelFor(destination);
-
-        if (channel == OtpChannel.SMS && !smsService.isAvailable()) {
-            // A real limitation, so say so plainly. This one is safe to disclose:
-            // it is a property of the server, not of the account.
-            throw new BadRequestException(
-                    "Codes cannot be sent by SMS yet. Please use the email address on your account.");
-        }
 
         enforceSendLimits(destination);
 

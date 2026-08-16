@@ -159,7 +159,26 @@ class OtpServiceTest {
     }
 
     @Test
+    void sms_is_refused_the_same_way_whether_or_not_the_number_is_registered() {
+        when(smsService.isAvailable()).thenReturn(false);
+        // Nobody has this number.
+        when(userRepository.findAllByPhone("9000000000")).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.send(request("9000000000"), IP))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("cannot be sent by SMS yet");
+
+        // Answering a registered number with the SMS refusal and an unregistered one
+        // with the neutral success would be a way to find out whose number is on
+        // file, so the refusal has to come first and the lookup must not happen.
+        verify(userRepository, never()).findAllByPhone(anyString());
+    }
+
+    @Test
     void a_phone_number_on_more_than_one_account_is_treated_as_no_match() {
+        // A gateway has to exist for the lookup to be reached at all, since SMS is
+        // refused ahead of it when there is none.
+        when(smsService.isAvailable()).thenReturn(true);
         User sibling = userWith(8L, "other@example.com", "Ravi");
         when(userRepository.findAllByPhone("9810011122")).thenReturn(List.of(user, sibling));
 
