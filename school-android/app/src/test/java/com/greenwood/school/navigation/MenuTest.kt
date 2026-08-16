@@ -48,7 +48,17 @@ class MenuTest {
         assertTrue(Routes.FEES in routes)
         assertTrue(Routes.ASSIGNMENTS in routes)
         assertTrue(Routes.LEAVE in routes)
-        assertFalse(Routes.STUDENTS in routes)
+
+        // Students is deliberately visible: one path serves two pages, the directory
+        // for anyone who supervises students and the student's own record for a
+        // STUDENT, so the menu stays identical across roles. AppNavHost redirects
+        // them to /students/{id}. Both clients agree — see the same grant in the
+        // web app's navConfig, and StudentsIndexRoute that it pairs with.
+        // It is self-service for a student, which is what this test is about.
+        assertTrue(Routes.STUDENTS in routes)
+
+        // Teachers has no such split for a student — it is management and teaching
+        // only, so it stays hidden.
         assertFalse(Routes.TEACHERS in routes)
         assertFalse(Routes.PAYROLL in routes)
     }
