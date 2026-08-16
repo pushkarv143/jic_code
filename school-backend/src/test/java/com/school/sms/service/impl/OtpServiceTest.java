@@ -64,6 +64,7 @@ class OtpServiceTest {
     @Mock private SmsService smsService;
     @Mock private OtpRateLimiter rateLimiter;
     @Mock private com.school.sms.service.AuthService authService;
+    @Mock private OtpAttemptRecorder attemptRecorder;
 
     @InjectMocks private OtpServiceImpl service;
 
@@ -208,6 +209,7 @@ class OtpServiceTest {
     @Test
     void a_wrong_code_counts_against_the_attempt_limit() {
         OtpCode live = liveCode();
+        live.setId(42L);
         when(otpCodeRepository.findFirstByUserAndPurposeAndConsumedAtIsNullOrderByIdDesc(user, OtpPurpose.PASSWORD_RESET))
                 .thenReturn(Optional.of(live));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
@@ -216,9 +218,11 @@ class OtpServiceTest {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage(REJECTION);
 
-        // Without this the cap never bites and the code can be brute-forced.
-        assertThat(live.getAttempts()).isEqualTo(1);
-        verify(otpCodeRepository).save(live);
+        // Through the recorder, not inline: the rejection rolls this transaction
+        // back, so an increment saved here would be undone and the cap would never
+        // bite. Asserting the delegation is what stops that regressing.
+        verify(attemptRecorder).recordFailedAttempt(42L);
+        verify(otpCodeRepository, never()).save(live);
     }
 
     @Test

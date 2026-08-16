@@ -78,6 +78,7 @@ public class OtpServiceImpl implements OtpService {
     private final SmsService smsService;
     private final OtpRateLimiter rateLimiter;
     private final AuthService authService;
+    private final OtpAttemptRecorder attemptRecorder;
 
     @Override
     @Transactional
@@ -151,9 +152,10 @@ public class OtpServiceImpl implements OtpService {
         }
 
         if (!passwordEncoder.matches(request.getCode(), otp.getCodeHash())) {
-            // Count the miss before rejecting, or the attempt cap would never bite.
-            otp.setAttempts(otp.getAttempts() + 1);
-            otpCodeRepository.save(otp);
+            // Recorded through a separate transaction, because the rejection below
+            // rolls this one back and would take the increment with it — leaving the
+            // attempt cap permanently at zero. See OtpAttemptRecorder.
+            attemptRecorder.recordFailedAttempt(otp.getId());
             throw rejected();
         }
 
