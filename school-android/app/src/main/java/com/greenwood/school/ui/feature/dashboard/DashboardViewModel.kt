@@ -94,8 +94,16 @@ class DashboardViewModel @Inject constructor(
                 } else null
 
                 // A student (or a parent's first child) gets their own attendance and dues.
+                // The date range is required by the endpoint; year-to-date matches the
+                // "This year" summary the attendance screen shows for the same student.
                 val myAttendance = user?.studentId?.let { studentId ->
-                    async { attendanceRepository.getStudentSummary(studentId).getOrNull() }
+                    async {
+                        attendanceRepository.getStudentSummary(
+                            studentId = studentId,
+                            startDate = Formatters.apiDate(today.withDayOfYear(1)),
+                            endDate = Formatters.apiDate(today),
+                        ).getOrNull()
+                    }
                 }
 
                 val myFees = user?.studentId?.let { studentId ->

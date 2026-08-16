@@ -37,7 +37,11 @@ interface AuthRepository {
 
     suspend fun resetPassword(token: String, newPassword: String): ApiResult<Unit>
 
-    suspend fun changePassword(currentPassword: String, newPassword: String): ApiResult<Unit>
+    suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String,
+        confirmPassword: String,
+    ): ApiResult<Unit>
 
     /** Refreshes the cached profile from `/auth/me`. */
     suspend fun refreshProfile(): ApiResult<UserDto>

@@ -57,6 +57,13 @@ public class AssignmentController {
                 assignmentService.getAll(classId, sectionId, subjectId, teacherId, pageable)));
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize(READ_ROLES)
+    @Operation(summary = "Get a single assignment by id (the detail view behind an assignment in the list)")
+    public ResponseEntity<ApiResponse<AssignmentDto>> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Assignment retrieved successfully", assignmentService.getById(id)));
+    }
+
     @PostMapping(consumes = "multipart/form-data")
     @PreAuthorize(WRITE_ROLES)
     @Operation(summary = "Create an assignment (multipart: title, description, classId, sectionId, subjectId, "

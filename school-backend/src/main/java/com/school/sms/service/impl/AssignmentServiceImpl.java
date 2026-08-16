@@ -87,6 +87,12 @@ public class AssignmentServiceImpl implements AssignmentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public AssignmentDto getById(Long id) {
+        return toDto(findEntity(id));
+    }
+
+    @Override
     @Transactional
     public AssignmentDto create(AssignmentFormRequest request, MultipartFile file) {
         validateDates(request);

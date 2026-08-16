@@ -55,16 +55,21 @@ interface AttendanceRepository {
         size: Int = 20,
     ): ApiResult<Paged<StudentAttendanceReportRowDto>>
 
-    /** The signed-in student's own attendance summary; STUDENT role only. */
+    /**
+     * The signed-in student's own attendance summary; STUDENT role only.
+     *
+     * Both bounds are mandatory server-side, so they are non-null here — leaving them
+     * optional let a caller omit them and get a 500 that `.getOrNull()` then hid.
+     */
     suspend fun getOwnAttendanceSummary(
-        startDate: String? = null,
-        endDate: String? = null,
+        startDate: String,
+        endDate: String,
     ): ApiResult<StudentAttendanceSummaryDto>
 
     suspend fun getStudentSummary(
         studentId: Long,
-        startDate: String? = null,
-        endDate: String? = null,
+        startDate: String,
+        endDate: String,
     ): ApiResult<StudentAttendanceSummaryDto>
 
     suspend fun getMonthly(

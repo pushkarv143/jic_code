@@ -11,10 +11,13 @@ public interface BookRepository extends JpaRepository<Book, Long>, JpaSpecificat
     long countByDeletedFalse();
 
     // Library dashboard: SUM(total_copies)/SUM(available_copies) across all non-deleted books.
+    // Returns a list of rows like every other aggregate here — declaring a bare Object[]
+    // yields a one-element list wrapping the row, so the caller ends up casting Object[] to
+    // Number and blowing up.
     @org.springframework.data.jpa.repository.Query(
             "SELECT COALESCE(SUM(b.totalCopies), 0), COALESCE(SUM(b.availableCopies), 0) " +
                     "FROM Book b WHERE b.deleted = false")
-    Object[] sumCopies();
+    java.util.List<Object[]> sumCopies();
 
     // Reports: /api/v1/reports/library-summary.
     @org.springframework.data.jpa.repository.Query(

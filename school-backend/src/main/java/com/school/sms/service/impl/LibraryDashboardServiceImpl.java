@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +22,8 @@ public class LibraryDashboardServiceImpl implements LibraryDashboardService {
     @Override
     @Transactional(readOnly = true)
     public LibraryDashboardDto getDashboard() {
-        Object[] copies = bookRepository.sumCopies();
+        List<Object[]> rows = bookRepository.sumCopies();
+        Object[] copies = rows.isEmpty() ? new Object[]{0L, 0L} : rows.get(0);
         long totalCopies = ((Number) copies[0]).longValue();
         long availableCopies = ((Number) copies[1]).longValue();
 

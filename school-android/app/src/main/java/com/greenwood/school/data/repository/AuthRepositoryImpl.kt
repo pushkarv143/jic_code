@@ -83,8 +83,12 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun resetPassword(token: String, newPassword: String): ApiResult<Unit> =
         ack { api.resetPassword(ResetPasswordRequestDto(token, newPassword)) }
 
-    override suspend fun changePassword(currentPassword: String, newPassword: String): ApiResult<Unit> =
-        ack { api.changePassword(ChangePasswordRequestDto(currentPassword, newPassword)) }
+    override suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String,
+        confirmPassword: String,
+    ): ApiResult<Unit> =
+        ack { api.changePassword(ChangePasswordRequestDto(currentPassword, newPassword, confirmPassword)) }
 
     override suspend fun refreshProfile(): ApiResult<UserDto> =
         call { api.me() }.onSuccess { sessionManager.updateUser(it) }

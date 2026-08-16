@@ -58,6 +58,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -348,7 +349,9 @@ class ReportsViewModel @Inject constructor(
                 val teachers = async { reportRepository.getTeachersSummary().getOrNull() }
                 val attendance = async { reportRepository.getAttendanceSummary().getOrNull() }
                 val fees = async { reportRepository.getFeeCollection().getOrNull() }
-                val payroll = async { reportRepository.getPayrollSummary().getOrNull() }
+                // year is required by the endpoint; omitting it failed the request and left
+                // the payroll tab permanently blank.
+                val payroll = async { reportRepository.getPayrollSummary(LocalDate.now().year).getOrNull() }
                 val library = async { reportRepository.getLibrarySummary().getOrNull() }
                 val transport = async { reportRepository.getTransportSummary().getOrNull() }
 

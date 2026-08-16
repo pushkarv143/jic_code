@@ -154,7 +154,8 @@ interface PayrollRepository {
     suspend fun markPaid(id: Long, paymentDate: String): ApiResult<PayrollRunDto>
     suspend fun getSalarySlip(id: Long): ApiResult<SalarySlipDto>
     suspend fun downloadSalarySlip(id: Long): ApiResult<File>
-    suspend fun getDashboard(month: Int? = null, year: Int? = null): ApiResult<PayrollDashboardDto>
+    /** Both bounds are mandatory server-side; see [ReportRepository.getPayrollSummary]. */
+    suspend fun getDashboard(month: Int, year: Int): ApiResult<PayrollDashboardDto>
 }
 
 interface LibraryRepository {
@@ -321,7 +322,8 @@ interface ReportRepository {
 
     suspend fun getFeeCollection(academicYearId: Long? = null): ApiResult<FeeCollectionReportDto>
     suspend fun exportFeeCollection(academicYearId: Long? = null): ApiResult<File>
-    suspend fun getPayrollSummary(year: Int? = null): ApiResult<PayrollSummaryReportDto>
+    /** `year` is required by the endpoint — non-null so a caller cannot silently drop it. */
+    suspend fun getPayrollSummary(year: Int): ApiResult<PayrollSummaryReportDto>
     suspend fun getLibrarySummary(): ApiResult<LibrarySummaryReportDto>
     suspend fun getTransportSummary(): ApiResult<TransportSummaryReportDto>
 }

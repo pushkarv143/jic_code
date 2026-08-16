@@ -277,7 +277,15 @@ class AttendanceViewModel @Inject constructor(
      * predates studentId being returned at login.
      */
     private fun loadOwnSummary() = viewModelScope.launch {
-        _state.update { it.copy(ownSummary = attendanceRepository.getOwnAttendanceSummary().getOrNull()) }
+        // Both bounds are required by the endpoint — sending neither failed the request and
+        // left the card silently empty. The card is headed "This year", so summarise the
+        // calendar year to date rather than the Register tab's month range.
+        val today = LocalDate.now()
+        val summary = attendanceRepository.getOwnAttendanceSummary(
+            startDate = Formatters.apiDate(today.withDayOfYear(1)),
+            endDate = Formatters.apiDate(today),
+        ).getOrNull()
+        _state.update { it.copy(ownSummary = summary) }
     }
 }
 

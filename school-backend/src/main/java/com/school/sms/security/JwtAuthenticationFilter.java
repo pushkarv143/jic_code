@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Slf4j
 @Component
@@ -25,15 +26,39 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final List<String> EXCLUDED_PATHS = List.of(
-            "/api/v1/auth/**",
-            "/api/v1/public/**",
-            "/swagger-ui/**",
-            "/swagger-ui.html",
-            "/v3/api-docs/**",
-            "/actuator/health",
-            "/actuator/info"
+
+    /**
+     * The auth endpoints that establish a session rather than act within one.
+     *
+     * Deliberately enumerated instead of the "/api/v1/auth/**" wildcard this used to be:
+     * {@code /auth/me} and {@code /auth/change-password} sit under the same prefix but
+     * operate on the *signed-in* user, so skipping the filter for them left the security
+     * context empty and made {@link SecurityUtils#getCurrentUserId()} reject a perfectly
+     * valid token.
+     *
+     * Shared with {@code SecurityConfig} so the filter and the authorization rules cannot
+     * drift apart — that drift is what broke those two endpoints.
+     */
+    public static final List<String> PUBLIC_AUTH_PATHS = List.of(
+            "/api/v1/auth/register",
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh-token",
+            "/api/v1/auth/logout",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password"
     );
+
+    private static final List<String> EXCLUDED_PATHS = Stream.concat(
+            PUBLIC_AUTH_PATHS.stream(),
+            Stream.of(
+                    "/api/v1/public/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/actuator/health",
+                    "/actuator/info"
+            )
+    ).toList();
 
     private final JwtTokenProvider tokenProvider;
     private final CustomUserDetailsService userDetailsService;

@@ -58,15 +58,15 @@ interface AttendanceApi {
      */
     @GET("attendance/students/me/summary")
     suspend fun getOwnAttendanceSummary(
-        @Query("startDate") startDate: String? = null,
-        @Query("endDate") endDate: String? = null,
+        @Query("startDate") startDate: String,
+        @Query("endDate") endDate: String,
     ): ApiEnvelope<StudentAttendanceSummaryDto>
 
     @GET("attendance/students/{studentId}/summary")
     suspend fun getStudentAttendanceSummary(
         @Path("studentId") studentId: Long,
-        @Query("startDate") startDate: String? = null,
-        @Query("endDate") endDate: String? = null,
+        @Query("startDate") startDate: String,
+        @Query("endDate") endDate: String,
     ): ApiEnvelope<StudentAttendanceSummaryDto>
 
     @GET("attendance/students/monthly")

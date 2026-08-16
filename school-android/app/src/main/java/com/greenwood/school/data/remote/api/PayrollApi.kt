@@ -73,7 +73,7 @@ interface PayrollApi {
 
     @GET("payroll/dashboard")
     suspend fun getDashboard(
-        @Query("month") month: Int? = null,
-        @Query("year") year: Int? = null,
+        @Query("month") month: Int,
+        @Query("year") year: Int,
     ): ApiEnvelope<PayrollDashboardDto>
 }

@@ -239,7 +239,7 @@ class PayrollRepositoryImpl @Inject constructor(
         documentOpener.save(api.downloadSalarySlip(id), "salary-slip-$id.pdf") ?: failDownload()
     }
 
-    override suspend fun getDashboard(month: Int?, year: Int?): ApiResult<PayrollDashboardDto> =
+    override suspend fun getDashboard(month: Int, year: Int): ApiResult<PayrollDashboardDto> =
         call { api.getDashboard(month, year) }
 }
 
@@ -546,7 +546,7 @@ class ReportRepositoryImpl @Inject constructor(
         documentOpener.save(api.exportFeeCollectionExcel(academicYearId), "fee-collection.xlsx") ?: failDownload()
     }
 
-    override suspend fun getPayrollSummary(year: Int?): ApiResult<PayrollSummaryReportDto> =
+    override suspend fun getPayrollSummary(year: Int): ApiResult<PayrollSummaryReportDto> =
         call { api.getPayrollSummary(year) }
 
     override suspend fun getLibrarySummary(): ApiResult<LibrarySummaryReportDto> = call { api.getLibrarySummary() }

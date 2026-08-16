@@ -83,15 +83,15 @@ class AttendanceRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getOwnAttendanceSummary(
-        startDate: String?,
-        endDate: String?,
+        startDate: String,
+        endDate: String,
     ): ApiResult<StudentAttendanceSummaryDto> =
         call { api.getOwnAttendanceSummary(startDate, endDate) }
 
     override suspend fun getStudentSummary(
         studentId: Long,
-        startDate: String?,
-        endDate: String?,
+        startDate: String,
+        endDate: String,
     ): ApiResult<StudentAttendanceSummaryDto> =
         call { api.getStudentAttendanceSummary(studentId, startDate, endDate) }
 

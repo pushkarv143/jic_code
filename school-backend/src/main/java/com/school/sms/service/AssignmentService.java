@@ -14,6 +14,8 @@ public interface AssignmentService {
 
     PageResponse<AssignmentDto> getAll(Long classId, Long sectionId, Long subjectId, Long teacherId, Pageable pageable);
 
+    AssignmentDto getById(Long id);
+
     AssignmentDto create(AssignmentFormRequest request, MultipartFile file);
 
     AssignmentDto update(Long id, AssignmentFormRequest request, MultipartFile file);

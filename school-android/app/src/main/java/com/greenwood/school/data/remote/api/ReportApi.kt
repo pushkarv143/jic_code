@@ -45,7 +45,7 @@ interface ReportApi {
     ): ResponseBody
 
     @GET("reports/payroll-summary")
-    suspend fun getPayrollSummary(@Query("year") year: Int? = null): ApiEnvelope<PayrollSummaryReportDto>
+    suspend fun getPayrollSummary(@Query("year") year: Int): ApiEnvelope<PayrollSummaryReportDto>
 
     @GET("reports/library-summary")
     suspend fun getLibrarySummary(): ApiEnvelope<LibrarySummaryReportDto>

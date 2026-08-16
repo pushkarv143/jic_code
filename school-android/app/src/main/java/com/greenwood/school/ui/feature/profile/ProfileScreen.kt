@@ -228,7 +228,11 @@ class ProfileViewModel @Inject constructor(
 
         _state.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
-            val result = authRepository.changePassword(current.currentPassword, current.newPassword)
+            val result = authRepository.changePassword(
+                current.currentPassword,
+                current.newPassword,
+                current.confirmPassword,
+            )
             _state.update {
                 when (result) {
                     is ApiResult.Success -> it.copy(

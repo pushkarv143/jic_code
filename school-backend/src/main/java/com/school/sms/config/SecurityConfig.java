@@ -20,6 +20,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import java.util.stream.Stream;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -43,22 +45,35 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/v1/auth/**",
-                                "/api/v1/public/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/actuator/health",
-                                "/actuator/info",
-                                "/uploads/**"
-                        ).permitAll()
+                        .requestMatchers(publicMatchers()).permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Everything reachable without a token. The auth entries come from
+     * {@link JwtAuthenticationFilter#PUBLIC_AUTH_PATHS} rather than being repeated here, so
+     * an endpoint can never be permitted by one and skipped by the other — {@code /auth/me}
+     * and {@code /auth/change-password} are authenticated precisely because they are absent
+     * from that list.
+     */
+    private static String[] publicMatchers() {
+        return Stream.concat(
+                JwtAuthenticationFilter.PUBLIC_AUTH_PATHS.stream(),
+                Stream.of(
+                        "/api/v1/public/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**",
+                        "/actuator/health",
+                        "/actuator/info",
+                        "/uploads/**"
+                )
+        ).toArray(String[]::new);
     }
 
     @Bean

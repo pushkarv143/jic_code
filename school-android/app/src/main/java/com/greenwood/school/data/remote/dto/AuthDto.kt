@@ -85,4 +85,9 @@ data class ForgotPasswordRequestDto(val email: String)
 data class ResetPasswordRequestDto(val token: String, val newPassword: String)
 
 @Serializable
-data class ChangePasswordRequestDto(val currentPassword: String, val newPassword: String)
+data class ChangePasswordRequestDto(
+    val currentPassword: String,
+    val newPassword: String,
+    /** The backend validates this alongside `newPassword` and rejects the request without it. */
+    val confirmPassword: String,
+)
