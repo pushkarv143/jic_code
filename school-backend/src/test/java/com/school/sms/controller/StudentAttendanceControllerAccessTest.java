@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -96,17 +97,50 @@ class StudentAttendanceControllerAccessTest {
         verify(studentAttendanceService, never()).getGrid(any(), any(), any());
     }
 
+    /* --------------------------------------------------------------- */
+    /* The monthly register: readable by the families it describes,     */
+    /* narrowed to their own rows in the service.                       */
+    /* --------------------------------------------------------------- */
+
     @Test
     @WithMockUser(roles = "PARENT")
-    void parentCannotReachTheMonthlyGrid() throws Exception {
+    void parentCanReachTheMonthlyGridAndIsScopedByTheService() throws Exception {
+        when(studentAttendanceService.getMonthly(any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/attendance/students/monthly")
+                        .param("classId", "5")
+                        .param("sectionId", "50")
+                        .param("year", "2026")
+                        .param("month", "8"))
+                .andExpect(status().isOk());
+        verify(studentAttendanceService).getMonthly(any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT")
+    void studentCanReachTheMonthlyGridAndIsScopedByTheService() throws Exception {
+        when(studentAttendanceService.getMonthly(any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/attendance/students/monthly")
+                        .param("classId", "5")
+                        .param("sectionId", "50")
+                        .param("year", "2026")
+                        .param("month", "8"))
+                .andExpect(status().isOk());
+        verify(studentAttendanceService).getMonthly(any(), any(), anyInt(), anyInt());
+    }
+
+    /** Opening the register to families must not open it to every role. */
+    @Test
+    @WithMockUser(roles = "SECURITY_GUARD")
+    void unrelatedRoleCannotReachTheMonthlyGrid() throws Exception {
         mockMvc.perform(get("/api/v1/attendance/students/monthly")
                         .param("classId", "5")
                         .param("sectionId", "50")
                         .param("year", "2026")
                         .param("month", "8"))
                 .andExpect(status().isForbidden());
-        verify(studentAttendanceService, never()).getMonthly(any(), any(), org.mockito.ArgumentMatchers.anyInt(),
-                org.mockito.ArgumentMatchers.anyInt());
+        verify(studentAttendanceService, never()).getMonthly(any(), any(), anyInt(), anyInt());
     }
 
     /* --------------------------------------------------------------- */

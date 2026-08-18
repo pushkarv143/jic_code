@@ -32,8 +32,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -72,11 +74,10 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
         return students.stream()
                 .map(student -> {
                     StudentAttendance record = byStudentId.get(student.getId());
-                    User user = student.getUser();
                     return StudentAttendanceRowDto.builder()
                             .studentId(student.getId())
-                            .firstName(user != null ? user.getFirstName() : null)
-                            .lastName(user != null ? user.getLastName() : null)
+                            .firstName(firstNameOf(student))
+                            .lastName(lastNameOf(student))
                             .rollNumber(student.getRollNumber())
                             .status(record != null ? record.getStatus().name() : null)
                             .remarks(record != null ? record.getRemarks() : null)
@@ -213,11 +214,10 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
     @Override
     @Transactional(readOnly = true)
     public List<MonthlyAttendanceRowDto> getMonthly(Long classId, Long sectionId, int year, int month) {
-        sectionAccessGuard.verifyCanAccessSection(classId, sectionId);
-
         List<Student> students = studentRepository
                 .findAllBySchoolClassIdAndSectionIdAndDeletedFalseAndStatusOrderByRollNumberAsc(
                         classId, sectionId, StudentStatus.ACTIVE);
+        students = narrowRosterToCallersScope(classId, sectionId, students);
 
         LocalDate start = LocalDate.of(year, month, 1);
         LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
@@ -233,19 +233,61 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
 
         return students.stream()
                 .map(student -> {
-                    User user = student.getUser();
                     Map<String, String> days = new LinkedHashMap<>();
                     byStudentId.getOrDefault(student.getId(), List.of()).forEach(record ->
                             days.put(String.valueOf(record.getAttendanceDate().getDayOfMonth()), record.getStatus().name()));
                     return MonthlyAttendanceRowDto.builder()
                             .studentId(student.getId())
-                            .firstName(user != null ? user.getFirstName() : null)
-                            .lastName(user != null ? user.getLastName() : null)
+                            .firstName(firstNameOf(student))
+                            .lastName(lastNameOf(student))
                             .rollNumber(student.getRollNumber())
                             .days(days)
                             .build();
                 })
                 .toList();
+    }
+
+    /**
+     * Narrows a section's roster to the students the caller is entitled to see.
+     *
+     * <p>The monthly register is addressed by section, but a section is not the only
+     * way to be entitled to part of one. A STUDENT or PARENT has no section rights at
+     * all — {@link SectionAccessGuard} fails them closed by design — yet they are
+     * plainly entitled to their own (or their children's) row of it. Requiring
+     * section access outright therefore made the register a guaranteed 403 for
+     * exactly the people it renders a self-view for.
+     *
+     * <p>So section access is now a widening grant rather than the price of entry:
+     * hold it and you get the whole roster, otherwise you get the intersection of the
+     * roster with your own student scope. Falling back to the scope rather than
+     * returning the section wholesale is the part that matters — a student must not
+     * be able to read their classmates' attendance by asking for their own section.
+     *
+     * <p>An empty intersection is a denial, not an empty register: it means the
+     * caller asked for a section none of their students are in. A staff caller with
+     * section access skips this path entirely, so a genuinely empty section still
+     * renders as empty for them.
+     *
+     * @return the roster as the caller may see it, never empty
+     * @throws AccessDeniedException if the caller may see none of it
+     */
+    private List<Student> narrowRosterToCallersScope(Long classId, Long sectionId, List<Student> roster) {
+        if (sectionAccessGuard.canAccessSection(classId, sectionId)) {
+            return roster;
+        }
+
+        List<Long> scopedIds = studentAccessGuard.resolveStudentDirectoryScope();
+        // null = the caller sees every student but holds no claim on this section,
+        // which no current role combination produces; treat it as no claim at all
+        // rather than letting it fall through to the whole roster.
+        List<Student> visible = scopedIds == null
+                ? List.of()
+                : roster.stream().filter(student -> scopedIds.contains(student.getId())).toList();
+
+        if (visible.isEmpty()) {
+            throw new AccessDeniedException("You are not assigned to this class/section");
+        }
+        return visible;
     }
 
     /**
@@ -265,13 +307,44 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
         }
     }
 
+    /*
+     * Identity comes from the student, not from the login account.
+     *
+     * students.user_id is nullable — a login is optional at admission — so reading
+     * the name off the joined User returned null for every student admitted without
+     * one, which the web client renders as "Unnamed Student" and the Android client
+     * as a bare roll number. StudentMapper was moved onto the student's own columns
+     * for the same reason; these three responses (grid, monthly register, report)
+     * are the rest of that move.
+     *
+     * The account is kept only as a fallback for rows that pre-date the identity
+     * backfill (database/11_student_identity.sql) or were inserted outside the app:
+     * it can only ever add a name where there would otherwise be none.
+     */
+    private String firstNameOf(Student student) {
+        if (StringUtils.hasText(student.getFirstName())) {
+            return student.getFirstName();
+        }
+        User user = student.getUser();
+        return user != null ? user.getFirstName() : null;
+    }
+
+    private String lastNameOf(Student student) {
+        // Paired with the first name rather than resolved independently, so a student
+        // named on their own row never picks up a stale surname from the account.
+        if (StringUtils.hasText(student.getFirstName())) {
+            return student.getLastName();
+        }
+        User user = student.getUser();
+        return user != null ? user.getLastName() : null;
+    }
+
     private long countByStatus(List<StudentAttendance> records, AttendanceStatus status) {
         return records.stream().filter(r -> r.getStatus() == status).count();
     }
 
     private StudentAttendanceRecordDto toRecordDto(StudentAttendance record) {
         Student student = record.getStudent();
-        User user = student.getUser();
         String markedByName = null;
         if (record.getMarkedBy() != null) {
             markedByName = userRepository.findById(record.getMarkedBy())
@@ -282,8 +355,8 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
         return StudentAttendanceRecordDto.builder()
                 .id(record.getId())
                 .studentId(student.getId())
-                .firstName(user != null ? user.getFirstName() : null)
-                .lastName(user != null ? user.getLastName() : null)
+                .firstName(firstNameOf(student))
+                .lastName(lastNameOf(student))
                 .admissionNumber(student.getAdmissionNumber())
                 .rollNumber(student.getRollNumber())
                 .classId(record.getSchoolClass().getId())

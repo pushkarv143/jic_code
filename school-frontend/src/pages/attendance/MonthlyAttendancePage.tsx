@@ -21,10 +21,11 @@ import EmptyState from '@/components/common/EmptyState';
 import PageLoader from '@/components/common/PageLoader';
 import classesApi from '@/api/classesApi';
 import attendanceApi from '@/api/attendanceApi';
+import studentsApi from '@/api/studentsApi';
 import { getAttendanceStatusColor } from '@/theme/chartColors';
 import { useAppSelector } from '@/store/hooks';
 import { getStudentDisplayName } from '@/utils/format';
-import type { AttendanceStatus, MonthlyAttendanceRow, SchoolClass, Section } from '@/types';
+import type { AttendanceStatus, MonthlyAttendanceRow, SchoolClass, Section, Student } from '@/types';
 
 const STATUS_LEGEND: Array<{ status: AttendanceStatus | 'UNMARKED'; label: string }> = [
   { status: 'PRESENT', label: 'Present' },
@@ -42,18 +43,54 @@ export function MonthlyAttendancePage() {
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
   const user = useAppSelector((state) => state.auth.user);
-  const isSelfView = user?.role === 'STUDENT' || user?.role === 'PARENT';
+  // A student and a parent both get a self-view, but they reach it differently:
+  // login stamps classId/sectionId onto a student's own account, while a parent
+  // has no class of their own and has to pick one of their children first.
+  const isStudentView = user?.role === 'STUDENT';
+  const isParentView = user?.role === 'PARENT';
+  const isSelfView = isStudentView || isParentView;
 
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
-  const [classId, setClassId] = useState<number | ''>(isSelfView ? user?.classId ?? '' : '');
-  const [sectionId, setSectionId] = useState<number | ''>(isSelfView ? user?.sectionId ?? '' : '');
+  const [classId, setClassId] = useState<number | ''>('');
+  const [sectionId, setSectionId] = useState<number | ''>('');
   const [year, setYear] = useState(dayjs().year());
   const [month, setMonth] = useState(dayjs().month() + 1);
+
+  const [children, setChildren] = useState<Student[]>([]);
+  const [childId, setChildId] = useState<number | ''>('');
+  const [childrenLoaded, setChildrenLoaded] = useState(false);
 
   const [rows, setRows] = useState<MonthlyAttendanceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  const selectedChild = useMemo(
+    () => children.find((child) => child.id === childId) ?? null,
+    [children, childId],
+  );
+
+  // The register is always addressed by class/section; only where those come from
+  // varies by role, so resolve them once here rather than in every consumer.
+  const effectiveClassId: number | '' = isStudentView
+    ? user?.classId ?? ''
+    : isParentView
+      ? selectedChild?.classId ?? ''
+      : classId;
+  const effectiveSectionId: number | '' = isStudentView
+    ? user?.sectionId ?? ''
+    : isParentView
+      ? selectedChild?.sectionId ?? ''
+      : sectionId;
+
+  // Whose row to keep. The API already narrows a self-view caller to their own
+  // students, so this is presentation rather than access control: it picks the one
+  // child a parent asked about out of however many the API returned.
+  const focusStudentId: number | undefined = isStudentView
+    ? user?.studentId ?? undefined
+    : isParentView
+      ? (childId as number) || undefined
+      : undefined;
 
   const yearOptions = useMemo(() => {
     const current = dayjs().year();
@@ -71,6 +108,21 @@ export function MonthlyAttendancePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSelfView]);
 
+  // /students is row-scoped to the caller's own children for a PARENT, so an
+  // unfiltered list is exactly the set they are allowed to choose between.
+  useEffect(() => {
+    if (!isParentView) return;
+    studentsApi
+      .list({ size: 100, sort: 'id,asc' })
+      .then((res) => {
+        setChildren(res.data.content);
+        setChildId((current) => current || res.data.content[0]?.id || '');
+      })
+      .catch(() => enqueueSnackbar('Could not load your children.', { variant: 'error' }))
+      .finally(() => setChildrenLoaded(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isParentView]);
+
   useEffect(() => {
     if (isSelfView || !classId) {
       if (!isSelfView) {
@@ -87,17 +139,17 @@ export function MonthlyAttendancePage() {
   }, [classId, isSelfView]);
 
   const loadMonthly = useCallback(async () => {
-    if (!classId || !sectionId) return;
+    if (!effectiveClassId || !effectiveSectionId) return;
     setLoading(true);
     setLoaded(false);
     try {
       const res = await attendanceApi.getMonthly({
-        classId: classId as number,
-        sectionId: sectionId as number,
+        classId: effectiveClassId as number,
+        sectionId: effectiveSectionId as number,
         year,
         month,
       });
-      setRows(isSelfView && user?.studentId ? res.data.filter((r) => r.studentId === user.studentId) : res.data);
+      setRows(focusStudentId ? res.data.filter((r) => r.studentId === focusStudentId) : res.data);
       setLoaded(true);
     } catch (err: any) {
       enqueueSnackbar(err?.response?.data?.message ?? 'Could not load the monthly register.', { variant: 'error' });
@@ -105,19 +157,39 @@ export function MonthlyAttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [classId, sectionId, year, month, isSelfView, user?.studentId, enqueueSnackbar]);
+  }, [effectiveClassId, effectiveSectionId, year, month, focusStudentId, enqueueSnackbar]);
 
   useEffect(() => {
     loadMonthly();
   }, [loadMonthly]);
 
   const dayNumbers = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const parentHasNoChildren = isParentView && childrenLoaded && children.length === 0;
 
   return (
     <Box>
       <Card sx={{ mb: 2.5 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
+            {isParentView && children.length > 0 && (
+              <Grid item xs={12} sm={4} md={3}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Child"
+                  value={childId}
+                  onChange={(e) => setChildId(e.target.value === '' ? '' : Number(e.target.value))}
+                >
+                  {children.map((child) => (
+                    <MenuItem key={child.id} value={child.id}>
+                      {getStudentDisplayName(child)}
+                      {child.className ? ` — ${child.className}${child.sectionName ? ` ${child.sectionName}` : ''}` : ''}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+            )}
             {!isSelfView && (
               <>
                 <Grid item xs={12} sm={4} md={3}>
@@ -186,13 +258,17 @@ export function MonthlyAttendancePage() {
         </CardContent>
       </Card>
 
-      {!classId || !sectionId ? (
+      {isParentView && !childrenLoaded ? (
+        <PageLoader label="Loading your children..." />
+      ) : !effectiveClassId || !effectiveSectionId ? (
         <EmptyState
-          title={isSelfView ? 'No class assigned' : 'Select a class and section'}
+          title={parentHasNoChildren ? 'No children linked' : isSelfView ? 'No class assigned' : 'Select a class and section'}
           description={
-            isSelfView
-              ? 'Your class/section could not be determined for this account.'
-              : 'Choose a class, section, month and year above to load the register.'
+            parentHasNoChildren
+              ? 'No student records are linked to your account, so there is no register to show.'
+              : isSelfView
+                ? 'Your class/section could not be determined for this account.'
+                : 'Choose a class, section, month and year above to load the register.'
           }
         />
       ) : loading ? (

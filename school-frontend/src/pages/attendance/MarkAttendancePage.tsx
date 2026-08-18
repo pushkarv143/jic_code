@@ -42,7 +42,7 @@ interface RowState {
   studentId: number;
   firstName: string | null;
   lastName: string | null;
-  rollNumber: string;
+  rollNumber: number | null;
   status: AttendanceStatus;
   remarks: string;
   /** True once the row's status originated from the API or the user explicitly touched it. */

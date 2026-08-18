@@ -170,6 +170,13 @@ export interface SchoolClass {
   academicYearName?: string;
   sectionCount?: number;
   studentCount?: number;
+  /**
+   * Present on the paginated list only, so the class screen can offer a
+   * class-teacher dropdown per section and a dropdown per class post without a
+   * request per row. Undefined on the single-class endpoints.
+   */
+  sections?: Section[];
+  officials?: ClassOfficial[];
 }
 
 export interface Section {
@@ -202,6 +209,132 @@ export interface ClassSubjectTeacher {
   subjectName?: string;
   teacherId: number;
   teacherName?: string;
+}
+
+/** Posts a student can hold in a class. HEAD_BOY/HEAD_GIRL are gender-checked server-side. */
+export type ClassOfficialRole =
+  | 'HEAD_BOY'
+  | 'HEAD_GIRL'
+  | 'MONITOR'
+  | 'SPORTS_CAPTAIN'
+  | 'CULTURAL_SECRETARY';
+
+/**
+ * One tenure. Appointments are never overwritten — the sitting holder's
+ * `toDate` is set and a new row opened — so a class's history survives a
+ * change of holder. `current` is true exactly while `toDate` is null.
+ */
+export interface ClassOfficial {
+  id: number;
+  classId: number;
+  className?: string;
+  sectionId?: number | null;
+  sectionName?: string | null;
+  studentId: number;
+  studentName?: string | null;
+  rollNumber?: number | null;
+  admissionNumber?: string | null;
+  role: ClassOfficialRole;
+  fromDate: string;
+  toDate?: string | null;
+  current: boolean;
+  remarks?: string | null;
+}
+
+/** One period. `subjectId`/`teacherId` are null for assembly, games and free periods. */
+export interface TimetableSlot {
+  id?: number;
+  classId?: number;
+  sectionId?: number;
+  sectionName?: string;
+  dayOfWeek: TimetableDay;
+  periodNumber: number;
+  startTime: string;
+  endTime: string;
+  subjectId?: number | null;
+  subjectName?: string | null;
+  teacherId?: number | null;
+  teacherName?: string | null;
+  roomNumber?: string | null;
+  label?: string | null;
+  /** Set when this slot double-books its teacher or its room. Advisory, not blocking. */
+  clashWarning?: string | null;
+}
+
+export type TimetableDay =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
+/**
+ * Cross-module figures for a class. Every field is nullable: a class with no
+ * marked attendance or no graded exam has nothing to report, and null says so
+ * where 0 would read as a bad result.
+ */
+export interface ClassStats {
+  attendancePercentage?: number | null;
+  attendanceMarkedDays?: number | null;
+  feeDefaulterCount?: number | null;
+  feeOutstandingAmount?: number | null;
+  averageMarksPercentage?: number | null;
+  gradedStudentCount?: number | null;
+}
+
+/** A setup gap — a subject nobody teaches, a section over capacity, a vacant post. */
+export interface ClassWarning {
+  code: string;
+  severity: 'INFO' | 'WARNING';
+  message: string;
+  sectionId?: number | null;
+  sectionName?: string | null;
+  subjectId?: number | null;
+  subjectName?: string | null;
+}
+
+export interface ClassOverview {
+  classId: number;
+  className: string;
+  academicYearId?: number | null;
+  academicYearName?: string | null;
+  totalStudents: number;
+  totalSections: number;
+  totalSubjects: number;
+  totalCapacity?: number | null;
+  occupancyPercentage?: number | null;
+  genderSplit?: Record<string, number>;
+  sections: Section[];
+  officials: ClassOfficial[];
+  subjectTeachers: ClassSubjectTeacher[];
+  stats?: ClassStats | null;
+  warnings: ClassWarning[];
+}
+
+/**
+ * Where a teacher.s homeroom already is. Present only for teachers who have
+ * one; anyone absent from the list is free to be assigned.
+ */
+export interface ClassTeacherAvailability {
+  teacherId: number;
+  teacherName?: string | null;
+  sectionId: number;
+  sectionName?: string | null;
+  classId?: number | null;
+  className?: string | null;
+}
+
+/** Mappings and timetabled periods are counted separately — see the backend DTO. */
+export interface TeacherWorkload {
+  teacherId: number;
+  teacherName?: string | null;
+  employeeId?: string | null;
+  subjectMappings: number;
+  sectionsTaught: number;
+  classTeacherOf: number;
+  weeklyPeriods: number;
 }
 
 /**
@@ -386,7 +519,7 @@ export interface StudentAttendanceRow {
   studentId: number;
   firstName: string | null;
   lastName: string | null;
-  rollNumber: string;
+  rollNumber: number | null;
   status: AttendanceStatus | null;
   remarks: string | null;
 }
@@ -397,7 +530,7 @@ export interface StudentAttendanceReportRow {
   studentId: number;
   firstName?: string | null;
   lastName?: string | null;
-  rollNumber?: string;
+  rollNumber?: number | null;
   classId?: number;
   className?: string;
   sectionId?: number;
@@ -422,7 +555,7 @@ export interface MonthlyAttendanceRow {
   studentId: number;
   firstName: string | null;
   lastName: string | null;
-  rollNumber: string;
+  rollNumber: number | null;
   days: Record<string, AttendanceStatus>;
 }
 
