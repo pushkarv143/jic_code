@@ -1,0 +1,199 @@
+# =====================================================================
+# Runs the backend on this machine against the LOCAL MySQL.
+#
+#     .\run-local.ps1
+#
+# Use this rather than run-local-remote-db.ps1 unless you specifically
+# need the Oracle Cloud data - that script talks to the remote instance,
+# whose port 3306 is closed to the internet and needs an OCI ingress rule
+# or an SSH tunnel before it will connect at all.
+#
+# THE LOCAL MYSQL IS NOT ON 3306.
+#
+# C:\ProgramData\MySQL\my.ini sets port=3333, and the install has no
+# registered Windows service, so nothing is listening until this script
+# (or you) starts mysqld by hand. That combination is why the backend's
+# default DB_URL - jdbc:mysql://localhost:3306/... - fails with
+# "Communications link failure" on a machine that does have MySQL
+# installed and does have the schema loaded.
+#
+# The root account has an empty password locally, so unlike its sibling
+# this file holds no secret. It is still caught by the `run-local*` rule
+# in .gitignore; run-local.ps1.example is the copy that gets committed.
+# =====================================================================
+
+[CmdletBinding()]
+param(
+    # Skip starting mysqld - use when you already have it running.
+    [switch] $SkipDatabase,
+
+    [string] $MysqlHome = 'C:\Program Files\MySQL\MySQL Server 8.4',
+    [string] $MysqlDefaultsFile = 'C:\ProgramData\MySQL\my.ini',
+    [int]    $DbPort = 3333,
+    [string] $DbName = 'school_management_system',
+    [string] $DbUser = 'root',
+
+    # Empty by default: the local root account has no password. Pass one only if
+    # you have set one on your own install.
+    [string] $DbPassword = ''
+)
+
+$ErrorActionPreference = 'Stop'
+
+$mysqld = Join-Path $MysqlHome 'bin\mysqld.exe'
+$mysql  = Join-Path $MysqlHome 'bin\mysql.exe'
+
+function Test-DbPort {
+    return [bool] (Get-NetTCPConnection -LocalPort $DbPort -State Listen -ErrorAction SilentlyContinue)
+}
+
+# ---------------------------------------------------------------------
+# 1. MySQL
+# ---------------------------------------------------------------------
+if (Test-DbPort) {
+    Write-Host "MySQL already listening on $DbPort." -ForegroundColor Green
+}
+elseif ($SkipDatabase) {
+    Write-Host "Nothing on port $DbPort and -SkipDatabase was passed." -ForegroundColor Red
+    Write-Host "Start it yourself, or drop -SkipDatabase and let this script do it." -ForegroundColor Yellow
+    exit 1
+}
+else {
+    if (-not (Test-Path $mysqld)) {
+        Write-Host "mysqld.exe not found at $mysqld" -ForegroundColor Red
+        Write-Host "Pass -MysqlHome pointing at your MySQL install." -ForegroundColor Yellow
+        exit 1
+    }
+
+    Write-Host "Starting MySQL on port $DbPort ..." -ForegroundColor Cyan
+    # Detached, so this script can go on to run the backend in the
+    # foreground. Killing this window leaves mysqld running; stop it with
+    #   Get-Process mysqld | Stop-Process
+    Start-Process -FilePath $mysqld `
+                  -ArgumentList "--defaults-file=`"$MysqlDefaultsFile`"" `
+                  -WindowStyle Hidden
+
+    $deadline = (Get-Date).AddSeconds(60)
+    while (-not (Test-DbPort) -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 1000
+    }
+
+    if (-not (Test-DbPort)) {
+        Write-Host "MySQL did not come up within 60s." -ForegroundColor Red
+        Write-Host "Check the error log in the datadir named after this machine, e.g." -ForegroundColor Yellow
+        Write-Host "  C:\ProgramData\MySQL\MySQL Server 8.4\Data\$env:COMPUTERNAME.err" -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "MySQL is up." -ForegroundColor Green
+}
+
+# ---------------------------------------------------------------------
+# 2. Schema check
+#
+# ddl-auto is `none`, so the application never creates or alters a table.
+# A database missing a migration therefore fails at query time with an
+# "Unknown column" deep in a stack trace rather than at startup. Checking
+# the two columns/tables that the most recent migrations add turns that
+# into a message naming the file to run.
+#
+# This only reports - applying a migration is left to you, because it
+# writes to a database this script has no business changing on its own.
+# ---------------------------------------------------------------------
+if (Test-Path $mysql) {
+    $checkSql = @"
+SELECT
+  (SELECT COUNT(*) FROM information_schema.columns
+    WHERE table_schema='$DbName' AND table_name='students' AND column_name='first_name') AS student_identity,
+  (SELECT COUNT(*) FROM information_schema.tables
+    WHERE table_schema='$DbName' AND table_name='study_materials') AS study_materials,
+  (SELECT COUNT(*) FROM information_schema.tables
+    WHERE table_schema='$DbName' AND table_name='class_officials') AS class_module;
+"@
+    # mysql.exe writes an advisory warning to stderr on every invocation. Under
+    # $ErrorActionPreference = 'Stop', Windows PowerShell turns any stderr line
+    # from a native command into a terminating NativeCommandError - so left as a
+    # plain call this check would abort the whole script before it ever reached
+    # the backend, on a machine where nothing is actually wrong. Relax the
+    # preference just around the call and restore it straight after.
+    $previousEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $result = $checkSql | & $mysql -u $DbUser -h 127.0.0.1 -P $DbPort --skip-password --batch --skip-column-names $DbName 2>$null
+    }
+    catch {
+        # An unreachable or unauthenticated database is not this check's problem;
+        # the backend's own connection attempt reports it far more clearly.
+        $result = $null
+    }
+    finally {
+        $ErrorActionPreference = $previousEap
+    }
+
+    if ($result) {
+        $cols = ($result -split "`t")
+        $pending = @()
+        if ($cols[0] -eq '0') { $pending += '11_student_identity.sql' }
+        if ($cols[1] -eq '0') { $pending += '09_study_materials.sql' }
+        if ($cols[2] -eq '0') { $pending += '12_class_module.sql' }
+
+        if ($pending.Count -gt 0) {
+            Write-Host ""
+            Write-Host "PENDING MIGRATIONS - the backend will fail on the affected queries:" -ForegroundColor Red
+            $pending | Sort-Object | ForEach-Object { Write-Host "  database/$_" -ForegroundColor Yellow }
+            Write-Host ""
+            Write-Host "Apply them from the repo root, in filename order:" -ForegroundColor Yellow
+            Write-Host "  & '$mysql' -u $DbUser -h 127.0.0.1 -P $DbPort --skip-password $DbName -e `"source database/<file>`"" -ForegroundColor Yellow
+            Write-Host ""
+        }
+        else {
+            Write-Host "Schema looks current." -ForegroundColor Green
+        }
+    }
+}
+
+# ---------------------------------------------------------------------
+# 3. Backend
+# ---------------------------------------------------------------------
+if (-not $env:JAVA_HOME) {
+    $javaCmd = Get-Command java -ErrorAction SilentlyContinue
+    if ($javaCmd) {
+        # Maven needs JAVA_HOME even when java is on PATH; derive it from
+        # the resolved java.exe (...\bin\java.exe -> ...).
+        $env:JAVA_HOME = Split-Path (Split-Path $javaCmd.Source -Parent) -Parent
+        Write-Host "JAVA_HOME not set; using $env:JAVA_HOME" -ForegroundColor DarkGray
+    }
+    else {
+        Write-Host "No JAVA_HOME and no java on PATH. Install a JDK 21 or set JAVA_HOME." -ForegroundColor Red
+        exit 1
+    }
+}
+
+# allowPublicKeyRetrieval=true is required by MySQL 8's default
+# caching_sha2_password auth when the connection is not TLS-encrypted.
+$env:DB_URL      = "jdbc:mysql://127.0.0.1:${DbPort}/${DbName}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+$env:DB_USERNAME = $DbUser
+
+# The password is NOT passed as an environment variable, and that is deliberate.
+#
+# Assigning '' to $env:X in PowerShell does not create an empty variable - it
+# deletes the variable outright. application.yml reads ${DB_PASSWORD:root}, and
+# a `:` default fires when the property is absent, so an empty assignment here
+# silently hands Hibernate the literal password "root" and the connection dies
+# with "Access denied for user 'root'@'localhost' (using password: YES)" on an
+# account that has no password at all.
+#
+# Overriding the Spring property directly sidesteps the placeholder: an empty
+# value after the '=' binds as an empty string rather than falling back.
+$springArgs = "--spring.datasource.password=$DbPassword"
+
+# Without these the browser's calls are refused by CORS even though the
+# API itself is reachable.
+$env:CORS_ALLOWED_ORIGINS = 'http://localhost:5173'
+$env:FRONTEND_URL         = 'http://localhost:5173'
+
+Write-Host "Starting backend against 127.0.0.1:$DbPort/$DbName ..." -ForegroundColor Green
+Write-Host "  API     http://localhost:8080/api/v1" -ForegroundColor DarkGray
+Write-Host "  Swagger http://localhost:8080/swagger-ui.html" -ForegroundColor DarkGray
+Write-Host ""
+
+& "$PSScriptRoot\mvnw.cmd" spring-boot:run "-Dspring-boot.run.arguments=$springArgs"

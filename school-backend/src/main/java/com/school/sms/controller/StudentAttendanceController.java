@@ -42,9 +42,11 @@ public class StudentAttendanceController {
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT')";
     private static final String MARK_ROLES =
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER')";
-    // /report and /summary are also opened to STUDENT/PARENT; the service layer
-    // (StudentAccessGuard) restricts them to their own record, and likewise narrows
-    // TEACHER/CLASS_TEACHER to the students they teach.
+    // /report, /summary and /monthly are also opened to STUDENT/PARENT; the service
+    // layer (StudentAccessGuard) restricts them to their own record, and likewise
+    // narrows TEACHER/CLASS_TEACHER to the students they teach. For /monthly that
+    // narrowing is what keeps a student from reading their classmates' register by
+    // asking for their own section — the roster is intersected with their scope.
     private static final String REPORT_READ_ROLES =
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
     // Self-service: a student reads their own percentage without passing an id.
@@ -108,8 +110,9 @@ public class StudentAttendanceController {
     }
 
     @GetMapping("/monthly")
-    @PreAuthorize(STAFF_READ_ROLES)
-    @Operation(summary = "Whole-class monthly attendance grid, one row per student keyed by day-of-month")
+    @PreAuthorize(REPORT_READ_ROLES)
+    @Operation(summary = "Monthly attendance grid for a class/section, one row per student keyed by day-of-month "
+            + "(narrowed to the caller's own students when they are a STUDENT/PARENT/TEACHER)")
     public ResponseEntity<ApiResponse<List<MonthlyAttendanceRowDto>>> getMonthly(
             @RequestParam Long classId,
             @RequestParam Long sectionId,

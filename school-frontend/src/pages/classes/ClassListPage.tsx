@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -22,10 +22,21 @@ import PageHeader from '@/components/common/PageHeader';
 import DataTable from '@/components/common/DataTable';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import classesApi from '@/api/classesApi';
+import teachersApi from '@/api/teachersApi';
+import studentsApi from '@/api/studentsApi';
 import academicYearsApi from '@/api/academicYearsApi';
-import type { AcademicYear, SchoolClass } from '@/types';
+import type {
+  AcademicYear,
+  ClassOfficialRole,
+  ClassTeacherAvailability,
+  SchoolClass,
+  Student,
+  Teacher,
+} from '@/types';
 import ClassFormDialog from './components/ClassFormDialog';
 import AcademicYearManagerDialog from './components/AcademicYearManagerDialog';
+import ClassTeacherCell from './components/ClassTeacherCell';
+import ClassOfficialCell from './components/ClassOfficialCell';
 
 /** Class directory: filter by academic year, add/edit/delete classes, drill into a class for sections/subjects/mapping. */
 export function ClassListPage() {
@@ -45,6 +56,16 @@ export function ClassListPage() {
   const [deleteTarget, setDeleteTarget] = useState<SchoolClass | null>(null);
   const [yearManagerOpen, setYearManagerOpen] = useState(false);
 
+  // Teachers are the same list for every row, so they are fetched once.
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  // Students are per class and only needed once a post dropdown is opened, so
+  // they are fetched lazily and cached here. Loading them for all ten rows up
+  // front would be ten requests and ~300 students for a screen where most rows
+  // are never touched.
+  const [studentsByClass, setStudentsByClass] = useState<Record<number, Student[]>>({});
+  const [teacherAvailability, setTeacherAvailability] = useState<ClassTeacherAvailability[]>([]);
+  const requestedStudentsRef = useRef<Set<number>>(new Set());
+
   const loadYears = useCallback(() => {
     academicYearsApi
       .list()
@@ -55,6 +76,63 @@ export function ClassListPage() {
   useEffect(() => {
     loadYears();
   }, [loadYears]);
+
+  useEffect(() => {
+    teachersApi
+      .list({ size: 500, sort: 'employeeId,asc' })
+      .then((res) => setTeachers(res.data.content))
+      .catch(() => enqueueSnackbar('Could not load teachers for assignment.', { variant: 'error' }));
+  }, [enqueueSnackbar]);
+
+  /**
+   * Which teachers already have a homeroom, school-wide.
+   *
+   * <p>Fetched separately from the page rather than derived from the rows on
+   * screen: a teacher heading a section in some other class would look free
+   * otherwise, and the save would fail with a rule the admin could not see.
+   */
+  const loadTeacherAvailability = useCallback(() => {
+    classesApi
+      .getClassTeacherAvailability()
+      .then((res) => setTeacherAvailability(res.data))
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    loadTeacherAvailability();
+  }, [loadTeacherAvailability]);
+
+  const takenBy = useMemo(() => {
+    const map: Record<number, { sectionId: number; label: string }> = {};
+    teacherAvailability.forEach((entry) => {
+      map[entry.teacherId] = {
+        sectionId: entry.sectionId,
+        label: `${entry.className ?? 'class'} - ${entry.sectionName ?? ''}`.trim(),
+      };
+    });
+    return map;
+  }, [teacherAvailability]);
+
+  const requestStudents = useCallback(
+    (classId: number) => {
+      // Guarded by a ref rather than by studentsByClass: a dropdown can be opened
+      // again before the first response lands, and keying off the state map would
+      // fire the same request twice.
+      if (requestedStudentsRef.current.has(classId)) return;
+      requestedStudentsRef.current.add(classId);
+
+      studentsApi
+        .list({ classId, size: 200, status: 'ACTIVE' })
+        .then((res) => setStudentsByClass((prev) => ({ ...prev, [classId]: res.data.content })))
+        .catch(() => {
+          // Let a later open retry rather than leaving the dropdown stuck on
+          // "Loading students...".
+          requestedStudentsRef.current.delete(classId);
+          enqueueSnackbar('Could not load students for that class.', { variant: 'error' });
+        });
+    },
+    [enqueueSnackbar],
+  );
 
   const loadClasses = useCallback(async () => {
     setLoading(true);
@@ -116,12 +194,85 @@ export function ClassListPage() {
     }
   };
 
+  /**
+   * Applies one assignment and reloads the page.
+   *
+   * <p>Reloading rather than patching the row in place: appointing a post-holder
+   * ends the sitting holder's tenure server-side, and assigning a class teacher
+   * can promote that teacher's role. Neither is visible from the response of the
+   * call that caused it, so the authoritative state comes from a refetch.
+   */
+  const applyAssignment = useCallback(
+    async (action: () => Promise<unknown>, successMessage: string) => {
+      try {
+        await action();
+        enqueueSnackbar(successMessage, { variant: 'success' });
+        await loadClasses();
+        // A class-teacher change alters who is free school-wide, so the
+        // availability map has to move with it.
+        loadTeacherAvailability();
+      } catch (err: any) {
+        enqueueSnackbar(err?.response?.data?.message ?? 'Could not save that assignment.', {
+          variant: 'error',
+        });
+      }
+    },
+    [enqueueSnackbar, loadClasses, loadTeacherAvailability],
+  );
+
   const columns: GridColDef<SchoolClass>[] = useMemo(
     () => [
-      { field: 'className', headerName: 'Class', flex: 1, minWidth: 160 },
-      { field: 'academicYearName', headerName: 'Academic Year', flex: 1, minWidth: 140 },
-      { field: 'sectionCount', headerName: 'Sections', width: 110, valueGetter: (_v, row) => row.sectionCount ?? '-' },
-      { field: 'studentCount', headerName: 'Students', width: 110, valueGetter: (_v, row) => row.studentCount ?? '-' },
+      { field: 'className', headerName: 'Class', flex: 1, minWidth: 130 },
+      { field: 'academicYearName', headerName: 'Academic Year', width: 130 },
+      { field: 'studentCount', headerName: 'Students', width: 90, valueGetter: (_v, row) => row.studentCount ?? '-' },
+      {
+        field: 'classTeacher',
+        headerName: 'Class Teacher',
+        width: 230,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <ClassTeacherCell
+            sections={params.row.sections ?? []}
+            teachers={teachers}
+            takenBy={takenBy}
+            onAssign={(sectionId, teacherId) =>
+              applyAssignment(
+                () => classesApi.assignClassTeacher(sectionId, teacherId as number),
+                teacherId === null ? 'Class teacher cleared.' : 'Class teacher assigned.',
+              )
+            }
+          />
+        ),
+      },
+      ...(['HEAD_BOY', 'HEAD_GIRL', 'MONITOR'] as ClassOfficialRole[]).map((role) => ({
+        field: role,
+        headerName: role === 'HEAD_BOY' ? 'Head Boy' : role === 'HEAD_GIRL' ? 'Head Girl' : 'Monitor',
+        width: 170,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <ClassOfficialCell
+            classId={params.row.id}
+            role={role}
+            officials={params.row.officials ?? []}
+            students={studentsByClass[params.row.id]}
+            onRequestStudents={() => requestStudents(params.row.id)}
+            onAppoint={(studentId) =>
+              applyAssignment(
+                () => classesApi.appointOfficial(params.row.id, { studentId, role }),
+                'Appointed.',
+              )
+            }
+            onVacate={(officialId) =>
+              applyAssignment(
+                () => classesApi.endOfficial(params.row.id, officialId),
+                'Post is now vacant.',
+              )
+            }
+          />
+        ),
+      })) as GridColDef<SchoolClass>[],
       {
         field: 'actions',
         headerName: 'Actions',
@@ -155,7 +306,7 @@ export function ClassListPage() {
         ),
       },
     ],
-    [navigate],
+    [navigate, teachers, takenBy, studentsByClass, requestStudents, applyAssignment],
   );
 
   return (
@@ -227,7 +378,8 @@ export function ClassListPage() {
           rowCount={rowCount}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
-          mobileVisibleFields={['className', 'studentCount']}
+          getRowHeight={() => "auto"}
+          mobileVisibleFields={["className", "studentCount", "classTeacher"]}
           emptyTitle="No classes found"
           emptyDescription="Add a class to get started."
         />

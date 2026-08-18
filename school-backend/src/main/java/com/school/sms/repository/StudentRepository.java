@@ -76,4 +76,35 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
 
     @Query("SELECT s.status, COUNT(s) FROM Student s WHERE s.deleted = false GROUP BY s.status")
     List<Object[]> countGroupByStatus();
+
+    /*
+     * Class-module strength counts.
+     *
+     * Keyed on id rather than className like countActiveGroupByClass() above,
+     * which groups by name for a dashboard chart and so cannot be reused here:
+     * two classes may legitimately share a name across academic years, and the
+     * class list needs a count it can join back to a row by id.
+     *
+     * Returned as one aggregate per class/section rather than a count per row,
+     * so a page of 20 classes costs one query instead of 20.
+     */
+    @Query("SELECT s.schoolClass.id, COUNT(s) FROM Student s " +
+            "WHERE s.deleted = false AND s.status = 'ACTIVE' GROUP BY s.schoolClass.id")
+    List<Object[]> countActiveGroupByClassId();
+
+    @Query("SELECT s.section.id, COUNT(s) FROM Student s " +
+            "WHERE s.deleted = false AND s.status = 'ACTIVE' GROUP BY s.section.id")
+    List<Object[]> countActiveGroupBySectionId();
+
+    /** Gender split for one class, for the strength panel. [0] gender, [1] count. */
+    @Query("SELECT s.gender, COUNT(s) FROM Student s " +
+            "WHERE s.deleted = false AND s.status = 'ACTIVE' AND s.schoolClass.id = :classId " +
+            "GROUP BY s.gender")
+    List<Object[]> countActiveByGenderForClass(@Param("classId") Long classId);
+
+    long countBySchoolClassIdAndDeletedFalseAndStatus(Long classId, StudentStatus status);
+
+    long countBySectionIdAndDeletedFalseAndStatus(Long sectionId, StudentStatus status);
+
+    boolean existsByIdAndSchoolClassIdAndDeletedFalseAndStatus(Long id, Long classId, StudentStatus status);
 }

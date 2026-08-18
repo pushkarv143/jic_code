@@ -5,9 +5,13 @@ import com.school.sms.dto.request.SectionRequest;
 import com.school.sms.dto.request.SubjectRequest;
 import com.school.sms.dto.response.ApiResponse;
 import com.school.sms.dto.response.PageResponse;
+import com.school.sms.dto.response.ClassOverviewDto;
+import com.school.sms.dto.response.ClassTeacherAvailabilityDto;
 import com.school.sms.dto.response.SchoolClassDto;
+import com.school.sms.dto.response.TeacherWorkloadDto;
 import com.school.sms.dto.response.SectionDto;
 import com.school.sms.dto.response.SubjectDto;
+import com.school.sms.service.ClassOverviewService;
 import com.school.sms.service.SchoolClassService;
 import com.school.sms.service.SectionService;
 import com.school.sms.service.SubjectService;
@@ -17,6 +21,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -42,6 +48,7 @@ public class ClassController {
     private final SchoolClassService schoolClassService;
     private final SectionService sectionService;
     private final SubjectService subjectService;
+    private final ClassOverviewService classOverviewService;
 
     private static final String READ_ROLES =
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT')";
@@ -90,6 +97,35 @@ public class ClassController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         schoolClassService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/overview")
+    @PreAuthorize(READ_ROLES)
+    @Operation(summary = "Strength, capacity, gender split, class/subject teachers, officials, cross-module "
+            + "stats and setup warnings for one class, in one response")
+    public ResponseEntity<ApiResponse<ClassOverviewDto>> getOverview(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(ApiResponse.success("Class overview retrieved successfully",
+                classOverviewService.getOverview(id, startDate, endDate)));
+    }
+
+    @GetMapping("/class-teacher-availability")
+    @PreAuthorize(READ_ROLES)
+    @Operation(summary = "Teachers who already have a homeroom and where, so the assignment UI can grey them out "
+            + "(a teacher may be class teacher of only one section)")
+    public ResponseEntity<ApiResponse<List<ClassTeacherAvailabilityDto>>> getClassTeacherAvailability() {
+        return ResponseEntity.ok(ApiResponse.success("Class teacher availability retrieved successfully",
+                classOverviewService.getClassTeacherAvailability()));
+    }
+
+    @GetMapping("/teacher-workload")
+    @PreAuthorize(READ_ROLES)
+    @Operation(summary = "School-wide teacher workload — mappings, sections and weekly periods, heaviest first")
+    public ResponseEntity<ApiResponse<List<TeacherWorkloadDto>>> getTeacherWorkload() {
+        return ResponseEntity.ok(ApiResponse.success("Teacher workload retrieved successfully",
+                classOverviewService.getTeacherWorkload()));
     }
 
     @GetMapping("/{classId}/sections")

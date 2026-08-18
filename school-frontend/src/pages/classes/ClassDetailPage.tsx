@@ -24,12 +24,15 @@ import EmptyState from '@/components/common/EmptyState';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import classesApi from '@/api/classesApi';
 import teachersApi from '@/api/teachersApi';
-import type { SchoolClass, Section, Subject, Teacher } from '@/types';
+import type { ClassOverview, SchoolClass, Section, Subject, Teacher } from '@/types';
 import SectionFormDialog from './components/SectionFormDialog';
 import SubjectFormDialog from './components/SubjectFormDialog';
 import TeacherMappingTab from './components/TeacherMappingTab';
+import ClassOverviewTab from './components/ClassOverviewTab';
+import ClassOfficialsTab from './components/ClassOfficialsTab';
+import ClassTimetableTab from './components/ClassTimetableTab';
 
-const TABS = ['Sections', 'Subjects', 'Teacher Mapping'] as const;
+const TABS = ['Overview', 'Sections', 'Subjects', 'Teacher Mapping', 'Officials', 'Timetable'] as const;
 
 /** Class detail: sections (with class-teacher assignment), subjects, and a section x subject teacher-mapping grid. */
 export function ClassDetailPage() {
@@ -42,6 +45,7 @@ export function ClassDetailPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [overview, setOverview] = useState<ClassOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(0);
 
@@ -54,6 +58,20 @@ export function ClassDetailPage() {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [savingSubject, setSavingSubject] = useState(false);
   const [deleteSubjectTarget, setDeleteSubjectTarget] = useState<Subject | null>(null);
+
+  // Kept separate from loadAll so appointing an official can refresh just the
+  // overview — the warnings there include vacant posts — without re-fetching
+  // the roster, subjects and the whole teacher list behind it.
+  const loadOverview = useCallback(async () => {
+    try {
+      const res = await classesApi.getOverview(classId);
+      setOverview(res.data);
+    } catch {
+      // Non-fatal: the other tabs still work without the summary, so this stays
+      // quiet rather than throwing an error toast over a screen that loaded.
+      setOverview(null);
+    }
+  }, [classId]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -68,12 +86,13 @@ export function ClassDetailPage() {
       setSections(sectionsRes.data);
       setSubjects(subjectsRes.data);
       setTeachers(teachersRes.data.content);
+      await loadOverview();
     } catch (err: any) {
       enqueueSnackbar(err?.response?.data?.message ?? 'Could not load this class.', { variant: 'error' });
     } finally {
       setLoading(false);
     }
-  }, [classId, enqueueSnackbar]);
+  }, [classId, enqueueSnackbar, loadOverview]);
 
   useEffect(() => {
     loadAll();
@@ -191,7 +210,7 @@ export function ClassDetailPage() {
           ))}
         </Tabs>
         <CardContent>
-          {tab === 0 && (
+          {tab === 1 && (
             <Box>
               <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
                 <Button
@@ -262,7 +281,7 @@ export function ClassDetailPage() {
             </Box>
           )}
 
-          {tab === 1 && (
+          {tab === 2 && (
             <Box>
               <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
                 <Button
@@ -323,7 +342,22 @@ export function ClassDetailPage() {
             </Box>
           )}
 
-          {tab === 2 && <TeacherMappingTab classId={classId} sections={sections} subjects={subjects} />}
+          {tab === 3 && <TeacherMappingTab classId={classId} sections={sections} subjects={subjects} />}
+
+          {tab === 0 && <ClassOverviewTab overview={overview} />}
+
+          {/* The overview's warnings include vacant posts, so an appointment
+              refetches it rather than leaving a stale "No current head boy". */}
+          {tab === 4 && <ClassOfficialsTab classId={classId} onChanged={loadOverview} />}
+
+          {tab === 5 && (
+            <ClassTimetableTab
+              classId={classId}
+              sections={sections}
+              subjects={subjects}
+              teachers={teachers}
+            />
+          )}
         </CardContent>
       </Card>
 

@@ -5,12 +5,15 @@ import com.school.sms.dto.request.SectionRequest;
 import com.school.sms.dto.response.SectionDto;
 import com.school.sms.entity.SchoolClass;
 import com.school.sms.entity.Section;
+import com.school.sms.entity.StudentStatus;
 import com.school.sms.entity.Teacher;
+import com.school.sms.exception.BadRequestException;
 import com.school.sms.exception.DuplicateResourceException;
 import com.school.sms.exception.ResourceNotFoundException;
 import com.school.sms.mapper.SectionMapper;
 import com.school.sms.repository.SchoolClassRepository;
 import com.school.sms.repository.SectionRepository;
+import com.school.sms.repository.StudentRepository;
 import com.school.sms.repository.TeacherRepository;
 import com.school.sms.service.SectionService;
 import com.school.sms.service.UserService;
@@ -29,6 +32,7 @@ public class SectionServiceImpl implements SectionService {
     private final SchoolClassRepository schoolClassRepository;
     private final TeacherRepository teacherRepository;
     private final SectionMapper sectionMapper;
+    private final StudentRepository studentRepository;
     private final UserService userService;
 
     @Override
@@ -89,6 +93,8 @@ public class SectionServiceImpl implements SectionService {
         Teacher teacher = teacherRepository.findById(request.getTeacherId())
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", request.getTeacherId()));
 
+        verifyTeacherHasNoOtherHomeroom(teacher, entity);
+
         entity.setClassTeacher(teacher);
         Section saved = sectionRepository.save(entity);
 
@@ -97,12 +103,43 @@ public class SectionServiceImpl implements SectionService {
         return toDto(saved);
     }
 
+    /**
+     * A teacher is homeroom of at most one section.
+     *
+     * <p>uq_sections_class_teacher enforces this in the database, but a
+     * duplicate-key error surfaces as a 500 naming an index. Checking first turns
+     * it into a 400 that says which section the teacher already holds, which is
+     * the thing the administrator needs in order to decide what to do.
+     *
+     * <p>Re-assigning a teacher to the section they already head is a no-op rather
+     * than an error — the grid sends the current value back when another field in
+     * the row is edited.
+     */
+    private void verifyTeacherHasNoOtherHomeroom(Teacher teacher, Section target) {
+        sectionRepository.findByClassTeacherId(teacher.getId())
+                .filter(existing -> !existing.getId().equals(target.getId()))
+                .ifPresent(existing -> {
+                    String teacherName = teacher.getUser() != null
+                            ? NameUtil.fullName(teacher.getUser().getFirstName(), teacher.getUser().getLastName())
+                            : "That teacher";
+                    String where = existing.getSchoolClass() != null
+                            ? existing.getSchoolClass().getClassName() + " - " + existing.getSectionName()
+                            : "section " + existing.getSectionName();
+                    throw new BadRequestException(teacherName + " is already the class teacher of " + where
+                            + ". A teacher can be class teacher of only one section — free that one first.");
+                });
+    }
+
     private SectionDto toDto(Section section) {
         SectionDto dto = sectionMapper.toDto(section);
         if (section.getClassTeacher() != null) {
             Teacher teacher = section.getClassTeacher();
             dto.setClassTeacherName(NameUtil.fullName(teacher.getUser().getFirstName(), teacher.getUser().getLastName()));
         }
+        // Strength drives the capacity readout beside it, so it ships with every
+        // section rather than being fetched separately and risking the two disagreeing.
+        dto.setStudentCount((int) studentRepository
+                .countBySectionIdAndDeletedFalseAndStatus(section.getId(), StudentStatus.ACTIVE));
         return dto;
     }
 

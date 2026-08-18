@@ -19,6 +19,7 @@ import {
   type GridPaginationModel,
   type GridSortModel,
   type GridRowSelectionModel,
+  type DataGridProps,
 } from '@mui/x-data-grid';
 import EmptyState from './EmptyState';
 
@@ -30,6 +31,12 @@ export interface DataTableProps<T extends GridValidRowModel> {
   onExport?: () => void;
   height?: number;
   checkboxSelection?: boolean;
+  /**
+   * Per-row height, forwarded to DataGrid. Pass `() => 'auto'` when a cell
+   * renders a variable number of controls (the class list stacks one
+   * class-teacher dropdown per section) so rows grow to fit instead of clipping.
+   */
+  getRowHeight?: DataGridProps['getRowHeight'];
   getRowId?: (row: T) => string | number;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -98,6 +105,7 @@ export function DataTable<T extends GridValidRowModel>({
   onExport,
   height = 520,
   checkboxSelection = false,
+  getRowHeight,
   getRowId,
   emptyTitle,
   emptyDescription,
@@ -145,6 +153,7 @@ export function DataTable<T extends GridValidRowModel>({
         loading={loading}
         getRowId={getRowId}
         checkboxSelection={checkboxSelection}
+        getRowHeight={getRowHeight}
         disableRowSelectionOnClick
         pageSizeOptions={[5, 10, 25, 50]}
         initialState={Object.keys(initialState).length ? initialState : undefined}

@@ -12,7 +12,45 @@ public interface SectionRepository extends JpaRepository<Section, Long> {
 
     List<Section> findAllBySchoolClassIdOrderBySectionNameAsc(Long classId);
 
+    /**
+     * Every section of a page of classes, with its class teacher and that
+     * teacher's account already joined.
+     *
+     * <p>The fetch joins are the point: the class list renders a class-teacher
+     * dropdown per section, so a plain finder would lazy-load teacher and user for
+     * each of ~30 sections a page. One query instead of sixty.
+     */
+    @Query("SELECT s FROM Section s "
+            + "LEFT JOIN FETCH s.classTeacher t "
+            + "LEFT JOIN FETCH t.user "
+            + "WHERE s.schoolClass.id IN :classIds "
+            + "ORDER BY s.sectionName ASC")
+    List<Section> findAllWithClassTeacherBySchoolClassIdIn(@Param("classIds") List<Long> classIds);
+
     boolean existsBySchoolClassIdAndSectionNameIgnoreCase(Long classId, String sectionName);
+
+    /**
+     * The section this teacher is homeroom of, if any.
+     *
+     * <p>Singular because a teacher heads at most one section — enforced by
+     * uq_sections_class_teacher (13_assignment_uniqueness.sql). Used to turn that
+     * constraint into a message naming the section they already hold, rather than
+     * letting a duplicate-key error reach the caller.
+     */
+    Optional<Section> findByClassTeacherId(Long teacherId);
+
+    /**
+     * Every section that currently has a class teacher, with the teacher and their
+     * account joined. Drives the "already taken" state of the class-teacher
+     * dropdown, so the whole set is wanted at once rather than one lookup per
+     * option.
+     */
+    @Query("SELECT s FROM Section s "
+            + "JOIN FETCH s.classTeacher t "
+            + "JOIN FETCH t.user "
+            + "LEFT JOIN FETCH s.schoolClass "
+            + "WHERE s.classTeacher IS NOT NULL")
+    List<Section> findAllAssignedHomerooms();
 
     // Excel student import: resolves a row's plain-text section name to an id within its class.
     Optional<Section> findFirstBySchoolClassIdAndSectionNameIgnoreCase(Long classId, String sectionName);
