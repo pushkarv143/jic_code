@@ -21,4 +21,6 @@ public class SectionDto {
     private String classTeacherName;
     private String roomNumber;
     private Integer capacity;
+    /** Active students enrolled in this section. */
+    private Integer studentCount;
 }

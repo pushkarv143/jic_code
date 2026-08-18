@@ -25,4 +25,16 @@ public interface StudentFeeRepository extends JpaRepository<StudentFee, Long>, J
             "WHERE (:classId IS NULL OR sf.student.schoolClass.id = :classId) " +
             "AND (:academicYearId IS NULL OR sf.academicYear.id = :academicYearId)")
     List<Object[]> aggregateDuesSummary(@Param("classId") Long classId, @Param("academicYearId") Long academicYearId);
+
+    /**
+     * Class-overview fee panel: a single row of [distinct defaulting students,
+     * total outstanding] for one class. A defaulter is a student carrying at
+     * least one row that is not yet PAID; the outstanding figure sums
+     * amountDue - amountPaid over those same rows, so a partly-paid fee
+     * contributes only its remainder rather than its face value.
+     */
+    @Query("SELECT COUNT(DISTINCT sf.student.id), COALESCE(SUM(sf.amountDue - sf.amountPaid), 0) " +
+            "FROM StudentFee sf WHERE sf.student.schoolClass.id = :classId " +
+            "AND sf.student.deleted = false AND sf.status <> com.school.sms.entity.FeeStatus.PAID")
+    List<Object[]> aggregateDefaultersForClass(@Param("classId") Long classId);
 }

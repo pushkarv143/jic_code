@@ -38,4 +38,22 @@ public interface StudentAttendanceRepository
     List<Object[]> aggregateAttendanceByClass(@Param("startDate") LocalDate startDate,
                                                @Param("endDate") LocalDate endDate,
                                                @Param("classId") Long classId);
+
+    /**
+     * Class-overview attendance panel: a single row of [present-equivalent,
+     * total marked] for one class over a range.
+     *
+     * <p>Scores PRESENT as 1 and HALF_DAY as 0.5, matching
+     * {@link #aggregateAttendanceByClass} and StudentAttendanceServiceImpl's
+     * per-student summary. Note LATE scores 0 in all three, which disagrees with
+     * sp_calculate_student_attendance_percentage in 05_procedures.sql — that
+     * procedure counts LATE as a full day but is called by nothing, so the
+     * application's own definition is the one that holds.
+     */
+    @Query("SELECT COALESCE(SUM(CASE WHEN sa.status = 'PRESENT' THEN 1.0 WHEN sa.status = 'HALF_DAY' THEN 0.5 ELSE 0.0 END), 0), " +
+            "COUNT(sa) FROM StudentAttendance sa " +
+            "WHERE sa.schoolClass.id = :classId AND sa.attendanceDate BETWEEN :startDate AND :endDate")
+    List<Object[]> aggregateForClassBetween(@Param("classId") Long classId,
+                                             @Param("startDate") LocalDate startDate,
+                                             @Param("endDate") LocalDate endDate);
 }
