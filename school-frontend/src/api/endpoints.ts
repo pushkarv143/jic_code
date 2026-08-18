@@ -43,6 +43,22 @@ export const ENDPOINTS = {
     BY_ID: (id: number | string) => `/classes/${id}`,
     SECTIONS: (classId: number | string) => `/classes/${classId}/sections`,
     SUBJECTS: (classId: number | string) => `/classes/${classId}/subjects`,
+    // Class module: strength, people, cross-module stats and setup warnings,
+    // assembled server-side so the screen is one request rather than six.
+    OVERVIEW: (classId: number | string) => `/classes/${classId}/overview`,
+    OFFICIALS: (classId: number | string) => `/classes/${classId}/officials`,
+    OFFICIALS_HISTORY: (classId: number | string) => `/classes/${classId}/officials/history`,
+    OFFICIAL_BY_ID: (classId: number | string, officialId: number | string) =>
+      `/classes/${classId}/officials/${officialId}`,
+    TEACHER_WORKLOAD: '/classes/teacher-workload',
+    CLASS_TEACHER_AVAILABILITY: '/classes/class-teacher-availability',
+  },
+
+  TIMETABLE: {
+    SECTION: (classId: number | string, sectionId: number | string) =>
+      `/timetable/classes/${classId}/sections/${sectionId}`,
+    CLASS: (classId: number | string) => `/timetable/classes/${classId}`,
+    TEACHER: (teacherId: number | string) => `/timetable/teachers/${teacherId}`,
   },
 
   SECTIONS: {

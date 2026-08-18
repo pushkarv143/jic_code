@@ -2,11 +2,16 @@ import axiosInstance from './axiosInstance';
 import { ENDPOINTS } from './endpoints';
 import type {
   ApiResponse,
+  ClassOfficial,
+  ClassOfficialRole,
+  ClassOverview,
   ClassSubjectTeacher,
+  ClassTeacherAvailability,
   PageResponse,
   SchoolClass,
   Section,
   Subject,
+  TeacherWorkload,
 } from '@/types';
 
 export interface ClassListParams {
@@ -39,6 +44,16 @@ export interface ClassSubjectTeacherPayload {
   sectionId: number;
   subjectId: number;
   teacherId: number;
+}
+
+export interface ClassOfficialPayload {
+  studentId: number;
+  role: ClassOfficialRole;
+  /** Optional: scopes a post to one section instead of the whole class. */
+  sectionId?: number | null;
+  /** Defaults to today server-side when omitted. */
+  fromDate?: string;
+  remarks?: string | null;
 }
 
 export interface ClassSubjectTeacherParams {
@@ -185,6 +200,76 @@ export const classesApi = {
   removeTeacherMapping: async (id: number): Promise<ApiResponse<null>> => {
     const { data } = await axiosInstance.delete<ApiResponse<null>>(
       ENDPOINTS.CLASS_SUBJECT_TEACHER.BY_ID(id),
+    );
+    return data;
+  },
+
+  /* ---- class module: overview, officials, workload ---------------------- */
+
+  /**
+   * Strength, people, stats and warnings in one call. The date range bounds the
+   * stats only; omit it and the backend uses the current month to date.
+   */
+  getOverview: async (
+    classId: number,
+    params: { startDate?: string; endDate?: string } = {},
+  ): Promise<ApiResponse<ClassOverview>> => {
+    const { data } = await axiosInstance.get<ApiResponse<ClassOverview>>(
+      ENDPOINTS.CLASSES.OVERVIEW(classId),
+      { params },
+    );
+    return data;
+  },
+
+  listOfficials: async (classId: number): Promise<ApiResponse<ClassOfficial[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<ClassOfficial[]>>(
+      ENDPOINTS.CLASSES.OFFICIALS(classId),
+    );
+    return data;
+  },
+
+  listOfficialHistory: async (classId: number): Promise<ApiResponse<ClassOfficial[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<ClassOfficial[]>>(
+      ENDPOINTS.CLASSES.OFFICIALS_HISTORY(classId),
+    );
+    return data;
+  },
+
+  /** Appointing ends the sitting holder's tenure server-side; no separate call needed. */
+  appointOfficial: async (
+    classId: number,
+    payload: ClassOfficialPayload,
+  ): Promise<ApiResponse<ClassOfficial>> => {
+    const { data } = await axiosInstance.post<ApiResponse<ClassOfficial>>(
+      ENDPOINTS.CLASSES.OFFICIALS(classId),
+      payload,
+    );
+    return data;
+  },
+
+  /** Ends a tenure, leaving the post vacant. The record is kept, not deleted. */
+  endOfficial: async (classId: number, officialId: number): Promise<ApiResponse<null>> => {
+    const { data } = await axiosInstance.delete<ApiResponse<null>>(
+      ENDPOINTS.CLASSES.OFFICIAL_BY_ID(classId, officialId),
+    );
+    return data;
+  },
+
+  /**
+   * Teachers who already have a homeroom, and where. Returned for assigned
+   * teachers only, so anyone absent from the list is free — the assignment UI
+   * greys out the rest instead of offering a pick the server would reject.
+   */
+  getClassTeacherAvailability: async (): Promise<ApiResponse<ClassTeacherAvailability[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<ClassTeacherAvailability[]>>(
+      ENDPOINTS.CLASSES.CLASS_TEACHER_AVAILABILITY,
+    );
+    return data;
+  },
+
+  getTeacherWorkload: async (): Promise<ApiResponse<TeacherWorkload[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<TeacherWorkload[]>>(
+      ENDPOINTS.CLASSES.TEACHER_WORKLOAD,
     );
     return data;
   },
