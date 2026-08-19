@@ -25,7 +25,7 @@ import studentsApi from '@/api/studentsApi';
 import { getAttendanceStatusColor } from '@/theme/chartColors';
 import { useAppSelector } from '@/store/hooks';
 import { getStudentDisplayName } from '@/utils/format';
-import type { AttendanceStatus, MonthlyAttendanceRow, SchoolClass, Section, Student } from '@/types';
+import type { AttendanceStatus, MonthlyAttendanceRow, SchoolClass, Student } from '@/types';
 
 const STATUS_LEGEND: Array<{ status: AttendanceStatus | 'UNMARKED'; label: string }> = [
   { status: 'PRESENT', label: 'Present' },
@@ -38,7 +38,7 @@ const STATUS_LEGEND: Array<{ status: AttendanceStatus | 'UNMARKED'; label: strin
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: dayjs().month(i).format('MMMM') }));
 
-/** Class + section + month/year -> a calendar-grid attendance register (students x days 1-31). */
+/** Class + month/year -> a calendar-grid attendance register (students x days 1-31). */
 export function MonthlyAttendancePage() {
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
@@ -51,7 +51,6 @@ export function MonthlyAttendancePage() {
   const isSelfView = isStudentView || isParentView;
 
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
   const [classId, setClassId] = useState<number | ''>('');
   const [sectionId, setSectionId] = useState<number | ''>('');
   const [year, setYear] = useState(dayjs().year());
@@ -123,18 +122,17 @@ export function MonthlyAttendancePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isParentView]);
 
+  // The register is fetched by section id, so the class's one section is looked
+  // up and selected rather than offered as a choice with a single answer.
   useEffect(() => {
     if (isSelfView || !classId) {
-      if (!isSelfView) {
-        setSections([]);
-        setSectionId('');
-      }
+      if (!isSelfView) setSectionId('');
       return;
     }
     classesApi
       .listSections(classId as number)
-      .then((res) => setSections(res.data))
-      .catch(() => enqueueSnackbar('Could not load sections.', { variant: 'error' }));
+      .then((res) => setSectionId(res.data[0]?.id ?? ''))
+      .catch(() => enqueueSnackbar('Could not load the section for that class.', { variant: 'error' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId, isSelfView]);
 
@@ -205,24 +203,6 @@ export function MonthlyAttendancePage() {
                     {classes.map((cls) => (
                       <MenuItem key={cls.id} value={cls.id}>
                         {cls.className}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} sm={4} md={3}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Section"
-                    value={sectionId}
-                    disabled={!classId}
-                    onChange={(e) => setSectionId(e.target.value === '' ? '' : Number(e.target.value))}
-                  >
-                    <MenuItem value="">Select a section</MenuItem>
-                    {sections.map((sec) => (
-                      <MenuItem key={sec.id} value={sec.id}>
-                        {sec.sectionName}
                       </MenuItem>
                     ))}
                   </TextField>

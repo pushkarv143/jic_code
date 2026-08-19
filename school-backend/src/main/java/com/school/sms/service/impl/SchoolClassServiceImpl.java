@@ -22,6 +22,7 @@ import com.school.sms.repository.SectionRepository;
 import com.school.sms.repository.StudentRepository;
 import com.school.sms.repository.SubjectRepository;
 import com.school.sms.service.SchoolClassService;
+import com.school.sms.util.AppConstants;
 import com.school.sms.util.NameUtil;
 import com.school.sms.util.specification.SearchOperation;
 import com.school.sms.util.specification.SpecificationBuilder;
@@ -189,7 +190,19 @@ public class SchoolClassServiceImpl implements SchoolClassService {
         entity.setAcademicYear(academicYear);
         entity.setDeleted(false);
 
-        return schoolClassMapper.toDto(schoolClassRepository.save(entity));
+        SchoolClass saved = schoolClassRepository.save(entity);
+
+        // The class's one section is created with it. Every record that hangs off a
+        // class — a student, a subject-teacher mapping, a period, an attendance mark —
+        // needs a section to point at, and since the school runs a single section
+        // there is nothing for an administrator to decide here. Leaving it to a
+        // second call is what used to produce a class nobody could enrol into.
+        sectionRepository.save(Section.builder()
+                .sectionName(AppConstants.SINGLE_SECTION_NAME)
+                .schoolClass(saved)
+                .build());
+
+        return schoolClassMapper.toDto(saved);
     }
 
     @Override

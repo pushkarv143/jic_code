@@ -19,21 +19,18 @@ import DataTable from '@/components/common/DataTable';
 import EmptyState from '@/components/common/EmptyState';
 import BarChartCard from '@/components/charts/BarChartCard';
 import examApi from '@/api/examApi';
-import classesApi from '@/api/classesApi';
 import studentsApi from '@/api/studentsApi';
 import { useAppSelector } from '@/store/hooks';
-import type { Exam, ExamResultRow, ExamSchedule, ReportCard, Section } from '@/types';
+import type { Exam, ExamResultRow, ExamSchedule, ReportCard } from '@/types';
 import { downloadBlob } from '@/utils/downloadBlob';
 import ReportCardDialog from './components/ReportCardDialog';
 import ReportCardView from './components/ReportCardView';
 
-/** Staff view: pick exam (+ optional section) -> results table with rank/percentage + a class-average-per-subject bar chart. */
+/** Staff view: pick exam -> results table with rank/percentage + a class-average-per-subject bar chart. */
 function StaffResultsView() {
   const { enqueueSnackbar } = useSnackbar();
   const [exams, setExams] = useState<Exam[]>([]);
   const [examId, setExamId] = useState<number | ''>('');
-  const [sections, setSections] = useState<Section[]>([]);
-  const [sectionId, setSectionId] = useState<number | ''>('');
 
   const [rows, setRows] = useState<ExamResultRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,18 +51,6 @@ function StaffResultsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    setSectionId('');
-    if (!selectedExam) {
-      setSections([]);
-      return;
-    }
-    classesApi
-      .listSections(selectedExam.classId)
-      .then((res) => setSections(res.data))
-      .catch(() => enqueueSnackbar('Could not load sections for this class.', { variant: 'error' }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedExam?.classId]);
 
   const loadResults = useCallback(async () => {
     if (!selectedExam) return;
@@ -74,7 +59,6 @@ function StaffResultsView() {
     try {
       const res = await examApi.exams.results(selectedExam.id, {
         classId: selectedExam.classId,
-        sectionId: sectionId || undefined,
       });
       setRows(res.data);
       setLoaded(true);
@@ -84,7 +68,7 @@ function StaffResultsView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedExam, sectionId, enqueueSnackbar]);
+  }, [selectedExam, enqueueSnackbar]);
 
   useEffect(() => {
     loadResults();
@@ -178,24 +162,6 @@ function StaffResultsView() {
                 {exams.map((ex) => (
                   <MenuItem key={ex.id} value={ex.id}>
                     {(ex.examTypeName ?? `Exam #${ex.id}`) + ' — ' + (ex.className ?? '')}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Section"
-                disabled={!selectedExam}
-                value={sectionId}
-                onChange={(e) => setSectionId(e.target.value === '' ? '' : Number(e.target.value))}
-              >
-                <MenuItem value="">All sections</MenuItem>
-                {sections.map((sec) => (
-                  <MenuItem key={sec.id} value={sec.id}>
-                    {sec.sectionName}
                   </MenuItem>
                 ))}
               </TextField>

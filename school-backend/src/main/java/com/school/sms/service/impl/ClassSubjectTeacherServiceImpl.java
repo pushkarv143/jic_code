@@ -5,16 +5,21 @@ import com.school.sms.dto.response.ClassSubjectTeacherDto;
 import com.school.sms.entity.ClassSubjectTeacher;
 import com.school.sms.entity.SchoolClass;
 import com.school.sms.entity.Section;
+import com.school.sms.entity.Student;
 import com.school.sms.entity.Subject;
 import com.school.sms.entity.Teacher;
+import com.school.sms.exception.BadRequestException;
 import com.school.sms.exception.DuplicateResourceException;
 import com.school.sms.exception.ResourceNotFoundException;
 import com.school.sms.mapper.ClassSubjectTeacherMapper;
 import com.school.sms.repository.ClassSubjectTeacherRepository;
 import com.school.sms.repository.SchoolClassRepository;
 import com.school.sms.repository.SectionRepository;
+import com.school.sms.repository.StudentRepository;
 import com.school.sms.repository.SubjectRepository;
 import com.school.sms.repository.TeacherRepository;
+import com.school.sms.security.SelfScopeResolver;
+import com.school.sms.security.StudentAccessGuard;
 import com.school.sms.service.ClassSubjectTeacherService;
 import com.school.sms.util.NameUtil;
 import com.school.sms.util.specification.SearchOperation;
@@ -35,7 +40,10 @@ public class ClassSubjectTeacherServiceImpl implements ClassSubjectTeacherServic
     private final SectionRepository sectionRepository;
     private final SubjectRepository subjectRepository;
     private final TeacherRepository teacherRepository;
+    private final StudentRepository studentRepository;
     private final ClassSubjectTeacherMapper classSubjectTeacherMapper;
+    private final StudentAccessGuard studentAccessGuard;
+    private final SelfScopeResolver selfScopeResolver;
 
     @Override
     @Transactional(readOnly = true)
@@ -51,6 +59,31 @@ public class ClassSubjectTeacherServiceImpl implements ClassSubjectTeacherServic
                 : classSubjectTeacherRepository.findAll(spec);
 
         return results.stream().map(this::toDto).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClassSubjectTeacherDto> getForCurrentUser() {
+        SelfScopeResolver.SelfScope scope = selfScopeResolver.resolve();
+        return scope.isTeacher()
+                ? getAll(null, null, scope.teacherId())
+                : getForStudent(scope.studentId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClassSubjectTeacherDto> getForStudent(Long studentId) {
+        // Same reasoning as the timetable's by-student path: a teacher is held to
+        // students they teach rather than being able to ask about any id.
+        studentAccessGuard.verifyCanViewStudentRecord(studentId);
+
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
+        Section section = student.getSection();
+        if (section == null) {
+            throw new BadRequestException("That student is not enrolled in a class yet");
+        }
+        return getAll(section.getId(), null, null);
     }
 
     @Override

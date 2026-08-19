@@ -16,7 +16,7 @@ import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useSnackbar } from 'notistack';
 import classesApi from '@/api/classesApi';
-import type { Assignment, SchoolClass, Section, Subject } from '@/types';
+import type { Assignment, SchoolClass, Subject } from '@/types';
 import type { AssignmentPayload } from '@/api/assignmentsApi';
 
 export interface AssignmentFormDialogProps {
@@ -38,10 +38,9 @@ interface FormValues {
   dueDate: Dayjs | null;
 }
 
-/** Create/edit dialog for an assignment: title/description, class -> section/subject cascade, dates, optional file (multipart). */
+/** Create/edit dialog for an assignment: title/description, class -> subject cascade, dates, optional file (multipart). */
 export function AssignmentFormDialog({ open, editing, classes, saving, onClose, onSubmit }: AssignmentFormDialogProps) {
   const { enqueueSnackbar } = useSnackbar();
-  const [sections, setSections] = useState<Section[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [file, setFile] = useState<File | null>(null);
 
@@ -74,19 +73,23 @@ export function AssignmentFormDialog({ open, editing, classes, saving, onClose, 
     }
   }, [open, editing, reset]);
 
+  // The section is filled in rather than asked for: one section per class means
+  // the picker had a single option, but sectionId is still required by the API.
   useEffect(() => {
     if (!classId) {
-      setSections([]);
       setSubjects([]);
       return;
     }
-    classesApi.listSections(classId as number).then((res) => setSections(res.data)).catch(() => undefined);
+    classesApi
+      .listSections(classId as number)
+      .then((res) => setValue('sectionId', res.data[0]?.id ?? ''))
+      .catch(() => undefined);
     classesApi.listSubjects(classId as number).then((res) => setSubjects(res.data)).catch(() => undefined);
-  }, [classId]);
+  }, [classId, setValue]);
 
   const submit = (values: FormValues) => {
     if (!values.classId || !values.sectionId || !values.subjectId || !values.assignedDate || !values.dueDate) {
-      enqueueSnackbar('Please fill in class, section, subject and both dates.', { variant: 'warning' });
+      enqueueSnackbar('Please fill in class, subject and both dates.', { variant: 'warning' });
       return;
     }
     onSubmit({
@@ -134,29 +137,6 @@ export function AssignmentFormDialog({ open, editing, classes, saving, onClose, 
                     {classes.map((c) => (
                       <MenuItem key={c.id} value={c.id}>
                         {c.className}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <Controller
-                name="sectionId"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    select
-                    label="Section"
-                    fullWidth
-                    disabled={!classId}
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
-                  >
-                    <MenuItem value="">Select a section</MenuItem>
-                    {sections.map((s) => (
-                      <MenuItem key={s.id} value={s.id}>
-                        {s.sectionName}
                       </MenuItem>
                     ))}
                   </TextField>

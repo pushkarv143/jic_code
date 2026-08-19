@@ -5,6 +5,7 @@ import com.school.sms.dto.request.TimetableSlotRequest;
 import com.school.sms.dto.response.TimetableSlotDto;
 import com.school.sms.entity.SchoolClass;
 import com.school.sms.entity.Section;
+import com.school.sms.entity.Student;
 import com.school.sms.entity.Subject;
 import com.school.sms.entity.Teacher;
 import com.school.sms.entity.TimetableSlot;
@@ -12,9 +13,12 @@ import com.school.sms.exception.BadRequestException;
 import com.school.sms.exception.ResourceNotFoundException;
 import com.school.sms.repository.SchoolClassRepository;
 import com.school.sms.repository.SectionRepository;
+import com.school.sms.repository.StudentRepository;
 import com.school.sms.repository.SubjectRepository;
 import com.school.sms.repository.TeacherRepository;
 import com.school.sms.repository.TimetableSlotRepository;
+import com.school.sms.security.SelfScopeResolver;
+import com.school.sms.security.StudentAccessGuard;
 import com.school.sms.service.AuditLogService;
 import com.school.sms.service.TimetableService;
 import com.school.sms.util.NameUtil;
@@ -38,7 +42,10 @@ public class TimetableServiceImpl implements TimetableService {
     private final SectionRepository sectionRepository;
     private final SubjectRepository subjectRepository;
     private final TeacherRepository teacherRepository;
+    private final StudentRepository studentRepository;
     private final AuditLogService auditLogService;
+    private final StudentAccessGuard studentAccessGuard;
+    private final SelfScopeResolver selfScopeResolver;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,6 +71,34 @@ public class TimetableServiceImpl implements TimetableService {
         }
         return withClashWarnings(
                 timetableSlotRepository.findAllByTeacherIdOrderByDayOfWeekAscPeriodNumberAsc(teacherId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TimetableSlotDto> getForCurrentUser() {
+        SelfScopeResolver.SelfScope scope = selfScopeResolver.resolve();
+        return scope.isTeacher()
+                ? getForTeacher(scope.teacherId())
+                : getForStudent(scope.studentId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TimetableSlotDto> getForStudent(Long studentId) {
+        // The full student-module check, not just the self-scope one: it holds a
+        // student or parent to their own records *and* a teacher to students they
+        // actually teach, so this path cannot be used to browse an arbitrary
+        // student's class week by id. Management passes through.
+        studentAccessGuard.verifyCanViewStudentRecord(studentId);
+
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
+        Section section = student.getSection();
+        if (section == null) {
+            throw new BadRequestException("That student is not enrolled in a class yet");
+        }
+        return withClashWarnings(
+                timetableSlotRepository.findAllBySectionIdOrderByDayOfWeekAscPeriodNumberAsc(section.getId()));
     }
 
     @Override
@@ -186,6 +221,7 @@ public class TimetableServiceImpl implements TimetableService {
             result.add(TimetableSlotDto.builder()
                     .id(slot.getId())
                     .classId(slot.getSchoolClass() != null ? slot.getSchoolClass().getId() : null)
+                    .className(slot.getSchoolClass() != null ? slot.getSchoolClass().getClassName() : null)
                     .sectionId(section != null ? section.getId() : null)
                     .sectionName(section != null ? section.getSectionName() : null)
                     .dayOfWeek(day != null ? day.name() : null)

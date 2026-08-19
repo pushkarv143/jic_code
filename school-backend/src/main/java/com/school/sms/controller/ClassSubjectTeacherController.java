@@ -36,6 +36,14 @@ public class ClassSubjectTeacherController {
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT')";
     private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
 
+    // Students and parents are admitted to the two scoped paths below and not to
+    // the unfiltered list above: knowing who teaches your own subjects is
+    // ordinary, being able to page the whole staff-to-subject mapping is not. The
+    // service narrows these to the caller's own record either way.
+    private static final String SELF_SERVICE_ROLES =
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST',"
+                    + "'ACCOUNTANT','STUDENT','PARENT')";
+
     @GetMapping
     @PreAuthorize(READ_ROLES)
     @Operation(summary = "List class-subject-teacher mappings, optionally filtered by section/subject/teacher")
@@ -45,6 +53,24 @@ public class ClassSubjectTeacherController {
             @RequestParam(required = false) Long teacherId) {
         return ResponseEntity.ok(ApiResponse.success("Mappings retrieved successfully",
                 classSubjectTeacherService.getAll(sectionId, subjectId, teacherId)));
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize(SELF_SERVICE_ROLES)
+    @Operation(summary = "The signed-in caller's own view — a teacher's assigned subjects, "
+            + "or the subjects and teachers of a student's own class")
+    public ResponseEntity<ApiResponse<List<ClassSubjectTeacherDto>>> getMine() {
+        return ResponseEntity.ok(ApiResponse.success("Mappings retrieved successfully",
+                classSubjectTeacherService.getForCurrentUser()));
+    }
+
+    @GetMapping("/students/{studentId}")
+    @PreAuthorize(SELF_SERVICE_ROLES)
+    @Operation(summary = "Subjects and their teachers for the class a student is enrolled in; "
+            + "a parent is held to their own children")
+    public ResponseEntity<ApiResponse<List<ClassSubjectTeacherDto>>> getForStudent(@PathVariable Long studentId) {
+        return ResponseEntity.ok(ApiResponse.success("Mappings retrieved successfully",
+                classSubjectTeacherService.getForStudent(studentId)));
     }
 
     @PostMapping

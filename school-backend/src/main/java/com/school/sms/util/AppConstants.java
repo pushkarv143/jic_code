@@ -21,6 +21,18 @@ public final class AppConstants {
     public static final String DEFAULT_PAGE_NUMBER = "0";
     public static final String DEFAULT_PAGE_SIZE = "20";
 
+    /**
+     * The school runs a single section per class, named "A".
+     *
+     * <p>The section dimension is kept in the schema rather than removed — it is a
+     * NOT NULL foreign key on students, attendance, assignments, study materials,
+     * timetable slots and the subject-teacher mapping — but exactly one section
+     * exists per class, and the UI does not ask anyone to choose it. See
+     * {@code database/14_single_section_a.sql} for the migration that collapsed the
+     * existing sections onto it.
+     */
+    public static final String SINGLE_SECTION_NAME = "A";
+
     public static final String JWT_ROLE_PREFIX = "ROLE_";
 
     /**

@@ -61,6 +61,10 @@ export const ENDPOINTS = {
       `/timetable/classes/${classId}/sections/${sectionId}`,
     CLASS: (classId: number | string) => `/timetable/classes/${classId}`,
     TEACHER: (teacherId: number | string) => `/timetable/teachers/${teacherId}`,
+    // Whoever is signed in, with no id in the URL: a teacher's teaching week or
+    // a student's own class week. STUDENT is a route to the second one.
+    ME: '/timetable/me',
+    STUDENT: (studentId: number | string) => `/timetable/students/${studentId}`,
   },
 
   SECTIONS: {
@@ -75,6 +79,10 @@ export const ENDPOINTS = {
   CLASS_SUBJECT_TEACHER: {
     BASE: '/class-subject-teacher',
     BY_ID: (id: number | string) => `/class-subject-teacher/${id}`,
+    // Scoped reads: a teacher's own assignments, or the subject/teacher list of
+    // one student's class. Students and parents may use these and not BASE.
+    ME: '/class-subject-teacher/me',
+    STUDENT: (studentId: number | string) => `/class-subject-teacher/students/${studentId}`,
   },
 
   TEACHERS: {

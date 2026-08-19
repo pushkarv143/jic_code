@@ -203,6 +203,8 @@ export interface Subject {
 export interface ClassSubjectTeacher {
   id: number;
   classId: number;
+  /** Sent by the API; needed where mappings span classes, e.g. a teacher's own list. */
+  className?: string;
   sectionId: number;
   sectionName?: string;
   subjectId: number;
@@ -245,6 +247,8 @@ export interface ClassOfficial {
 export interface TimetableSlot {
   id?: number;
   classId?: number;
+  /** Present so a teacher's own week, which spans classes, can name each period's class. */
+  className?: string | null;
   sectionId?: number;
   sectionName?: string;
   dayOfWeek: TimetableDay;

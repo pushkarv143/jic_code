@@ -84,6 +84,19 @@ public class TeacherAccessGuard {
                 .orElseThrow(() -> new AccessDeniedException("Your login is not linked to a teacher record"));
     }
 
+    /**
+     * The caller's own teacher id if they have one, empty otherwise.
+     *
+     * <p>Unlike {@link #requireOwnTeacherId()} this does not throw: it exists for
+     * the endpoints that serve several kinds of caller from one path (a "my
+     * timetable" that answers a teacher with their teaching week and a student
+     * with their class's week), where having no teacher record is an ordinary
+     * branch rather than a failure.
+     */
+    public Optional<Long> findOwnTeacherId() {
+        return SecurityUtils.getCurrentUserPrincipal().flatMap(p -> ownTeacherId(p.getId()));
+    }
+
     private Optional<Long> ownTeacherId(Long userId) {
         return teacherRepository.findByUserId(userId).map(com.school.sms.entity.Teacher::getId);
     }

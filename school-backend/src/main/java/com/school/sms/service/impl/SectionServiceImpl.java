@@ -17,6 +17,7 @@ import com.school.sms.repository.StudentRepository;
 import com.school.sms.repository.TeacherRepository;
 import com.school.sms.service.SectionService;
 import com.school.sms.service.UserService;
+import com.school.sms.util.AppConstants;
 import com.school.sms.util.NameUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,7 @@ public class SectionServiceImpl implements SectionService {
         if (sectionRepository.existsBySchoolClassIdAndSectionNameIgnoreCase(classId, request.getSectionName())) {
             throw new DuplicateResourceException("Section", "sectionName", request.getSectionName());
         }
+        verifySingleSectionRule(classId, request.getSectionName());
 
         Section entity = sectionMapper.toEntity(request);
         entity.setSchoolClass(schoolClass);
@@ -101,6 +103,28 @@ public class SectionServiceImpl implements SectionService {
         userService.promoteToClassTeacher(teacher.getUser().getId());
 
         return toDto(saved);
+    }
+
+    /**
+     * One section per class, named "A".
+     *
+     * <p>Enforced here rather than by a CHECK constraint so the rule can be lifted
+     * by changing this class alone if the school ever streams a year again — the
+     * schema keeps its section dimension either way.
+     *
+     * <p>A wrong name is rejected rather than quietly rewritten to "A": a caller
+     * that asked for "B" has a different model of the school in mind, and silently
+     * storing something else would hide that rather than settle it.
+     */
+    private void verifySingleSectionRule(Long classId, String requestedName) {
+        if (!AppConstants.SINGLE_SECTION_NAME.equalsIgnoreCase(requestedName)) {
+            throw new BadRequestException("This school runs a single section per class, named "
+                    + AppConstants.SINGLE_SECTION_NAME + "; \"" + requestedName + "\" cannot be created");
+        }
+        if (!sectionRepository.findAllBySchoolClassIdOrderBySectionNameAsc(classId).isEmpty()) {
+            throw new BadRequestException("This class already has its section. "
+                    + "One section per class is the rule, so add subjects to the existing section instead.");
+        }
     }
 
     /**

@@ -33,6 +33,7 @@ import TeacherListPage from '@/pages/teachers/TeacherListPage';
 import TeacherFormPage from '@/pages/teachers/TeacherFormPage';
 import TeacherProfilePage from '@/pages/teachers/TeacherProfilePage';
 import MyTeacherProfilePage from '@/pages/teachers/MyTeacherProfilePage';
+import MyTimetablePage from '@/pages/timetable/MyTimetablePage';
 
 import ClassListPage from '@/pages/classes/ClassListPage';
 import ClassDetailPage from '@/pages/classes/ClassDetailPage';
@@ -232,6 +233,16 @@ const router = createBrowserRouter([
               { index: true, element: <ClassListPage /> },
               { path: ':id', element: <ClassDetailPage /> },
             ],
+          },
+          {
+            // One self-service timetable for the three roles that have one of
+            // their own. The page asks /timetable/me and the server decides
+            // whose week that is, so the same route serves all three.
+            path: 'my-timetable',
+            element: (
+              <RoleBasedRoute allowedRoles={['TEACHER', 'CLASS_TEACHER', 'STUDENT', 'PARENT']} />
+            ),
+            children: [{ index: true, element: <MyTimetablePage /> }],
           },
           {
             path: 'attendance',

@@ -187,6 +187,29 @@ export const classesApi = {
     return data;
   },
 
+  /**
+   * The signed-in caller's own slice of the mapping grid: a teacher's assigned
+   * subjects, or the subjects and teachers of a student's own class. Students and
+   * parents are only permitted this and listTeacherMappingsForStudent — not the
+   * unfiltered listTeacherMappings above.
+   */
+  listMyTeacherMappings: async (): Promise<ApiResponse<ClassSubjectTeacher[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<ClassSubjectTeacher[]>>(
+      ENDPOINTS.CLASS_SUBJECT_TEACHER.ME,
+    );
+    return data;
+  },
+
+  /** Subjects and their teachers for one student's class. */
+  listTeacherMappingsForStudent: async (
+    studentId: number,
+  ): Promise<ApiResponse<ClassSubjectTeacher[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<ClassSubjectTeacher[]>>(
+      ENDPOINTS.CLASS_SUBJECT_TEACHER.STUDENT(studentId),
+    );
+    return data;
+  },
+
   assignTeacherMapping: async (
     payload: ClassSubjectTeacherPayload,
   ): Promise<ApiResponse<ClassSubjectTeacher>> => {

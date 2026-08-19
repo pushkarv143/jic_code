@@ -13,7 +13,7 @@ import { useSnackbar } from 'notistack';
 import classesApi from '@/api/classesApi';
 import academicYearsApi from '@/api/academicYearsApi';
 import studentsApi from '@/api/studentsApi';
-import type { AcademicYear, SchoolClass, Section } from '@/types';
+import type { AcademicYear, SchoolClass } from '@/types';
 
 export interface PromoteDialogProps {
   open: boolean;
@@ -22,23 +22,21 @@ export interface PromoteDialogProps {
   onPromoted: () => void;
 }
 
-/** Bulk-promote dialog: pick target class/section/academic year, calls POST /students/promote. */
+/** Bulk-promote dialog: pick target class + academic year, calls POST /students/promote. */
 export function PromoteDialog({ open, studentIds, onClose, onPromoted }: PromoteDialogProps) {
   const { enqueueSnackbar } = useSnackbar();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [classId, setClassId] = useState<number | ''>('');
   const [sectionId, setSectionId] = useState<number | ''>('');
   const [academicYearId, setAcademicYearId] = useState<number | ''>('');
-  const [loadingSections, setLoadingSections] = useState(false);
+  const [resolvingSection, setResolvingSection] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setClassId('');
     setSectionId('');
-    setSections([]);
     (async () => {
       try {
         const [classRes, yearRes] = await Promise.all([
@@ -56,18 +54,20 @@ export function PromoteDialog({ open, studentIds, onClose, onPromoted }: Promote
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Promotion still has to name a target section, but a class has only one, so it
+  // is resolved from the chosen class rather than asked for. Promote stays
+  // disabled until it arrives, which is what resolvingSection is for.
   useEffect(() => {
     if (!classId) {
-      setSections([]);
+      setSectionId('');
       return;
     }
-    setLoadingSections(true);
-    setSectionId('');
+    setResolvingSection(true);
     classesApi
       .listSections(classId as number)
-      .then((res) => setSections(res.data))
-      .catch(() => enqueueSnackbar('Could not load sections for that class.', { variant: 'error' }))
-      .finally(() => setLoadingSections(false));
+      .then((res) => setSectionId(res.data[0]?.id ?? ''))
+      .catch(() => enqueueSnackbar('Could not load the section for that class.', { variant: 'error' }))
+      .finally(() => setResolvingSection(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId]);
 
@@ -97,7 +97,7 @@ export function PromoteDialog({ open, studentIds, onClose, onPromoted }: Promote
       <DialogTitle>Promote Students</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
-          Promote {studentIds.length} selected student(s) to a new class, section and academic year.
+          Promote {studentIds.length} selected student(s) to a new class and academic year.
         </DialogContentText>
         <Grid container spacing={2}>
           <Grid item xs={12}>
@@ -112,24 +112,6 @@ export function PromoteDialog({ open, studentIds, onClose, onPromoted }: Promote
               {classes.map((cls) => (
                 <MenuItem key={cls.id} value={cls.id}>
                   {cls.className}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              select
-              label="Target Section"
-              fullWidth
-              value={sectionId}
-              disabled={!classId || loadingSections}
-              onChange={(e) => setSectionId(e.target.value === '' ? '' : Number(e.target.value))}
-              helperText={loadingSections ? 'Loading sections...' : undefined}
-            >
-              <MenuItem value="">Select a section</MenuItem>
-              {sections.map((sec) => (
-                <MenuItem key={sec.id} value={sec.id}>
-                  {sec.sectionName}
                 </MenuItem>
               ))}
             </TextField>
@@ -160,7 +142,7 @@ export function PromoteDialog({ open, studentIds, onClose, onPromoted }: Promote
         <Button
           onClick={handlePromote}
           variant="contained"
-          disabled={!classId || !sectionId || !academicYearId || submitting}
+          disabled={!classId || !sectionId || !academicYearId || resolvingSection || submitting}
           startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
         >
           Promote

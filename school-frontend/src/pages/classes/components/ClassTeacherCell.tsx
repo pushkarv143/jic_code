@@ -24,13 +24,14 @@ export interface ClassTeacherCellProps {
 const UNASSIGNED = '';
 
 /**
- * One class-teacher dropdown per section, stacked.
+ * The class-teacher dropdown for a class row.
  *
- * <p>A class teacher belongs to a section rather than to a class — a class here
- * has three — so a single dropdown on the class row would have to pick one
- * section arbitrarily or overwrite all three with the same teacher. Stacking one
- * control per section keeps each assignment addressed to the section it actually
- * applies to.
+ * <p>A class teacher is stored against a section rather than a class, and the
+ * school runs one section per class, so this is one control in practice. It still
+ * maps over the sections it is given: the assignment has to be addressed to a
+ * section id, and mapping keeps that honest without assuming the list has exactly
+ * one entry. The section's name is not printed — with a single "A" per class it
+ * labelled every row with the same letter.
  */
 export function ClassTeacherCell({
   sections,
@@ -45,7 +46,7 @@ export function ClassTeacherCell({
   if (sections.length === 0) {
     return (
       <Typography variant="caption" color="text.secondary">
-        No sections
+        Not set up
       </Typography>
     );
   }
@@ -63,13 +64,6 @@ export function ClassTeacherCell({
     <Stack spacing={0.5} sx={{ py: 0.75, width: '100%' }}>
       {sections.map((section) => (
         <Stack key={section.id} direction="row" spacing={0.75} alignItems="center">
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ minWidth: 18, fontWeight: 700 }}
-          >
-            {section.sectionName}
-          </Typography>
           <Select
             size="small"
             fullWidth

@@ -94,11 +94,22 @@ export const NAV_GROUPS: NavGroup[] = [
         i18nKey: 'nav.teachers',
       },
       {
-        label: 'Classes & Sections',
+        // "Sections" dropped from the label along with the picker: the school runs
+        // one section per class, so subjects are what this screen is now about.
+        label: 'Classes & Subjects',
         path: '/app/classes',
         icon: <ClassOutlinedIcon />,
         roles: [...MANAGEMENT, 'TEACHER', 'CLASS_TEACHER'],
-        i18nKey: 'nav.classesSections',
+        i18nKey: 'nav.classesSubjects',
+      },
+      {
+        // Self-service only: management reads a timetable through the class screen,
+        // where it can also be edited.
+        label: 'My Timetable',
+        path: '/app/my-timetable',
+        icon: <CalendarMonthOutlinedIcon />,
+        roles: ['TEACHER', 'CLASS_TEACHER', 'STUDENT', 'PARENT'],
+        i18nKey: 'nav.myTimetable',
       },
       {
         label: 'Attendance',

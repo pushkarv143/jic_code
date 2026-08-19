@@ -14,7 +14,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useSnackbar } from 'notistack';
 import classesApi from '@/api/classesApi';
-import type { OnlineClass, SchoolClass, Section, Subject } from '@/types';
+import type { OnlineClass, SchoolClass, Subject } from '@/types';
 import type { OnlineClassPayload } from '@/api/onlineClassesApi';
 
 export interface OnlineClassFormDialogProps {
@@ -36,10 +36,9 @@ interface FormValues {
   durationMinutes: string;
 }
 
-/** Add/edit dialog for an online class: class -> section/subject cascade, title, meeting link, schedule, duration. */
+/** Add/edit dialog for an online class: class -> subject cascade, title, meeting link, schedule, duration. */
 export function OnlineClassFormDialog({ open, editing, classes, saving, onClose, onSubmit }: OnlineClassFormDialogProps) {
   const { enqueueSnackbar } = useSnackbar();
-  const [sections, setSections] = useState<Section[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
 
   const { control, register, handleSubmit, watch, setValue, reset } = useForm<FormValues>({
@@ -70,15 +69,19 @@ export function OnlineClassFormDialog({ open, editing, classes, saving, onClose,
     }
   }, [open, editing, reset]);
 
+  // sectionId is filled in from the class rather than chosen — one section per
+  // class — but it is still required by the API, so it has to be looked up.
   useEffect(() => {
     if (!classId) {
-      setSections([]);
       setSubjects([]);
       return;
     }
-    classesApi.listSections(classId as number).then((res) => setSections(res.data)).catch(() => undefined);
+    classesApi
+      .listSections(classId as number)
+      .then((res) => setValue('sectionId', res.data[0]?.id ?? ''))
+      .catch(() => undefined);
     classesApi.listSubjects(classId as number).then((res) => setSubjects(res.data)).catch(() => undefined);
-  }, [classId]);
+  }, [classId, setValue]);
 
   const submit = (values: FormValues) => {
     if (!values.classId || !values.sectionId || !values.subjectId || !values.scheduledAt || !values.title.trim() || !values.meetingLink.trim()) {
@@ -125,20 +128,6 @@ export function OnlineClassFormDialog({ open, editing, classes, saving, onClose,
                     <MenuItem value="">Select a class</MenuItem>
                     {classes.map((c) => (
                       <MenuItem key={c.id} value={c.id}>{c.className}</MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <Controller
-                name="sectionId"
-                control={control}
-                render={({ field }) => (
-                  <TextField select label="Section" fullWidth disabled={!classId} value={field.value} onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}>
-                    <MenuItem value="">Select a section</MenuItem>
-                    {sections.map((s) => (
-                      <MenuItem key={s.id} value={s.id}>{s.sectionName}</MenuItem>
                     ))}
                   </TextField>
                 )}

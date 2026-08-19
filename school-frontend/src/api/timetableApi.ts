@@ -42,6 +42,25 @@ export const timetableApi = {
   },
 
   /**
+   * The signed-in caller's own week — the periods a teacher teaches, or the week
+   * of the class a student is enrolled in. Preferred over getForTeacher/
+   * getForSection on self-service screens: there is no id to get wrong, and the
+   * server decides what the caller is entitled to see.
+   */
+  getMine: async (): Promise<ApiResponse<TimetableSlot[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<TimetableSlot[]>>(ENDPOINTS.TIMETABLE.ME);
+    return data;
+  },
+
+  /** One student's class week — how a parent of several children asks for one of them. */
+  getForStudent: async (studentId: number): Promise<ApiResponse<TimetableSlot[]>> => {
+    const { data } = await axiosInstance.get<ApiResponse<TimetableSlot[]>>(
+      ENDPOINTS.TIMETABLE.STUDENT(studentId),
+    );
+    return data;
+  },
+
+  /**
    * Replaces the section's whole week. Whole-week rather than per-slot because a
    * grid edit usually moves several periods at once, and a sequence of per-slot
    * calls would trip the (section, day, period) unique key mid-swap. An empty

@@ -33,7 +33,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import StatusChip from '@/components/common/StatusChip';
 import studentsApi from '@/api/studentsApi';
 import classesApi from '@/api/classesApi';
-import type { ImportResult, SchoolClass, Section, Student, StudentStatus } from '@/types';
+import type { ImportResult, SchoolClass, Student, StudentStatus } from '@/types';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { exportRowsToCsv } from '@/utils/csvExport';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -49,7 +49,7 @@ const STATUS_OPTIONS: Array<{ label: string; value: StudentStatus | '' }> = [
   { label: 'Transferred', value: 'TRANSFERRED' },
 ];
 
-/** Server-paginated student directory: filter by class/section/status, search, export, promote in bulk. */
+/** Server-paginated student directory: filter by class/status, search, export, promote in bulk. */
 export function StudentListPage() {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
@@ -70,9 +70,7 @@ export function StudentListPage() {
   const [loading, setLoading] = useState(false);
 
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
   const [classId, setClassId] = useState<number | ''>('');
-  const [sectionId, setSectionId] = useState<number | ''>('');
   const [status, setStatus] = useState<StudentStatus | ''>('');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 400);
@@ -99,18 +97,6 @@ export function StudentListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!classId) {
-      setSections([]);
-      setSectionId('');
-      return;
-    }
-    classesApi
-      .listSections(classId as number)
-      .then((res) => setSections(res.data))
-      .catch(() => enqueueSnackbar('Could not load sections for that class.', { variant: 'error' }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classId]);
 
   const loadStudents = useCallback(async () => {
     setLoading(true);
@@ -121,7 +107,6 @@ export function StudentListPage() {
         size: paginationModel.pageSize,
         search: debouncedSearch || undefined,
         classId: classId || undefined,
-        sectionId: sectionId || undefined,
         status: status || undefined,
         sort,
       });
@@ -136,7 +121,7 @@ export function StudentListPage() {
     } finally {
       setLoading(false);
     }
-  }, [paginationModel, sortModel, debouncedSearch, classId, sectionId, status, enqueueSnackbar]);
+  }, [paginationModel, sortModel, debouncedSearch, classId, status, enqueueSnackbar]);
 
   useEffect(() => {
     loadStudents();
@@ -145,7 +130,7 @@ export function StudentListPage() {
   // Reset to page 0 whenever a filter changes so results aren't confusingly empty.
   useEffect(() => {
     setPaginationModel((m) => ({ ...m, page: 0 }));
-  }, [debouncedSearch, classId, sectionId, status]);
+  }, [debouncedSearch, classId, status]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -189,7 +174,6 @@ export function StudentListPage() {
     try {
       const blob = await studentsApi.exportExcel({
         classId: classId || undefined,
-        sectionId: sectionId || undefined,
         status: status || undefined,
       });
       downloadBlob(blob, 'students-export.xlsx');
@@ -344,24 +328,6 @@ export function StudentListPage() {
                 {classes.map((cls) => (
                   <MenuItem key={cls.id} value={cls.id}>
                     {cls.className}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={6} sm={3} md={2}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Section"
-                value={sectionId}
-                disabled={!classId}
-                onChange={(e) => setSectionId(e.target.value === '' ? '' : Number(e.target.value))}
-              >
-                <MenuItem value="">All sections</MenuItem>
-                {sections.map((sec) => (
-                  <MenuItem key={sec.id} value={sec.id}>
-                    {sec.sectionName}
                   </MenuItem>
                 ))}
               </TextField>

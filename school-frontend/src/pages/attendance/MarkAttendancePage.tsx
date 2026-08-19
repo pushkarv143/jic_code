@@ -27,7 +27,7 @@ import EmptyState from '@/components/common/EmptyState';
 import PageLoader from '@/components/common/PageLoader';
 import classesApi from '@/api/classesApi';
 import attendanceApi from '@/api/attendanceApi';
-import type { AttendanceStatus, SchoolClass, Section } from '@/types';
+import type { AttendanceStatus, SchoolClass } from '@/types';
 import { getStudentDisplayName } from '@/utils/format';
 
 const STATUS_OPTIONS: Array<{ value: AttendanceStatus; label: string; color: 'success' | 'error' | 'warning' | 'info' | 'secondary' }> = [
@@ -54,7 +54,6 @@ export function MarkAttendancePage() {
   const { enqueueSnackbar } = useSnackbar();
 
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
   const [classId, setClassId] = useState<number | ''>('');
   const [sectionId, setSectionId] = useState<number | ''>('');
   const [date, setDate] = useState<Dayjs>(dayjs());
@@ -72,16 +71,18 @@ export function MarkAttendancePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The class's one section is resolved rather than chosen: the school runs a
+  // single section per class, so asking for it was a click with one answer. The
+  // id is still what the grid is fetched by, so it has to be looked up.
   useEffect(() => {
     if (!classId) {
-      setSections([]);
       setSectionId('');
       return;
     }
     classesApi
       .listSections(classId as number)
-      .then((res) => setSections(res.data))
-      .catch(() => enqueueSnackbar('Could not load sections for that class.', { variant: 'error' }));
+      .then((res) => setSectionId(res.data[0]?.id ?? ''))
+      .catch(() => enqueueSnackbar('Could not load the section for that class.', { variant: 'error' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId]);
 
@@ -176,24 +177,6 @@ export function MarkAttendancePage() {
                 {classes.map((cls) => (
                   <MenuItem key={cls.id} value={cls.id}>
                     {cls.className}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={4} md={3}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Section"
-                value={sectionId}
-                disabled={!classId}
-                onChange={(e) => setSectionId(e.target.value === '' ? '' : Number(e.target.value))}
-              >
-                <MenuItem value="">Select a section</MenuItem>
-                {sections.map((sec) => (
-                  <MenuItem key={sec.id} value={sec.id}>
-                    {sec.sectionName}
                   </MenuItem>
                 ))}
               </TextField>

@@ -30,7 +30,7 @@ import StatusChip from '@/components/common/StatusChip';
 import assignmentsApi from '@/api/assignmentsApi';
 import classesApi from '@/api/classesApi';
 import { useAppSelector } from '@/store/hooks';
-import type { Assignment, AssignmentSubmission, Role, SchoolClass, Section, Subject } from '@/types';
+import type { Assignment, AssignmentSubmission, Role, SchoolClass, Subject } from '@/types';
 import type { AssignmentPayload } from '@/api/assignmentsApi';
 import AssignmentFormDialog from './components/AssignmentFormDialog';
 import SubmissionsDialog from './components/SubmissionsDialog';
@@ -42,10 +42,10 @@ const WRITE_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'TEAC
 function ManagementAssignmentsView() {
   const { enqueueSnackbar } = useSnackbar();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classId, setClassId] = useState<number | ''>('');
-  const [sectionId, setSectionId] = useState<number | ''>('');
+  // No section filter: the school runs one section per class, so filtering by
+  // class already narrows to the same rows.
   const [subjectId, setSubjectId] = useState<number | ''>('');
 
   const [rows, setRows] = useState<Assignment[]>([]);
@@ -64,14 +64,11 @@ function ManagementAssignmentsView() {
   }, []);
 
   useEffect(() => {
-    setSectionId('');
     setSubjectId('');
     if (!classId) {
-      setSections([]);
       setSubjects([]);
       return;
     }
-    classesApi.listSections(classId as number).then((res) => setSections(res.data)).catch(() => undefined);
     classesApi.listSubjects(classId as number).then((res) => setSubjects(res.data)).catch(() => undefined);
   }, [classId]);
 
@@ -80,7 +77,6 @@ function ManagementAssignmentsView() {
     try {
       const res = await assignmentsApi.list({
         classId: classId || undefined,
-        sectionId: sectionId || undefined,
         subjectId: subjectId || undefined,
         page: paginationModel.page,
         size: paginationModel.pageSize,
@@ -95,7 +91,7 @@ function ManagementAssignmentsView() {
     } finally {
       setLoading(false);
     }
-  }, [classId, sectionId, subjectId, paginationModel, enqueueSnackbar]);
+  }, [classId, subjectId, paginationModel, enqueueSnackbar]);
 
   useEffect(() => {
     load();
@@ -103,7 +99,7 @@ function ManagementAssignmentsView() {
 
   useEffect(() => {
     setPaginationModel((m) => ({ ...m, page: 0 }));
-  }, [classId, sectionId, subjectId]);
+  }, [classId, subjectId]);
 
   const handleSave = async (values: AssignmentPayload) => {
     setSaving(true);
@@ -201,14 +197,6 @@ function ManagementAssignmentsView() {
                 <MenuItem value="">All classes</MenuItem>
                 {classes.map((c) => (
                   <MenuItem key={c.id} value={c.id}>{c.className}</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={4} md={3}>
-              <TextField select fullWidth size="small" label="Section" disabled={!classId} value={sectionId} onChange={(e) => setSectionId(e.target.value === '' ? '' : Number(e.target.value))}>
-                <MenuItem value="">All sections</MenuItem>
-                {sections.map((s) => (
-                  <MenuItem key={s.id} value={s.id}>{s.sectionName}</MenuItem>
                 ))}
               </TextField>
             </Grid>

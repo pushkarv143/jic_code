@@ -177,7 +177,6 @@ export function MyStudentProfilePage() {
               </Typography>
               <Divider sx={{ my: 1.5 }} />
               <InfoRow label="Class" value={student.className} />
-              <InfoRow label="Section" value={student.sectionName} />
               <InfoRow label="Roll Number" value={student.rollNumber} />
               <InfoRow
                 label="Admission Date"

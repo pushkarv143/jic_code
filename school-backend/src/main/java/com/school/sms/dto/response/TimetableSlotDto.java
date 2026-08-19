@@ -18,6 +18,12 @@ public class TimetableSlotDto {
 
     private Long id;
     private Long classId;
+    /**
+     * Carried alongside {@code classId} because a teacher's own week spans several
+     * classes: without the name every period would read as a bare id to the one
+     * person the grid is for.
+     */
+    private String className;
     private Long sectionId;
     private String sectionName;
     private String dayOfWeek;

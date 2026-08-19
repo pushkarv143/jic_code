@@ -24,7 +24,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { exportRowsToCsv } from '@/utils/csvExport';
 import { useAppSelector } from '@/store/hooks';
 import { getStudentDisplayName } from '@/utils/format';
-import type { SchoolClass, Section, Student, StudentAttendanceReportRow, StudentAttendanceSummary } from '@/types';
+import type { SchoolClass, Student, StudentAttendanceReportRow, StudentAttendanceSummary } from '@/types';
 
 /** Filters (class/section/student/date range), a server-paginated register and a per-student summary panel. */
 export function AttendanceReportPage() {
@@ -33,9 +33,7 @@ export function AttendanceReportPage() {
   const isSelfView = user?.role === 'STUDENT' || user?.role === 'PARENT';
 
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
   const [classId, setClassId] = useState<number | ''>('');
-  const [sectionId, setSectionId] = useState<number | ''>('');
 
   const [studentQuery, setStudentQuery] = useState('');
   const debouncedStudentQuery = useDebouncedValue(studentQuery, 400);
@@ -65,18 +63,6 @@ export function AttendanceReportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSelfView]);
 
-  useEffect(() => {
-    if (isSelfView || !classId) {
-      setSections([]);
-      setSectionId('');
-      return;
-    }
-    classesApi
-      .listSections(classId as number)
-      .then((res) => setSections(res.data))
-      .catch(() => enqueueSnackbar('Could not load sections.', { variant: 'error' }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classId, isSelfView]);
 
   useEffect(() => {
     if (isSelfView || !debouncedStudentQuery) {
@@ -96,7 +82,6 @@ export function AttendanceReportPage() {
       const res = await attendanceApi.getStudentReport({
         studentId: effectiveStudentId,
         classId: isSelfView ? undefined : classId || undefined,
-        sectionId: isSelfView ? undefined : sectionId || undefined,
         startDate: startDate.format('YYYY-MM-DD'),
         endDate: endDate.format('YYYY-MM-DD'),
         page: paginationModel.page,
@@ -114,7 +99,7 @@ export function AttendanceReportPage() {
     } finally {
       setLoading(false);
     }
-  }, [effectiveStudentId, classId, sectionId, startDate, endDate, paginationModel, sortModel, isSelfView, enqueueSnackbar]);
+  }, [effectiveStudentId, classId, startDate, endDate, paginationModel, sortModel, isSelfView, enqueueSnackbar]);
 
   useEffect(() => {
     loadReport();
@@ -122,7 +107,7 @@ export function AttendanceReportPage() {
 
   useEffect(() => {
     setPaginationModel((m) => ({ ...m, page: 0 }));
-  }, [effectiveStudentId, classId, sectionId, startDate, endDate]);
+  }, [effectiveStudentId, classId, startDate, endDate]);
 
   const isOwnStudentView = user?.role === 'STUDENT';
 
@@ -228,24 +213,6 @@ export function AttendanceReportPage() {
                     {classes.map((cls) => (
                       <MenuItem key={cls.id} value={cls.id}>
                         {cls.className}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} sm={6} md={2.5}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    label="Section"
-                    value={sectionId}
-                    disabled={!classId}
-                    onChange={(e) => setSectionId(e.target.value === '' ? '' : Number(e.target.value))}
-                  >
-                    <MenuItem value="">All sections</MenuItem>
-                    {sections.map((sec) => (
-                      <MenuItem key={sec.id} value={sec.id}>
-                        {sec.sectionName}
                       </MenuItem>
                     ))}
                   </TextField>

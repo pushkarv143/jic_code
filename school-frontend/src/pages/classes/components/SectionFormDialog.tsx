@@ -31,7 +31,14 @@ export interface SectionFormDialogProps {
   onSubmit: (values: { sectionName: string; roomNumber?: string; capacity?: number }) => void;
 }
 
-/** Add/edit dialog for a section within a class. */
+/**
+ * Edits the room and capacity of a class's single section.
+ *
+ * <p>The section name is not shown: every class has exactly one section, named
+ * "A", and the backend refuses anything else. It is still submitted, because the
+ * update endpoint takes the whole section, so it is carried through from the
+ * record being edited rather than typed in.
+ */
 export function SectionFormDialog({ open, editing, saving, onClose, onSubmit }: SectionFormDialogProps) {
   const {
     register,
@@ -60,22 +67,12 @@ export function SectionFormDialog({ open, editing, saving, onClose, onSubmit }: 
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{editing ? 'Edit Section' : 'Add Section'}</DialogTitle>
+      <DialogTitle>Edit Room &amp; Capacity</DialogTitle>
       <Box component="form" onSubmit={handleSubmit(submit)} noValidate>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12}>
-              <TextField
-                label="Section Name"
-                fullWidth
-                autoFocus
-                {...register('sectionName')}
-                error={!!errors.sectionName}
-                helperText={errors.sectionName?.message}
-              />
-            </Grid>
             <Grid item xs={6}>
-              <TextField label="Room Number" fullWidth {...register('roomNumber')} />
+              <TextField label="Room Number" fullWidth autoFocus {...register('roomNumber')} />
             </Grid>
             <Grid item xs={6}>
               <TextField

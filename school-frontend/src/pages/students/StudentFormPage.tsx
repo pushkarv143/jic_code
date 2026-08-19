@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -34,7 +34,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import studentsApi, { type GuardianPayload, type StudentPayload } from '@/api/studentsApi';
 import classesApi from '@/api/classesApi';
 import academicYearsApi from '@/api/academicYearsApi';
-import type { AcademicYear, SchoolClass, Section } from '@/types';
+import type { AcademicYear, SchoolClass } from '@/types';
 import { makeStudentSchema, type StudentFormValues } from './StudentFormPage.schema';
 
 const RELATION_OPTIONS = ['Father', 'Mother', 'Guardian', 'Grandfather', 'Grandmother', 'Uncle', 'Aunt', 'Other'];
@@ -50,7 +50,7 @@ const emptyGuardian = { name: '', relation: '', occupation: '', phone: '', email
  * displayed value comes from the `value` prop, which register never sets. Bound
  * that way a select works while typing yet renders **empty** after `reset()` —
  * which is exactly why editing a student showed blank Gender, Blood Group,
- * Class, Section and Academic Year, while the Date of Birth beside them (already
+ * Class and Academic Year, while the Date of Birth beside them (already
  * using Controller) populated correctly.
  *
  * `value ?? ''` matters as well: passing undefined makes MUI treat the field as
@@ -111,7 +111,6 @@ export function StudentFormPage() {
   const [admissionNumber, setAdmissionNumber] = useState<string | null>(null);
 
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
   const [years, setYears] = useState<AcademicYear[]>([]);
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -121,7 +120,6 @@ export function StudentFormPage() {
   const [guardianDeleteIndex, setGuardianDeleteIndex] = useState<number | null>(null);
   const [savingGuardianIndex, setSavingGuardianIndex] = useState<number | null>(null);
 
-  const isFirstClassEffect = useRef(true);
 
   const {
     register,
@@ -181,24 +179,19 @@ export function StudentFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cascade sections whenever the selected class changes; skip clearing the
-  // section on the very first run so hydrated edit data isn't wiped out.
+  // Resolve the class's one section instead of cascading a picker. The value is
+  // still required by the schema, so it is set rather than left blank — and the
+  // first-run guard this used to need is gone with the choice: whether creating
+  // or editing, the answer is the same single section of the selected class.
   useEffect(() => {
     if (!watchedClassId) {
-      setSections([]);
+      setValue('sectionId', '');
       return;
     }
     classesApi
       .listSections(Number(watchedClassId))
-      .then((res) => {
-        setSections(res.data);
-        if (isFirstClassEffect.current) {
-          isFirstClassEffect.current = false;
-        } else {
-          setValue('sectionId', '');
-        }
-      })
-      .catch(() => enqueueSnackbar('Could not load sections for that class.', { variant: 'error' }));
+      .then((res) => setValue('sectionId', res.data[0] ? String(res.data[0].id) : ''))
+      .catch(() => enqueueSnackbar('Could not load the section for that class.', { variant: 'error' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedClassId]);
 
@@ -806,22 +799,6 @@ export function StudentFormPage() {
                       {classes.map((cls) => (
                         <MenuItem key={cls.id} value={String(cls.id)}>
                           {cls.className}
-                        </MenuItem>
-                      ))}
-                    </ControlledSelect>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <ControlledSelect
-                      name="sectionId"
-                      control={control}
-                      label="Section"
-                      disabled={!watchedClassId}
-                      errorMessage={errors.sectionId?.message as string | undefined}
-                    >
-                      <MenuItem value="">Select a section</MenuItem>
-                      {sections.map((sec) => (
-                        <MenuItem key={sec.id} value={String(sec.id)}>
-                          {sec.sectionName}
                         </MenuItem>
                       ))}
                     </ControlledSelect>

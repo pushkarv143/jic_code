@@ -24,6 +24,7 @@ import EmptyState from '@/components/common/EmptyState';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import classesApi from '@/api/classesApi';
 import teachersApi from '@/api/teachersApi';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { ClassOverview, SchoolClass, Section, Subject, Teacher } from '@/types';
 import SectionFormDialog from './components/SectionFormDialog';
 import SubjectFormDialog from './components/SubjectFormDialog';
@@ -32,14 +33,24 @@ import ClassOverviewTab from './components/ClassOverviewTab';
 import ClassOfficialsTab from './components/ClassOfficialsTab';
 import ClassTimetableTab from './components/ClassTimetableTab';
 
-const TABS = ['Overview', 'Sections', 'Subjects', 'Teacher Mapping', 'Officials', 'Timetable'] as const;
+// "Sections" is now "Class Setup": the school runs one section per class, so the
+// tab shows that section's room, capacity and class teacher without naming it a
+// section or offering to add another. The tab positions are unchanged so the
+// index checks below keep lining up.
+const TABS = ['Overview', 'Class Setup', 'Subjects', 'Teacher Mapping', 'Officials', 'Timetable'] as const;
 
-/** Class detail: sections (with class-teacher assignment), subjects, and a section x subject teacher-mapping grid. */
+// Assigning periods is the office's job, and /api/v1/timetable/classes/** is
+// management-only, so a teacher opening this tab would only reach a 403. They read
+// their own week on My Timetable instead.
+const TIMETABLE_TAB_INDEX = TABS.indexOf('Timetable');
+
+/** Class detail: room/capacity and class teacher, subjects, and a subject x teacher mapping grid. */
 export function ClassDetailPage() {
   const { id } = useParams<{ id: string }>();
   const classId = Number(id);
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+  const { isManagement } = usePermissions();
 
   const [schoolClass, setSchoolClass] = useState<SchoolClass | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
@@ -52,7 +63,6 @@ export function ClassDetailPage() {
   const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [savingSection, setSavingSection] = useState(false);
-  const [deleteSectionTarget, setDeleteSectionTarget] = useState<Section | null>(null);
 
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
@@ -98,36 +108,22 @@ export function ClassDetailPage() {
     loadAll();
   }, [loadAll]);
 
+  // Update only. The section is created with the class, and the backend refuses a
+  // second one, so there is no create branch left to reach from here.
   const handleSaveSection = async (values: { sectionName: string; roomNumber?: string; capacity?: number }) => {
+    if (!editingSection) return;
     setSavingSection(true);
     try {
-      if (editingSection) {
-        await classesApi.updateSection(editingSection.id, values);
-        enqueueSnackbar('Section updated.', { variant: 'success' });
-      } else {
-        await classesApi.createSection(classId, values);
-        enqueueSnackbar('Section added.', { variant: 'success' });
-      }
+      await classesApi.updateSection(editingSection.id, values);
+      enqueueSnackbar('Room and capacity updated.', { variant: 'success' });
       setSectionDialogOpen(false);
       setEditingSection(null);
       const res = await classesApi.listSections(classId);
       setSections(res.data);
     } catch (err: any) {
-      enqueueSnackbar(err?.response?.data?.message ?? 'Could not save this section.', { variant: 'error' });
+      enqueueSnackbar(err?.response?.data?.message ?? 'Could not save these details.', { variant: 'error' });
     } finally {
       setSavingSection(false);
-    }
-  };
-
-  const handleDeleteSection = async () => {
-    if (!deleteSectionTarget) return;
-    try {
-      await classesApi.removeSection(deleteSectionTarget.id);
-      enqueueSnackbar('Section deleted.', { variant: 'success' });
-      setDeleteSectionTarget(null);
-      setSections((prev) => prev.filter((s) => s.id !== deleteSectionTarget.id));
-    } catch (err: any) {
-      enqueueSnackbar(err?.response?.data?.message ?? 'Could not delete this section.', { variant: 'error' });
     }
   };
 
@@ -189,7 +185,7 @@ export function ClassDetailPage() {
         subtitle={schoolClass.academicYearName ?? `Academic Year #${schoolClass.academicYearId}`}
         breadcrumbs={[
           { label: 'Dashboard', to: '/app/dashboard' },
-          { label: 'Classes & Sections', to: '/app/classes' },
+          { label: 'Classes & Subjects', to: '/app/classes' },
           { label: schoolClass.className },
         ]}
         action={
@@ -205,61 +201,53 @@ export function ClassDetailPage() {
           onChange={(_e: SyntheticEvent, v: number) => setTab(v)}
           sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
         >
-          {TABS.map((t) => (
-            <Tab key={t} label={t} />
+          {TABS.map((t, index) => (
+            <Tab
+              key={t}
+              label={t}
+              // Kept mounted (rather than filtered out) so every tab keeps the index
+              // the content checks below use.
+              sx={index === TIMETABLE_TAB_INDEX && !isManagement ? { display: 'none' } : undefined}
+            />
           ))}
         </Tabs>
         <CardContent>
+          {/* One section per class, so this reads as the class's own room, capacity
+              and class teacher. No add or delete: the section is created with the
+              class and there is never a second one to manage. */}
           {tab === 1 && (
             <Box>
-              <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<AddOutlinedIcon />}
-                  onClick={() => {
-                    setEditingSection(null);
-                    setSectionDialogOpen(true);
-                  }}
-                >
-                  Add Section
-                </Button>
-              </Stack>
               {sections.length === 0 ? (
-                <EmptyState title="No sections yet" description="Add a section to start enrolling students into this class." />
+                <EmptyState
+                  title="This class has no section record"
+                  description="Every class is created with one. Contact an administrator if this class is missing it — students cannot be enrolled until it exists."
+                />
               ) : (
                 <Grid container spacing={2}>
-                  {sections.map((sec) => (
-                    <Grid item xs={12} sm={6} md={4} key={sec.id}>
+                  {sections.slice(0, 1).map((sec) => (
+                    <Grid item xs={12} sm={8} md={6} key={sec.id}>
                       <Card variant="outlined">
                         <CardContent>
                           <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                             <Box>
                               <Typography variant="subtitle1" fontWeight={700}>
-                                Section {sec.sectionName}
+                                Room &amp; Capacity
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
                                 Room {sec.roomNumber ?? '-'} · Capacity {sec.capacity ?? '-'}
                               </Typography>
                             </Box>
-                            <Stack direction="row" spacing={0.5}>
-                              <Tooltip title="Edit">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => {
-                                    setEditingSection(sec);
-                                    setSectionDialogOpen(true);
-                                  }}
-                                >
-                                  <EditOutlinedIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Delete">
-                                <IconButton size="small" onClick={() => setDeleteSectionTarget(sec)}>
-                                  <DeleteOutlineOutlinedIcon fontSize="small" color="error" />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
+                            <Tooltip title="Edit room and capacity">
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  setEditingSection(sec);
+                                  setSectionDialogOpen(true);
+                                }}
+                              >
+                                <EditOutlinedIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                           </Stack>
                           <Box sx={{ mt: 2 }}>
                             <Autocomplete
@@ -350,7 +338,7 @@ export function ClassDetailPage() {
               refetches it rather than leaving a stale "No current head boy". */}
           {tab === 4 && <ClassOfficialsTab classId={classId} onChanged={loadOverview} />}
 
-          {tab === 5 && (
+          {tab === 5 && isManagement && (
             <ClassTimetableTab
               classId={classId}
               sections={sections}
@@ -370,16 +358,6 @@ export function ClassDetailPage() {
           setEditingSection(null);
         }}
         onSubmit={handleSaveSection}
-      />
-
-      <ConfirmDialog
-        open={!!deleteSectionTarget}
-        title="Delete section"
-        message={`Delete section ${deleteSectionTarget?.sectionName ?? ''}? This may fail if students are enrolled in it.`}
-        confirmLabel="Delete"
-        destructive
-        onConfirm={handleDeleteSection}
-        onCancel={() => setDeleteSectionTarget(null)}
       />
 
       <SubjectFormDialog

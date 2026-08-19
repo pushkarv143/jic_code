@@ -29,15 +29,40 @@ public class TimetableController {
 
     private final TimetableService timetableService;
 
-    // A timetable is what a student turns up to, so it is readable by everyone
-    // the school teaches, not just staff.
-    private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST',"
-                    + "'ACCOUNTANT','STUDENT','PARENT')";
+    /**
+     * Browsing and editing any class's or any teacher's week belongs to the office
+     * that builds the timetable.
+     *
+     * <p>This replaces an earlier decision that a timetable is "readable by everyone
+     * the school teaches". The reasoning then was that a student turns up to it
+     * anyway; the reasoning now is that a student turns up to <em>their own</em>, and
+     * being able to enumerate any class's week — or any named teacher's whereabouts,
+     * period by period — is more than that needs. The self-service paths below serve
+     * the legitimate case without a browsable id.
+     */
+    private static final String MANAGEMENT_ONLY = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
+
+    /**
+     * "My own week." Teachers, students and parents reach their timetable through
+     * these and nothing else; the service resolves whose it is from the token, and
+     * StudentAccessGuard holds a parent to their own children.
+     *
+     * <p>Management is included so one screen can serve every role rather than
+     * branching, and because they may see everything regardless.
+     */
+    private static final String SELF_SERVICE_ROLES =
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','STUDENT','PARENT')";
+
+    /**
+     * Only the office assigns periods — the same set as {@link #MANAGEMENT_ONLY},
+     * spelled out rather than aliased so the roles are readable at the constant
+     * itself (AdminAuthorizationAuditTest resolves these textually, and an alias
+     * hides the role list from it).
+     */
     private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
 
     @GetMapping("/classes/{classId}/sections/{sectionId}")
-    @PreAuthorize(READ_ROLES)
+    @PreAuthorize(MANAGEMENT_ONLY)
     @Operation(summary = "One section's week, with a clashWarning on any slot that double-books a teacher or room")
     public ResponseEntity<ApiResponse<List<TimetableSlotDto>>> getForSection(@PathVariable Long classId,
                                                                              @PathVariable Long sectionId) {
@@ -46,7 +71,7 @@ public class TimetableController {
     }
 
     @GetMapping("/classes/{classId}")
-    @PreAuthorize(READ_ROLES)
+    @PreAuthorize(MANAGEMENT_ONLY)
     @Operation(summary = "Every section of a class, for the class-wide grid")
     public ResponseEntity<ApiResponse<List<TimetableSlotDto>>> getForClass(@PathVariable Long classId) {
         return ResponseEntity.ok(ApiResponse.success("Timetable retrieved successfully",
@@ -54,11 +79,28 @@ public class TimetableController {
     }
 
     @GetMapping("/teachers/{teacherId}")
-    @PreAuthorize(READ_ROLES)
+    @PreAuthorize(MANAGEMENT_ONLY)
     @Operation(summary = "One teacher's week across every section they are timetabled in")
     public ResponseEntity<ApiResponse<List<TimetableSlotDto>>> getForTeacher(@PathVariable Long teacherId) {
         return ResponseEntity.ok(ApiResponse.success("Teacher timetable retrieved successfully",
                 timetableService.getForTeacher(teacherId)));
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize(SELF_SERVICE_ROLES)
+    @Operation(summary = "The signed-in caller's own week — teaching periods for a teacher, "
+            + "the enrolled class's week for a student (no id to tamper with)")
+    public ResponseEntity<ApiResponse<List<TimetableSlotDto>>> getMine() {
+        return ResponseEntity.ok(ApiResponse.success("Timetable retrieved successfully",
+                timetableService.getForCurrentUser()));
+    }
+
+    @GetMapping("/students/{studentId}")
+    @PreAuthorize(SELF_SERVICE_ROLES)
+    @Operation(summary = "The week of the class a student is enrolled in; a parent is held to their own children")
+    public ResponseEntity<ApiResponse<List<TimetableSlotDto>>> getForStudent(@PathVariable Long studentId) {
+        return ResponseEntity.ok(ApiResponse.success("Student timetable retrieved successfully",
+                timetableService.getForStudent(studentId)));
     }
 
     @PutMapping("/classes/{classId}/sections/{sectionId}")

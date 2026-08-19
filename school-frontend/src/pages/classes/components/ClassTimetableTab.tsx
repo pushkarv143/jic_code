@@ -23,7 +23,8 @@ import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import { useSnackbar } from 'notistack';
 import EmptyState from '@/components/common/EmptyState';
 import timetableApi, { type TimetableSlotPayload } from '@/api/timetableApi';
-import type { Section, Subject, Teacher, TimetableDay, TimetableSlot } from '@/types';
+import classesApi from '@/api/classesApi';
+import type { ClassSubjectTeacher, Section, Subject, Teacher, TimetableDay, TimetableSlot } from '@/types';
 
 export interface ClassTimetableTabProps {
   classId: number;
@@ -74,6 +75,9 @@ export function ClassTimetableTab({ classId, sections, subjects, teachers }: Cla
 
   const [sectionId, setSectionId] = useState<number | ''>(sections[0]?.id ?? '');
   const [slots, setSlots] = useState<EditableSlot[]>([]);
+  // Subject -> teacher for this class, used only to pre-fill a period's teacher
+  // when its subject is picked.
+  const [mappings, setMappings] = useState<ClassSubjectTeacher[]>([]);
   const [periodCount, setPeriodCount] = useState(DEFAULT_PERIODS.length);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -105,6 +109,15 @@ export function ClassTimetableTab({ classId, sections, subjects, teachers }: Cla
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!sectionId) return;
+    classesApi
+      .listTeacherMappings({ sectionId: sectionId as number })
+      .then((res) => setMappings(res.data))
+      // Non-fatal: without the mappings the teacher simply is not pre-filled.
+      .catch(() => setMappings([]));
+  }, [sectionId]);
 
   const slotAt = useCallback(
     (day: TimetableDay, period: number) =>
@@ -172,29 +185,16 @@ export function ClassTimetableTab({ classId, sections, subjects, teachers }: Cla
   if (sections.length === 0) {
     return (
       <EmptyState
-        title="No sections yet"
-        description="A timetable belongs to a section — add one on the Sections tab first."
+        title="This class has no section record"
+        description="A timetable is stored against the class's section, and this class is missing it."
       />
     );
   }
 
   return (
     <Box>
+      {/* No section picker: the class has one section, selected on mount. */}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} sx={{ mb: 2 }}>
-        <TextField
-          select
-          size="small"
-          label="Section"
-          value={sectionId}
-          onChange={(e) => setSectionId(Number(e.target.value))}
-          sx={{ minWidth: 180 }}
-        >
-          {sections.map((section) => (
-            <MenuItem key={section.id} value={section.id}>
-              {section.sectionName}
-            </MenuItem>
-          ))}
-        </TextField>
         <Button size="small" variant="outlined" startIcon={<AddOutlinedIcon />} onClick={() => setPeriodCount((c) => c + 1)}>
           Add period
         </Button>
@@ -258,11 +258,21 @@ export function ClassTimetableTab({ classId, sections, subjects, teachers }: Cla
                                 size="small"
                                 fullWidth
                                 value={slot?.subjectId ?? ''}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  const subjectId = e.target.value === '' ? null : Number(e.target.value);
+                                  // Default the teacher to whoever is mapped to teach
+                                  // this subject, so the common case is one click
+                                  // instead of two. Still editable below: a cover
+                                  // lesson is a legitimate exception.
+                                  const mappedTeacherId =
+                                    subjectId === null
+                                      ? null
+                                      : (mappings.find((m) => m.subjectId === subjectId)?.teacherId ?? null);
                                   updateSlot(day, period, {
-                                    subjectId: e.target.value === '' ? null : Number(e.target.value),
-                                  })
-                                }
+                                    subjectId,
+                                    teacherId: slot?.teacherId ?? mappedTeacherId,
+                                  });
+                                }}
                                 SelectProps={{ displayEmpty: true }}
                                 inputProps={{ 'aria-label': `Subject for ${day} period ${period}` }}
                               >

@@ -6,10 +6,15 @@ import com.school.sms.dto.response.PageResponse;
 import com.school.sms.entity.LeaveApplicantType;
 import com.school.sms.entity.LeaveApplication;
 import com.school.sms.entity.LeaveStatus;
+import com.school.sms.entity.Section;
+import com.school.sms.entity.Student;
 import com.school.sms.entity.User;
 import com.school.sms.exception.BadRequestException;
 import com.school.sms.exception.ResourceNotFoundException;
 import com.school.sms.repository.LeaveApplicationRepository;
+import com.school.sms.repository.SectionRepository;
+import com.school.sms.repository.StudentRepository;
+import com.school.sms.repository.TeacherRepository;
 import com.school.sms.repository.UserRepository;
 import com.school.sms.security.SecurityUtils;
 import com.school.sms.security.UserPrincipal;
@@ -31,6 +36,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,6 +50,11 @@ public class LeaveApplicationServiceImpl implements LeaveApplicationService {
     private final LeaveApplicationRepository leaveApplicationRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    // Needed only to answer "is this applicant one of my homeroom students?" when a
+    // class teacher decides student leave.
+    private final TeacherRepository teacherRepository;
+    private final SectionRepository sectionRepository;
+    private final StudentRepository studentRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -55,8 +66,55 @@ public class LeaveApplicationServiceImpl implements LeaveApplicationService {
                         StringUtils.hasText(status) ? LeaveStatus.valueOf(status.toUpperCase()) : null)
                 .build();
 
+        // Row-level scoping, for the same reason the decision check exists: a class
+        // teacher who may only approve their own homeroom's leave has no business
+        // reading the rest of the school's applications, reasons included. Applied as
+        // a predicate rather than a post-filter so the page count matches the rows.
+        // null = sees everything (management); an empty list = sees nothing, which
+        // must stay empty rather than degrade into "no filter".
+        List<Long> scopedApplicantIds = resolveLeaveApplicantScope();
+        if (scopedApplicantIds != null) {
+            Specification<LeaveApplication> scopeSpec = scopedApplicantIds.isEmpty()
+                    ? (root, query, cb) -> cb.disjunction()
+                    : (root, query, cb) -> root.get("applicantId").in(scopedApplicantIds);
+            spec = spec == null ? scopeSpec : spec.and(scopeSpec);
+        }
+
         Page<LeaveApplication> page = leaveApplicationRepository.findAll(spec, pageable);
         return toPageResponse(page);
+    }
+
+    /**
+     * The applicant user ids the caller may see in the management list, or null when
+     * they may see every one of them.
+     *
+     * <p>Only a class teacher is narrowed: to the students of their own homeroom,
+     * which is exactly the set they can decide on. A class teacher with no homeroom
+     * sees an empty list rather than everything.
+     */
+    private List<Long> resolveLeaveApplicantScope() {
+        UserPrincipal principal = SecurityUtils.getCurrentUserPrincipal()
+                .orElseThrow(() -> new AccessDeniedException("No authenticated user found"));
+        Set<String> authorities = principal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
+
+        boolean coreApprover = authorities.contains(ROLE_PREFIX + AppConstants.ROLE_SUPER_ADMIN)
+                || authorities.contains(ROLE_PREFIX + AppConstants.ROLE_PRINCIPAL)
+                || authorities.contains(ROLE_PREFIX + AppConstants.ROLE_VICE_PRINCIPAL);
+        if (coreApprover) {
+            return null;
+        }
+        if (!authorities.contains(ROLE_PREFIX + AppConstants.ROLE_CLASS_TEACHER)) {
+            // The endpoint's @PreAuthorize admits nobody else, so this is a
+            // belt-and-braces empty rather than a reachable branch.
+            return List.of();
+        }
+
+        return teacherRepository.findByUserId(principal.getId())
+                .flatMap(teacher -> sectionRepository.findByClassTeacherId(teacher.getId()))
+                .map(section -> studentRepository.findUserIdsBySectionId(section.getId()))
+                .orElseGet(List::of);
     }
 
     @Override
@@ -132,6 +190,18 @@ public class LeaveApplicationServiceImpl implements LeaveApplicationService {
         leaveApplicationRepository.delete(application);
     }
 
+    /**
+     * Who may approve or reject this application.
+     *
+     * <p>Management decides anything. A class teacher decides student leave, but
+     * only for a student in <em>their own</em> homeroom: the role alone used to be
+     * enough, which let any class teacher in the school approve any student's
+     * leave — including students they have never taught.
+     *
+     * <p>The homeroom is resolved through the section (a class teacher is stored as
+     * {@code sections.class_teacher_id}), so a class teacher with no homeroom
+     * decides nothing, and staff or teacher leave is never theirs to decide.
+     */
     private void ensureCanDecide(LeaveApplication application) {
         UserPrincipal principal = SecurityUtils.getCurrentUserPrincipal()
                 .orElseThrow(() -> new AccessDeniedException("No authenticated user found"));
@@ -142,12 +212,43 @@ public class LeaveApplicationServiceImpl implements LeaveApplicationService {
         boolean coreApprover = authorities.contains(ROLE_PREFIX + AppConstants.ROLE_SUPER_ADMIN)
                 || authorities.contains(ROLE_PREFIX + AppConstants.ROLE_PRINCIPAL)
                 || authorities.contains(ROLE_PREFIX + AppConstants.ROLE_VICE_PRINCIPAL);
-        boolean classTeacherForStudentLeave = application.getApplicantType() == LeaveApplicantType.STUDENT
-                && authorities.contains(ROLE_PREFIX + AppConstants.ROLE_CLASS_TEACHER);
-
-        if (!coreApprover && !classTeacherForStudentLeave) {
-            throw new AccessDeniedException("You do not have permission to approve/reject this leave application");
+        if (coreApprover) {
+            return;
         }
+
+        boolean isClassTeacher = authorities.contains(ROLE_PREFIX + AppConstants.ROLE_CLASS_TEACHER);
+        if (isClassTeacher && application.getApplicantType() == LeaveApplicantType.STUDENT
+                && isOwnHomeroomStudent(principal.getId(), application.getApplicantId())) {
+            return;
+        }
+
+        throw new AccessDeniedException("You do not have permission to approve/reject this leave application");
+    }
+
+    /**
+     * True when {@code applicantUserId} is a student sitting in the homeroom that
+     * {@code approverUserId} is the class teacher of.
+     *
+     * <p>Fails closed at every missing link — no teacher record, no homeroom, no
+     * student record, no section — because each of those means the approver cannot
+     * be shown to be this student's class teacher.
+     */
+    private boolean isOwnHomeroomStudent(Long approverUserId, Long applicantUserId) {
+        if (approverUserId == null || applicantUserId == null) {
+            return false;
+        }
+        Long homeroomSectionId = teacherRepository.findByUserId(approverUserId)
+                .flatMap(teacher -> sectionRepository.findByClassTeacherId(teacher.getId()))
+                .map(Section::getId)
+                .orElse(null);
+        if (homeroomSectionId == null) {
+            return false;
+        }
+        return studentRepository.findByUserId(applicantUserId)
+                .map(Student::getSection)
+                .map(Section::getId)
+                .filter(homeroomSectionId::equals)
+                .isPresent();
     }
 
     private LeaveApplicantType deriveApplicantType(String roleName) {

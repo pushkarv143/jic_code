@@ -279,7 +279,6 @@ export function StudentProfilePage() {
                 <InfoRow label="Admission Number" value={student.admissionNumber} />
                 <InfoRow label="Admission Date" value={dayjs(student.admissionDate).format('DD MMM YYYY')} />
                 <InfoRow label="Class" value={student.className} />
-                <InfoRow label="Section" value={student.sectionName} />
                 <InfoRow label="Roll Number" value={student.rollNumber} />
                 <InfoRow label="Status" value={student.status} />
 

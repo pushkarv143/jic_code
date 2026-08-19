@@ -51,6 +51,13 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
             "               AND cst.section.id = s.section.id))")
     List<Long> findIdsTaughtByTeacherId(@Param("teacherId") Long teacherId);
 
+    // Login ids of the students in one section. Leave applications identify their
+    // applicant by users.id rather than by student id, so scoping a class teacher's
+    // leave list to their homeroom has to be expressed in user ids.
+    @Query("SELECT s.user.id FROM Student s WHERE s.deleted = false AND s.section.id = :sectionId "
+            + "AND s.user.id IS NOT NULL")
+    List<Long> findUserIdsBySectionId(@Param("sectionId") Long sectionId);
+
     // Roll-number allocation: the highest roll number currently used in a
     // class/section, so the next admission continues the sequence. Deleted students
     // are included on purpose — reusing a withdrawn student's roll number would make

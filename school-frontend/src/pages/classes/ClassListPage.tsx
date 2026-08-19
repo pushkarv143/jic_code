@@ -38,7 +38,7 @@ import AcademicYearManagerDialog from './components/AcademicYearManagerDialog';
 import ClassTeacherCell from './components/ClassTeacherCell';
 import ClassOfficialCell from './components/ClassOfficialCell';
 
-/** Class directory: filter by academic year, add/edit/delete classes, drill into a class for sections/subjects/mapping. */
+/** Class directory: filter by academic year, add/edit/delete classes, drill into a class for subjects/mapping/timetable. */
 export function ClassListPage() {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
@@ -312,9 +312,9 @@ export function ClassListPage() {
   return (
     <Box>
       <PageHeader
-        title="Classes & Sections"
-        subtitle="Manage classes, sections, subjects and teacher mapping"
-        breadcrumbs={[{ label: 'Dashboard', to: '/app/dashboard' }, { label: 'Classes & Sections' }]}
+        title="Classes & Subjects"
+        subtitle="Manage classes, subjects, teacher mapping and timetables"
+        breadcrumbs={[{ label: 'Dashboard', to: '/app/dashboard' }, { label: 'Classes & Subjects' }]}
         action={
           <Stack direction="row" spacing={1.5}>
             <Button variant="outlined" startIcon={<CalendarMonthOutlinedIcon />} onClick={() => setYearManagerOpen(true)}>
@@ -400,7 +400,7 @@ export function ClassListPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete class"
-        message={`Are you sure you want to delete ${deleteTarget?.className ?? ''}? This may fail if it still has sections, subjects or students.`}
+        message={`Are you sure you want to delete ${deleteTarget?.className ?? ''}? This may fail if it still has subjects or students.`}
         confirmLabel="Delete"
         destructive
         onConfirm={handleDelete}

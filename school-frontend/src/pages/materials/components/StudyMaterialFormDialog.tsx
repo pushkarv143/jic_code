@@ -19,7 +19,7 @@ import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import { useSnackbar } from 'notistack';
 import studyMaterialsApi, { type StudyMaterialPayload } from '@/api/studyMaterialsApi';
 import classesApi from '@/api/classesApi';
-import type { MaterialType, SchoolClass, Section, StudyMaterial, Subject } from '@/types';
+import type { MaterialType, SchoolClass, StudyMaterial, Subject } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
 
 const MATERIAL_TYPES: MaterialType[] = ['NOTES', 'PRESENTATION', 'WORKSHEET', 'REFERENCE', 'VIDEO', 'OTHER'];
@@ -36,12 +36,12 @@ type SourceMode = 'file' | 'link';
 
 export function StudyMaterialFormDialog({ open, editing, onClose, onSaved }: StudyMaterialFormDialogProps) {
   const { enqueueSnackbar } = useSnackbar();
-  // Only management may share with a whole class; the backend refuses a null
-  // section for anyone else, so the option is hidden rather than offered and refused.
+  // The backend refuses a null section for anyone but management. Nobody picks a
+  // section any more — it is resolved from the class below — so this only matters
+  // if that lookup comes back empty, which the guard in handleSave reports.
   const { isManagement } = usePermissions();
 
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
 
   const [classId, setClassId] = useState<number | ''>('');
@@ -94,16 +94,20 @@ export function StudyMaterialFormDialog({ open, editing, onClose, onSaved }: Stu
     }
   }, [open, editing]);
 
+  // The class's one section is resolved and sent, rather than chosen. Sharing
+  // "with every section" and sharing with the single section are now the same
+  // thing, and always sending the id keeps the backend's rule — a non-management
+  // uploader must name a section — satisfied without asking.
   useEffect(() => {
     if (!classId) {
-      setSections([]);
+      setSectionId('');
       setSubjects([]);
       return;
     }
     classesApi
       .listSections(Number(classId))
-      .then((res) => setSections(res.data))
-      .catch(() => setSections([]));
+      .then((res) => setSectionId(res.data[0]?.id ?? ''))
+      .catch(() => setSectionId(''));
     classesApi
       .listSubjects(Number(classId))
       .then((res) => setSubjects(res.data))
@@ -118,7 +122,7 @@ export function StudyMaterialFormDialog({ open, editing, onClose, onSaved }: Stu
       return;
     }
     if (!isManagement && !sectionId) {
-      setError('Pick a section. Only management can share with every section of a class.');
+      setError('That class has no section set up yet, so material cannot be attached to it.');
       return;
     }
     // Mirrors the backend's either-or rule so the user is told before a round trip.
@@ -183,26 +187,6 @@ export function StudyMaterialFormDialog({ open, editing, onClose, onSaved }: Stu
                 {classes.map((cls) => (
                   <MenuItem key={cls.id} value={cls.id}>
                     {cls.className}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Section"
-                value={sectionId}
-                disabled={!classId}
-                onChange={(e) => setSectionId(e.target.value === '' ? '' : Number(e.target.value))}
-                helperText={isManagement ? 'Leave blank to share with every section' : 'Required'}
-              >
-                {isManagement && <MenuItem value="">All sections</MenuItem>}
-                {sections.map((section) => (
-                  <MenuItem key={section.id} value={section.id}>
-                    {section.sectionName}
                   </MenuItem>
                 ))}
               </TextField>
