@@ -10,6 +10,8 @@ import com.greenwood.school.data.remote.api.AcademicApi
 import com.greenwood.school.data.remote.dto.AcademicYearDto
 import com.greenwood.school.data.remote.dto.AcademicYearRequestDto
 import com.greenwood.school.data.remote.dto.AssignClassTeacherRequestDto
+import com.greenwood.school.data.remote.dto.ClassOfficialDto
+import com.greenwood.school.data.remote.dto.ClassOverviewDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherRequestDto
 import com.greenwood.school.data.remote.dto.DepartmentDto
@@ -20,6 +22,7 @@ import com.greenwood.school.data.remote.dto.SchoolClassRequestDto
 import com.greenwood.school.data.remote.dto.SectionDto
 import com.greenwood.school.data.remote.dto.SectionRequestDto
 import com.greenwood.school.data.remote.dto.SubjectDto
+import com.greenwood.school.data.remote.dto.TimetableSlotDto
 import com.greenwood.school.data.remote.dto.SubjectRequestDto
 import com.greenwood.school.domain.repository.AcademicRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -137,6 +140,20 @@ class AcademicRepositoryImpl @Inject constructor(
 
     override suspend fun getSubjects(classId: Long): ApiResult<List<SubjectDto>> =
         call { api.getSubjects(classId) }
+
+    /* ---- Class module ------------------------------------------------------ */
+
+    override suspend fun getClassOverview(classId: Long): ApiResult<ClassOverviewDto> =
+        call { api.getClassOverview(classId) }
+
+    override suspend fun getClassOfficials(classId: Long): ApiResult<List<ClassOfficialDto>> =
+        call { api.getClassOfficials(classId) }
+
+    override suspend fun getClassOfficialHistory(classId: Long): ApiResult<List<ClassOfficialDto>> =
+        call { api.getClassOfficialHistory(classId) }
+
+    override suspend fun getClassTimetable(classId: Long): ApiResult<List<TimetableSlotDto>> =
+        call { api.getClassTimetable(classId) }
 
     override suspend fun createSubject(classId: Long, request: SubjectRequestDto): ApiResult<SubjectDto> =
         call { api.createSubject(classId, request) }

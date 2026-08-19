@@ -4,6 +4,8 @@ import com.greenwood.school.data.remote.dto.AcademicYearDto
 import com.greenwood.school.data.remote.dto.AcademicYearRequestDto
 import com.greenwood.school.data.remote.dto.ApiEnvelope
 import com.greenwood.school.data.remote.dto.AssignClassTeacherRequestDto
+import com.greenwood.school.data.remote.dto.ClassOfficialDto
+import com.greenwood.school.data.remote.dto.ClassOverviewDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherRequestDto
 import com.greenwood.school.data.remote.dto.DepartmentDto
@@ -15,6 +17,7 @@ import com.greenwood.school.data.remote.dto.SchoolClassRequestDto
 import com.greenwood.school.data.remote.dto.SectionDto
 import com.greenwood.school.data.remote.dto.SectionRequestDto
 import com.greenwood.school.data.remote.dto.SubjectDto
+import com.greenwood.school.data.remote.dto.TimetableSlotDto
 import com.greenwood.school.data.remote.dto.SubjectRequestDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -130,6 +133,37 @@ interface AcademicApi {
 
     @GET("classes/{classId}/subjects")
     suspend fun getSubjects(@Path("classId") classId: Long): ApiEnvelope<List<SubjectDto>>
+
+    /**
+     * Strength, people, cross-module stats and setup warnings for one class, in a
+     * single response - the figures all derive from the same roster, so fetching
+     * them separately risks showing numbers that disagree with each other.
+     */
+    @GET("classes/{classId}/overview")
+    suspend fun getClassOverview(
+        @Path("classId") classId: Long,
+        @Query("startDate") startDate: String? = null,
+        @Query("endDate") endDate: String? = null,
+    ): ApiEnvelope<ClassOverviewDto>
+
+    /** Current holders of every post in a class (head boy, head girl, monitor, ...). */
+    @GET("classes/{classId}/officials")
+    suspend fun getClassOfficials(@Path("classId") classId: Long): ApiEnvelope<List<ClassOfficialDto>>
+
+    /** Every holder the class has had, newest appointment first. */
+    @GET("classes/{classId}/officials/history")
+    suspend fun getClassOfficialHistory(@Path("classId") classId: Long): ApiEnvelope<List<ClassOfficialDto>>
+
+    /** Every section of a class, for the weekly grid. Slots carry their own clash warnings. */
+    @GET("timetable/classes/{classId}")
+    suspend fun getClassTimetable(@Path("classId") classId: Long): ApiEnvelope<List<TimetableSlotDto>>
+
+    /** One section's week. */
+    @GET("timetable/classes/{classId}/sections/{sectionId}")
+    suspend fun getSectionTimetable(
+        @Path("classId") classId: Long,
+        @Path("sectionId") sectionId: Long,
+    ): ApiEnvelope<List<TimetableSlotDto>>
 
     @POST("classes/{classId}/subjects")
     suspend fun createSubject(

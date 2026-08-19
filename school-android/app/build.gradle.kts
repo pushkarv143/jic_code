@@ -27,15 +27,22 @@ android {
         applicationId = "com.greenwood.school"
         minSdk = 26
         targetSdk = 35
-        // Bumped for password recovery by one-time passcode, which replaces a flow
-        // that emailed a reset link — the link pointed at the web frontend, so
-        // resetting a password from the phone never really worked. Carries the
-        // 1.2.0 contents too: teacher add/edit, the reachable student edit form,
-        // and the client half of seven defects. A new versionCode is what lets the
-        // device recognise this as an upgrade rather than refusing to install over
-        // the previous build.
-        versionCode = 4
-        versionName = "1.3.0"
+        // Bumped for the class module: a class now shows its overview (strength
+        // against capacity, attendance, fee defaulters, setup gaps), the posts held
+        // in it (head boy, head girl, monitor) with the tenure history behind them,
+        // and the weekly timetable. Read-only here - appointing and editing stay on
+        // the web app, where the dropdowns and clash handling live.
+        //
+        // Also carries two server-side fixes that need no client change: attendance
+        // now returns a student's own name, so the roll-number fallback stops
+        // firing, and the monthly register answers students and parents instead of
+        // refusing them.
+        //
+        // Carries 1.3.0 before it (passcode sign-in and recovery), 1.2.0 before
+        // that. A new versionCode is what lets the device recognise this as an
+        // upgrade rather than refusing to install over the previous build.
+        versionCode = 5
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true

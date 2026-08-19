@@ -3,6 +3,8 @@ package com.greenwood.school.domain.repository
 import com.greenwood.school.core.network.ApiResult
 import com.greenwood.school.data.remote.dto.AcademicYearDto
 import com.greenwood.school.data.remote.dto.AcademicYearRequestDto
+import com.greenwood.school.data.remote.dto.ClassOfficialDto
+import com.greenwood.school.data.remote.dto.ClassOverviewDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherRequestDto
 import com.greenwood.school.data.remote.dto.DepartmentDto
@@ -13,6 +15,7 @@ import com.greenwood.school.data.remote.dto.SchoolClassRequestDto
 import com.greenwood.school.data.remote.dto.SectionDto
 import com.greenwood.school.data.remote.dto.SectionRequestDto
 import com.greenwood.school.data.remote.dto.SubjectDto
+import com.greenwood.school.data.remote.dto.TimetableSlotDto
 import com.greenwood.school.data.remote.dto.SubjectRequestDto
 
 /**
@@ -52,6 +55,21 @@ interface AcademicRepository {
     suspend fun assignClassTeacher(sectionId: Long, teacherId: Long): ApiResult<SectionDto>
 
     suspend fun getSubjects(classId: Long): ApiResult<List<SubjectDto>>
+
+    /* ---- Class module: posts and timetable -------------------------------- */
+
+    /** Strength, people, stats and setup warnings for one class, in one call. */
+    suspend fun getClassOverview(classId: Long): ApiResult<ClassOverviewDto>
+
+    /** Current post-holders of a class. */
+    suspend fun getClassOfficials(classId: Long): ApiResult<List<ClassOfficialDto>>
+
+    /** Every holder the class has had, newest first. */
+    suspend fun getClassOfficialHistory(classId: Long): ApiResult<List<ClassOfficialDto>>
+
+    /** The whole class's week, one entry per section and period. */
+    suspend fun getClassTimetable(classId: Long): ApiResult<List<TimetableSlotDto>>
+
     suspend fun createSubject(classId: Long, request: SubjectRequestDto): ApiResult<SubjectDto>
     suspend fun updateSubject(id: Long, request: SubjectRequestDto): ApiResult<SubjectDto>
     suspend fun deleteSubject(id: Long): ApiResult<Unit>

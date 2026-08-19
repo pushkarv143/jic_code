@@ -13,7 +13,7 @@ import androidx.compose.material.icons.outlined.Class
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,10 +31,13 @@ import com.greenwood.school.core.common.Formatters
 import com.greenwood.school.core.network.ApiResult
 import com.greenwood.school.core.network.AppError
 import com.greenwood.school.core.network.getOrNull
+import com.greenwood.school.data.remote.dto.ClassOfficialDto
+import com.greenwood.school.data.remote.dto.ClassOverviewDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherDto
 import com.greenwood.school.data.remote.dto.SchoolClassDto
 import com.greenwood.school.data.remote.dto.SectionDto
 import com.greenwood.school.data.remote.dto.SubjectDto
+import com.greenwood.school.data.remote.dto.TimetableSlotDto
 import com.greenwood.school.domain.repository.AcademicRepository
 import com.greenwood.school.navigation.Routes
 import com.greenwood.school.ui.components.AppTopBar
@@ -142,7 +145,7 @@ fun ClassDetailScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var tab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Sections", "Subjects", "Teachers")
+    val tabs = listOf("Overview", "Sections", "Subjects", "Teachers", "Posts", "Timetable")
 
     Scaffold(
         topBar = {
@@ -154,7 +157,7 @@ fun ClassDetailScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            TabRow(selectedTabIndex = tab) {
+            ScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp) {
                 tabs.forEachIndexed { index, label ->
                     Tab(selected = tab == index, onClick = { tab = index }, text = { Text(label) })
                 }
@@ -164,9 +167,12 @@ fun ClassDetailScreen(
                 state.isLoading -> FullScreenLoader()
                 state.error != null -> ErrorView(error = state.error!!, onRetry = viewModel::load)
                 else -> when (tab) {
-                    0 -> SectionsTab(state.sections)
-                    1 -> SubjectsTab(state.subjects)
-                    else -> TeacherMappingTab(state.mappings)
+                    0 -> ClassOverviewTab(state.overview)
+                    1 -> SectionsTab(state.sections)
+                    2 -> SubjectsTab(state.subjects)
+                    3 -> TeacherMappingTab(state.mappings)
+                    4 -> ClassOfficialsTab(state.officials, state.officialHistory)
+                    else -> ClassTimetableTab(state.timetable)
                 }
             }
         }
@@ -272,6 +278,21 @@ class ClassDetailViewModel @Inject constructor(
                 val sections = async { academicRepository.getSections(classId).getOrNull().orEmpty() }
                 val subjects = async { academicRepository.getSubjects(classId).getOrNull().orEmpty() }
 
+                // The class-module tabs are fetched alongside the rest rather than on
+                // first open, for the same reason: switching tabs stays instant. Each
+                // falls back to empty on failure so one unavailable tab cannot take the
+                // whole screen down - the class itself is the only required call.
+                val overview = async { academicRepository.getClassOverview(classId).getOrNull() }
+                val officials = async {
+                    academicRepository.getClassOfficials(classId).getOrNull().orEmpty()
+                }
+                val officialHistory = async {
+                    academicRepository.getClassOfficialHistory(classId).getOrNull().orEmpty()
+                }
+                val timetable = async {
+                    academicRepository.getClassTimetable(classId).getOrNull().orEmpty()
+                }
+
                 when (val classResult = classDeferred.await()) {
                     is ApiResult.Success -> {
                         val loadedSections = sections.await()
@@ -292,6 +313,10 @@ class ClassDetailViewModel @Inject constructor(
                             sections = loadedSections,
                             subjects = subjects.await(),
                             mappings = mappings,
+                            overview = overview.await(),
+                            officials = officials.await(),
+                            officialHistory = officialHistory.await(),
+                            timetable = timetable.await(),
                             isLoading = false,
                         )
                     }
@@ -309,6 +334,10 @@ data class ClassDetailUiState(
     val sections: List<SectionDto> = emptyList(),
     val subjects: List<SubjectDto> = emptyList(),
     val mappings: List<ClassSubjectTeacherDto> = emptyList(),
+    val overview: ClassOverviewDto? = null,
+    val officials: List<ClassOfficialDto> = emptyList(),
+    val officialHistory: List<ClassOfficialDto> = emptyList(),
+    val timetable: List<TimetableSlotDto> = emptyList(),
     val isLoading: Boolean = true,
     val error: AppError? = null,
 )
