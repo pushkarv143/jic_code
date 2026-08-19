@@ -72,6 +72,12 @@ object Routes {
     const val ATTENDANCE = "attendance"
     const val LEAVE = "leave"
 
+    /**
+     * The signed-in user's own week. One route for teachers, students and parents:
+     * the server decides whose timetable it is, so there is no id to pass.
+     */
+    const val MY_TIMETABLE = "my-timetable"
+
     const val EXAMS = "exams"
     const val EXAM_DETAIL = "exams/{examId}"
     const val MARKS_ENTRY = "exams/{examId}/schedules/{scheduleId}/marks"
@@ -206,7 +212,17 @@ val MENU_SECTIONS: List<MenuSection> = listOf(
                 MANAGEMENT_AND_TEACHERS,
                 setOf("TEACHER_VIEW"),
             ),
-            MenuEntry("Classes & Sections", Routes.CLASSES, Icons.Outlined.Class, MANAGEMENT_AND_TEACHERS),
+            // "Sections" dropped from the label with the picker: the school runs one
+            // section per class, so subjects are what this screen is now about.
+            MenuEntry("Classes & Subjects", Routes.CLASSES, Icons.Outlined.Class, MANAGEMENT_AND_TEACHERS),
+            // Self-service only. Management reads a class's week inside the class
+            // screen, which is also the only place the server lets them.
+            MenuEntry(
+                "My Timetable",
+                Routes.MY_TIMETABLE,
+                Icons.Outlined.CalendarMonth,
+                Role.TEACHING + Role.SELF_SERVICE,
+            ),
             MenuEntry(
                 "Attendance",
                 Routes.ATTENDANCE,
@@ -338,6 +354,7 @@ val IMPLEMENTED_ROUTES: Set<String> = setOf(
     Routes.CLASS_DETAIL,
     Routes.ATTENDANCE,
     Routes.LEAVE,
+    Routes.MY_TIMETABLE,
     Routes.EXAMS,
     Routes.EXAM_DETAIL,
     Routes.MARKS_ENTRY,

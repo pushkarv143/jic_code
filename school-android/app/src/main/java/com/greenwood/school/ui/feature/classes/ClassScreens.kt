@@ -28,9 +28,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.greenwood.school.core.common.Formatters
+import com.greenwood.school.core.common.Role
+import com.greenwood.school.core.common.isManagement
 import com.greenwood.school.core.network.ApiResult
 import com.greenwood.school.core.network.AppError
 import com.greenwood.school.core.network.getOrNull
+import com.greenwood.school.core.session.SessionManager
 import com.greenwood.school.data.remote.dto.ClassOfficialDto
 import com.greenwood.school.data.remote.dto.ClassOverviewDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherDto
@@ -69,7 +72,7 @@ fun ClassListScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     SimpleListScaffold(
-        title = "Classes & Sections",
+        title = "Classes & Subjects",
         subtitle = state.currentYearName,
         items = state.classes,
         isLoading = state.isLoading,
@@ -82,13 +85,10 @@ fun ClassListScreen(
     ) { schoolClass ->
         EntityRowCard(
             title = schoolClass.className,
-            subtitle = buildString {
-                schoolClass.sectionCount?.let { append("$it section${if (it == 1) "" else "s"}") }
-                schoolClass.studentCount?.let {
-                    if (isNotEmpty()) append(" · ")
-                    append("$it student${if (it == 1) "" else "s"}")
-                }
-            }.ifBlank { null },
+            // Section count dropped: it now reads "1 section" on every row, which is
+            // a fact about the school rather than about this class.
+            subtitle = schoolClass.studentCount
+                ?.let { "$it student${if (it == 1) "" else "s"}" },
             metadata = schoolClass.academicYearName,
             leadingInitials = schoolClass.className.filter { it.isDigit() }.ifBlank { "C" },
             showChevron = true,
@@ -145,7 +145,17 @@ fun ClassDetailScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var tab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Overview", "Sections", "Subjects", "Teachers", "Posts", "Timetable")
+    // "Sections" is "Class Setup" now: one section per class, so the tab is that
+    // section's room, capacity and class teacher rather than a list to browse.
+    // Timetable is management-only, matching the endpoint behind it.
+    val tabs = buildList {
+        add("Overview")
+        add("Class Setup")
+        add("Subjects")
+        add("Teachers")
+        add("Posts")
+        if (state.isManagement) add("Timetable")
+    }
 
     Scaffold(
         topBar = {
@@ -166,23 +176,38 @@ fun ClassDetailScreen(
             when {
                 state.isLoading -> FullScreenLoader()
                 state.error != null -> ErrorView(error = state.error!!, onRetry = viewModel::load)
-                else -> when (tab) {
-                    0 -> ClassOverviewTab(state.overview)
-                    1 -> SectionsTab(state.sections)
-                    2 -> SubjectsTab(state.subjects)
-                    3 -> TeacherMappingTab(state.mappings)
-                    4 -> ClassOfficialsTab(state.officials, state.officialHistory)
-                    else -> ClassTimetableTab(state.timetable)
+                // Dispatched by label rather than index: the Timetable tab is only
+                // present for management, and an index-based branch would quietly
+                // shift every tab along when it is absent.
+                else -> when (tabs.getOrNull(tab)) {
+                    "Overview" -> ClassOverviewTab(state.overview)
+                    "Class Setup" -> ClassSetupTab(state.sections)
+                    "Subjects" -> SubjectsTab(state.subjects)
+                    "Teachers" -> TeacherMappingTab(state.mappings)
+                    "Posts" -> ClassOfficialsTab(state.officials, state.officialHistory)
+                    "Timetable" -> ClassTimetableTab(state.timetable)
+                    else -> ClassOverviewTab(state.overview)
                 }
             }
         }
     }
 }
 
+/**
+ * The class's room, capacity and class teacher.
+ *
+ * Reads as the class's own details rather than as a section: the school runs one
+ * section per class, so naming it added a letter and no information. It still maps
+ * over the list it is given instead of assuming a single entry — the data is what
+ * decides that, not this screen.
+ */
 @Composable
-private fun SectionsTab(sections: List<SectionDto>) {
+private fun ClassSetupTab(sections: List<SectionDto>) {
     if (sections.isEmpty()) {
-        EmptyView(title = "No sections", message = "This class has no sections yet.")
+        EmptyView(
+            title = "Not set up yet",
+            message = "This class has no section record, so students cannot be enrolled into it.",
+        )
         return
     }
     LazyColumn(
@@ -192,7 +217,7 @@ private fun SectionsTab(sections: List<SectionDto>) {
         items(sections.size, key = { sections[it].id }) { index ->
             val section = sections[index]
             EntityRowCard(
-                title = "Section ${section.sectionName}",
+                title = "Room & capacity",
                 subtitle = section.classTeacherName?.let { "Class teacher: $it" }
                     ?: "No class teacher assigned",
                 metadata = listOfNotNull(
@@ -200,7 +225,7 @@ private fun SectionsTab(sections: List<SectionDto>) {
                     section.studentCount?.let { "$it students" },
                     section.capacity?.let { "Capacity $it" },
                 ).joinToString(" · ").ifBlank { null },
-                leadingInitials = section.sectionName.take(1),
+                leadingInitials = section.studentCount?.toString() ?: "-",
             )
         }
     }
@@ -233,7 +258,7 @@ private fun TeacherMappingTab(mappings: List<ClassSubjectTeacherDto>) {
     if (mappings.isEmpty()) {
         EmptyView(
             title = "No subject teachers assigned",
-            message = "Assign a teacher to each subject and section to see them here.",
+            message = "Assign a teacher to each subject to see them here.",
         )
         return
     }
@@ -243,10 +268,12 @@ private fun TeacherMappingTab(mappings: List<ClassSubjectTeacherDto>) {
     ) {
         items(mappings.size, key = { mappings[it].id }) { index ->
             val mapping = mappings[index]
+            // Subject first: this list answers "who takes maths", and the section is
+            // no longer worth a line of its own now there is only one per class.
             EntityRowCard(
-                title = mapping.teacherName ?: Formatters.PLACEHOLDER,
-                subtitle = mapping.subjectName,
-                metadata = mapping.sectionName?.let { "Section $it" },
+                title = mapping.subjectName ?: Formatters.PLACEHOLDER,
+                subtitle = mapping.teacherName ?: "Unassigned",
+                metadata = mapping.className,
                 leadingInitials = Formatters.initials(mapping.teacherName.orEmpty()),
             )
         }
@@ -256,12 +283,21 @@ private fun TeacherMappingTab(mappings: List<ClassSubjectTeacherDto>) {
 @HiltViewModel
 class ClassDetailViewModel @Inject constructor(
     private val academicRepository: AcademicRepository,
+    sessionManager: SessionManager,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val classId: Long = checkNotNull(savedStateHandle[Routes.ARG_CLASS_ID])
 
-    private val _state = MutableStateFlow(ClassDetailUiState())
+    /**
+     * Whether the caller may read this class's week at all. The endpoint behind the
+     * Timetable tab is management-only server-side, so a teacher is not offered the
+     * tab and the request is not made — otherwise a guaranteed 403 would arrive as
+     * an empty grid reading "no timetable yet", which is a different claim.
+     */
+    private val isManagement = Role.from(sessionManager.currentUser?.role).isManagement
+
+    private val _state = MutableStateFlow(ClassDetailUiState(isManagement = isManagement))
     val state: StateFlow<ClassDetailUiState> = _state.asStateFlow()
 
     init {
@@ -290,7 +326,11 @@ class ClassDetailViewModel @Inject constructor(
                     academicRepository.getClassOfficialHistory(classId).getOrNull().orEmpty()
                 }
                 val timetable = async {
-                    academicRepository.getClassTimetable(classId).getOrNull().orEmpty()
+                    if (isManagement) {
+                        academicRepository.getClassTimetable(classId).getOrNull().orEmpty()
+                    } else {
+                        emptyList()
+                    }
                 }
 
                 when (val classResult = classDeferred.await()) {
@@ -309,6 +349,7 @@ class ClassDetailViewModel @Inject constructor(
                             .flatMap { it.await() }
 
                         _state.value = ClassDetailUiState(
+                            isManagement = isManagement,
                             schoolClass = classResult.data,
                             sections = loadedSections,
                             subjects = subjects.await(),
@@ -330,6 +371,8 @@ class ClassDetailViewModel @Inject constructor(
 }
 
 data class ClassDetailUiState(
+    /** Drives whether the Timetable tab is offered — see the view model. */
+    val isManagement: Boolean = false,
     val schoolClass: SchoolClassDto? = null,
     val sections: List<SectionDto> = emptyList(),
     val subjects: List<SubjectDto> = emptyList(),

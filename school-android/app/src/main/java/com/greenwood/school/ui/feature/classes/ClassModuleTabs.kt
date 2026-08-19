@@ -229,14 +229,17 @@ fun ClassTimetableTab(slots: List<TimetableSlotDto>) {
             }
 
             val ordered = daySlots.sortedWith(
-                compareBy({ it.periodNumber }, { it.sectionName.orEmpty() }),
+                compareBy({ it.periodNumber }, { it.className.orEmpty() }),
             )
             items(ordered.size, key = { "slot-$day-${ordered[it].id ?: it}" }) { index ->
                 val slot = ordered[index]
                 EntityRowCard(
                     title = slot.title,
+                    // The section is no longer named: the school runs one per class, so
+                    // "Section A" repeated down the list said nothing. The class does
+                    // carry information — a teacher's own week spans several.
                     subtitle = listOfNotNull(
-                        slot.sectionName?.let { "Section $it" },
+                        slot.className,
                         slot.teacherName,
                     ).joinToString(" · ").ifBlank { null },
                     metadata = listOfNotNull(

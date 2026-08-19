@@ -50,6 +50,7 @@ import com.greenwood.school.ui.feature.fees.FeeSetupScreen
 import com.greenwood.school.ui.feature.fees.ScholarshipsScreen
 import com.greenwood.school.ui.feature.hub.HubScreen
 import com.greenwood.school.ui.feature.leave.LeaveScreen
+import com.greenwood.school.ui.feature.timetable.MyTimetableScreen
 import com.greenwood.school.ui.components.AppFooter
 import com.greenwood.school.ui.feature.library.LibraryScreen
 import com.greenwood.school.ui.feature.materials.StudyMaterialsScreen
@@ -394,6 +395,7 @@ private fun MainShell(
 
                 composable(Routes.ATTENDANCE) { AttendanceScreen(onBack = nav::popBackStack) }
                 composable(Routes.LEAVE) { LeaveScreen(onBack = nav::popBackStack) }
+                composable(Routes.MY_TIMETABLE) { MyTimetableScreen(onBack = nav::popBackStack) }
 
                 composable(Routes.EXAMS) {
                     ExamListScreen(

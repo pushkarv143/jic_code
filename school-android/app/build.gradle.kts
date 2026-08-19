@@ -27,22 +27,32 @@ android {
         applicationId = "com.greenwood.school"
         minSdk = 26
         targetSdk = 35
-        // Bumped for the class module: a class now shows its overview (strength
-        // against capacity, attendance, fee defaulters, setup gaps), the posts held
-        // in it (head boy, head girl, monitor) with the tenure history behind them,
-        // and the weekly timetable. Read-only here - appointing and editing stay on
-        // the web app, where the dropdowns and clash handling live.
+        // 1.5.0 — one section per class, and a timetable of your own.
         //
-        // Also carries two server-side fixes that need no client change: attendance
-        // now returns a student's own name, so the roll-number fallback stops
-        // firing, and the monthly register answers students and parents instead of
-        // refusing them.
+        // The school now runs a single section per class, so the section picker is
+        // gone from attendance (the id is resolved from the class instead), the class
+        // module's "Sections" tab is "Class Setup" — that section's room, capacity
+        // and class teacher — and "Section A" has stopped being printed on rows where
+        // it said nothing.
         //
-        // Carries 1.3.0 before it (passcode sign-in and recovery), 1.2.0 before
-        // that. A new versionCode is what lets the device recognise this as an
-        // upgrade rather than refusing to install over the previous build.
-        versionCode = 5
-        versionName = "1.4.0"
+        // New: My Timetable, for teachers, students and parents. It asks
+        // `timetable/me`, so the server decides whose week it is and there is no id in
+        // the path; a teacher sees the periods they teach and which class each is for,
+        // a student their class's week and who teaches each subject.
+        //
+        // Also follows the server's tightened authorization, so the phone stops
+        // offering what the API would refuse: browsing any class's week is
+        // management-only now, so the Timetable tab is hidden for teachers rather than
+        // arriving as an empty grid, and a class teacher only ever sees the leave
+        // applications and students of their own class - both already scoped
+        // server-side, so they need no client change beyond not asking.
+        //
+        // Carries 1.4.0 before it (the class module on the phone), 1.3.0 before that
+        // (passcode sign-in and recovery). A new versionCode is what lets the device
+        // recognise this as an upgrade rather than refusing to install over the
+        // previous build.
+        versionCode = 6
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true

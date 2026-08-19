@@ -457,28 +457,15 @@ private fun ClassSectionDatePicker(
     showDate: Boolean = true,
 ) {
     Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Row {
-            Box(Modifier.weight(1f)) {
-                DropdownField(
-                    label = "Class",
-                    options = state.classes,
-                    selected = state.selectedClass,
-                    onSelected = viewModel::onClassSelected,
-                    optionLabel = { it.className },
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            Box(Modifier.weight(1f)) {
-                DropdownField(
-                    label = "Section",
-                    options = state.sections,
-                    selected = state.selectedSection,
-                    onSelected = viewModel::onSectionSelected,
-                    enabled = state.selectedClass != null,
-                    optionLabel = { it.sectionName },
-                )
-            }
-        }
+        // Class only: with one section per class there was nothing to pick, so the
+        // section is resolved from the class in the view model instead.
+        DropdownField(
+            label = "Class",
+            options = state.classes,
+            selected = state.selectedClass,
+            onSelected = viewModel::onClassSelected,
+            optionLabel = { it.className },
+        )
         if (showDate) {
             Spacer(Modifier.height(8.dp))
             DateField(label = "Date", value = state.date, onValueChange = viewModel::onDateSelected)

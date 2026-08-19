@@ -266,8 +266,17 @@ class AttendanceViewModel @Inject constructor(
         _state.update { it.copy(classes = academicRepository.getClasses().getOrNull().orEmpty()) }
     }
 
+    /**
+     * Loads the class's sections and selects the one there is.
+     *
+     * The school runs a single section per class, so choosing it was a dropdown with
+     * one option — the picker is gone from the screen and the id is resolved here
+     * instead. The grid is still fetched by section, which is why the lookup stays.
+     */
     private fun loadSections(classId: Long) = viewModelScope.launch {
-        _state.update { it.copy(sections = academicRepository.getSections(classId).getOrNull().orEmpty()) }
+        val sections = academicRepository.getSections(classId).getOrNull().orEmpty()
+        _state.update { it.copy(sections = sections, selectedSection = sections.firstOrNull()) }
+        if (sections.isNotEmpty()) loadGrid()
     }
 
     /**

@@ -67,8 +67,18 @@ interface AcademicRepository {
     /** Every holder the class has had, newest first. */
     suspend fun getClassOfficialHistory(classId: Long): ApiResult<List<ClassOfficialDto>>
 
-    /** The whole class's week, one entry per section and period. */
+    /** The whole class's week, one entry per period. Management only, server-side. */
     suspend fun getClassTimetable(classId: Long): ApiResult<List<TimetableSlotDto>>
+
+    /**
+     * The signed-in user's own week: the periods a teacher teaches, or the week of
+     * the class a student is enrolled in. What every non-management role uses, since
+     * browsing a class by id is not theirs to do.
+     */
+    suspend fun getMyTimetable(): ApiResult<List<TimetableSlotDto>>
+
+    /** The caller's own subjects — assigned to teach, or taught to them. */
+    suspend fun getMyTeacherMappings(): ApiResult<List<ClassSubjectTeacherDto>>
 
     suspend fun createSubject(classId: Long, request: SubjectRequestDto): ApiResult<SubjectDto>
     suspend fun updateSubject(id: Long, request: SubjectRequestDto): ApiResult<SubjectDto>

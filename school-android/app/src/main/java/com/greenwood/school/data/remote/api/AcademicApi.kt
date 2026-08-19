@@ -154,9 +154,30 @@ interface AcademicApi {
     @GET("classes/{classId}/officials/history")
     suspend fun getClassOfficialHistory(@Path("classId") classId: Long): ApiEnvelope<List<ClassOfficialDto>>
 
-    /** Every section of a class, for the weekly grid. Slots carry their own clash warnings. */
+    /**
+     * Every section of a class, for the weekly grid. Slots carry their own clash
+     * warnings.
+     *
+     * <p>Management only, server-side: browsing an arbitrary class's week is the
+     * office's job. Teachers and students read [getMyTimetable] instead.
+     */
     @GET("timetable/classes/{classId}")
     suspend fun getClassTimetable(@Path("classId") classId: Long): ApiEnvelope<List<TimetableSlotDto>>
+
+    /**
+     * The signed-in caller's own week — the periods a teacher teaches, or the week
+     * of the class a student is enrolled in. No id in the path: the server resolves
+     * whose timetable it is from the token.
+     */
+    @GET("timetable/me")
+    suspend fun getMyTimetable(): ApiEnvelope<List<TimetableSlotDto>>
+
+    /**
+     * The caller's own slice of the subject/teacher grid: a teacher's assigned
+     * subjects, or the subjects and teachers of a student's own class.
+     */
+    @GET("class-subject-teacher/me")
+    suspend fun getMyTeacherMappings(): ApiEnvelope<List<ClassSubjectTeacherDto>>
 
     /** One section's week. */
     @GET("timetable/classes/{classId}/sections/{sectionId}")

@@ -105,6 +105,8 @@ data class SubjectRequestDto(
 data class ClassSubjectTeacherDto(
     val id: Long,
     val classId: Long,
+    /** Present so a teacher's own list, which spans classes, can name each one. */
+    val className: String? = null,
     val sectionId: Long,
     val sectionName: String? = null,
     val subjectId: Long,
@@ -221,6 +223,12 @@ data class ClassOverviewDto(
 data class TimetableSlotDto(
     val id: Long? = null,
     val classId: Long? = null,
+    /**
+     * Sent alongside [classId] because a teacher's own week spans several classes:
+     * without the name every period would read as a bare id to the one person the
+     * grid is for.
+     */
+    val className: String? = null,
     val sectionId: Long? = null,
     val sectionName: String? = null,
     val dayOfWeek: String = "",

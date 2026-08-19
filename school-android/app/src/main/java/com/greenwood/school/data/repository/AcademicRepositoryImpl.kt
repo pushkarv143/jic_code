@@ -155,6 +155,12 @@ class AcademicRepositoryImpl @Inject constructor(
     override suspend fun getClassTimetable(classId: Long): ApiResult<List<TimetableSlotDto>> =
         call { api.getClassTimetable(classId) }
 
+    override suspend fun getMyTimetable(): ApiResult<List<TimetableSlotDto>> =
+        call { api.getMyTimetable() }
+
+    override suspend fun getMyTeacherMappings(): ApiResult<List<ClassSubjectTeacherDto>> =
+        call { api.getMyTeacherMappings() }
+
     override suspend fun createSubject(classId: Long, request: SubjectRequestDto): ApiResult<SubjectDto> =
         call { api.createSubject(classId, request) }
 
