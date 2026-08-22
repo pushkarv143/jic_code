@@ -99,12 +99,19 @@ android {
         // token, so the flow ends back at sign-in. The state survives the app being
         // killed mid-reset.
         //
+        // 1.11.0 adds Resend Credentials to the student form, for SUPER_ADMIN
+        // alone. It regenerates the temporary password, keeps the username (that is
+        // the student's identity, and a lost password says nothing about it), sends
+        // both by email and SMS, re-arms the forced first-login reset and ends every
+        // session on the account. Behind a confirmation, because the student's
+        // current password stops working the moment it is tapped.
+        //
         // Carries 1.5.0 before it (one section per class and My Timetable), 1.4.0 before
         // that (the class module on the phone), 1.3.0 before that (passcode sign-in and
         // recovery). A new versionCode is what lets the device recognise this as an
         // upgrade rather than refusing to install over the previous build.
-        versionCode = 11
-        versionName = "1.10.0"
+        versionCode = 12
+        versionName = "1.11.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true

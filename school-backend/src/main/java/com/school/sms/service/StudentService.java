@@ -36,6 +36,25 @@ public interface StudentService {
 
     void delete(Long id);
 
+    /**
+     * Regenerates a student's temporary password and sends it to them again.
+     *
+     * <p>For the case the whole provisioning flow has no other answer to: the
+     * credentials email never arrived, or arrived and was lost. The password is
+     * stored only as a bcrypt hash, so there is nothing to look up and re-send —
+     * the only way to tell a student their password is to make a new one.
+     *
+     * <p>The username is left alone. It is the student's identity, a lost password
+     * says nothing about it, and regenerating would collide with the existing row
+     * and come back suffixed — "pushkarv" as "pushkarv1", which reads as somebody
+     * else.
+     *
+     * <p>Every session on the account is ended. Otherwise a device already signed in
+     * would keep working on a password that no longer exists, and the forced reset
+     * this re-arms would apply to everyone except the person holding that device.
+     */
+    void resendCredentials(Long id);
+
     StudentDto updateStatus(Long id, StudentStatusRequest request);
 
     String uploadPhoto(Long id, MultipartFile file);

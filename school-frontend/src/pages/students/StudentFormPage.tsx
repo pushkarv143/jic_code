@@ -31,6 +31,8 @@ import dayjs from 'dayjs';
 import PageHeader from '@/components/common/PageHeader';
 import PageLoader from '@/components/common/PageLoader';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import LockResetOutlinedIcon from '@mui/icons-material/LockResetOutlined';
+import { useAccess } from '@/access/AccessProvider';
 import studentsApi, { type GuardianPayload, type StudentPayload } from '@/api/studentsApi';
 import classesApi from '@/api/classesApi';
 import academicYearsApi from '@/api/academicYearsApi';
@@ -103,6 +105,15 @@ export function StudentFormPage() {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id && id !== 'new';
   const studentId = isEdit ? Number(id) : undefined;
+
+  // STUDENT_CREDENTIALS_RESET, held by SUPER_ADMIN alone. Read from the live grants
+  // rather than compared against a role name, so a school that delegates it needs no
+  // new build — and so the button is offered exactly when the endpoint behind it
+  // would accept the call.
+  const { can } = useAccess();
+  const canResendCredentials = can('STUDENT_CREDENTIALS_RESET');
+  const [confirmResend, setConfirmResend] = useState(false);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -445,6 +456,30 @@ export function StudentFormPage() {
     }
   };
 
+  /**
+   * Regenerates the student's temporary password and has the server send it.
+   *
+   * The new password is never returned — it goes to the student's own email and
+   * phone. All this shows is the server's sentence about where it went, which is
+   * the one thing the administrator cannot see for themselves.
+   */
+  const handleResendCredentials = async () => {
+    if (!studentId) return;
+    setConfirmResend(false);
+    setResending(true);
+    try {
+      const response = await studentsApi.resendCredentials(studentId);
+      enqueueSnackbar(response.message ?? 'Credentials resent.', { variant: 'success' });
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Could not resend the credentials.';
+      enqueueSnackbar(message, { variant: 'error' });
+    } finally {
+      setResending(false);
+    }
+  };
+
   if (loadingInitial) return <PageLoader label="Loading student..." />;
 
   return (
@@ -457,6 +492,21 @@ export function StudentFormPage() {
           { label: 'Students', to: '/app/students' },
           { label: isEdit ? 'Edit' : 'Add' },
         ]}
+        action={
+          // Only on an existing student, and only for a caller holding the grant.
+          // Nothing to resend while a record is being created — there is no account.
+          isEdit && canResendCredentials ? (
+            <Button
+              variant="outlined"
+              color="warning"
+              startIcon={<LockResetOutlinedIcon />}
+              disabled={resending}
+              onClick={() => setConfirmResend(true)}
+            >
+              {resending ? 'Sending…' : 'Resend Credentials'}
+            </Button>
+          ) : undefined
+        }
       />
 
       <Box component="form" onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate>
@@ -876,6 +926,21 @@ export function StudentFormPage() {
           </Button>
         </Stack>
       </Box>
+
+      <ConfirmDialog
+        open={confirmResend}
+        title="Resend login credentials"
+        message={
+          "This will reset the student's password and resend their login credentials by " +
+          'email and SMS. Their current password stops working immediately, any device ' +
+          'they are signed in on is signed out, and they will be asked to choose a new ' +
+          'password at their next sign-in. Continue?'
+        }
+        confirmLabel="Reset and send"
+        destructive
+        onConfirm={() => void handleResendCredentials()}
+        onCancel={() => setConfirmResend(false)}
+      />
 
       <ConfirmDialog
         open={guardianDeleteIndex !== null}

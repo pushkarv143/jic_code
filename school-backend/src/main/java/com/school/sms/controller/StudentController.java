@@ -87,6 +87,19 @@ public class StudentController {
     // Self-service: a student maintains their own contact details. PARENT is excluded
     // because a parent has no single "own" record — they use the by-id endpoints,
     // which the guard already narrows to their own children.
+    /**
+     * Resending credentials. Held by SUPER_ADMIN alone, expressed as a permission
+     * rather than {@code hasRole('SUPER_ADMIN')} so a school can delegate it without
+     * a code change — see 23_credential_reset_permission.sql.
+     *
+     * <p>Separate from {@link #WRITE_ROLES} on purpose: a clerk correcting a
+     * spelling should not also be able to lock a student out of their account and
+     * mail their password somewhere.
+     */
+    private static final String CREDENTIALS_RESET =
+            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "STUDENT_CREDENTIALS_RESET') or "
+                    + AppConstants.ADMIN_OVERRIDE;
+
     private static final String SELF_SERVICE_ROLES = "hasRole('STUDENT')";
     private static final String BULK_EXPORT_ROLES =
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','RECEPTIONIST','ACCOUNTANT')";
@@ -260,6 +273,25 @@ public class StudentController {
     public ResponseEntity<ApiResponse<Map<String, Integer>>> promote(@Valid @RequestBody PromoteStudentsRequest request) {
         int count = studentService.promote(request);
         return ResponseEntity.ok(ApiResponse.success(count + " student(s) promoted successfully", Map.of("promoted", count)));
+    }
+
+    /**
+     * Regenerates the student's temporary password and sends it by email and SMS.
+     *
+     * <p>Returns no body, and deliberately does not return the new password: the
+     * caller is an administrator resetting somebody else's account, and putting the
+     * password in an HTTP response would put it in a browser's network log, a proxy
+     * cache and whatever else sits in between. It goes to the student's own email
+     * and phone, or nowhere.
+     */
+    @PostMapping("/{id}/resend-credentials")
+    @PreAuthorize(CREDENTIALS_RESET)
+    @Operation(summary = "Regenerate the student's temporary password and resend it by email and SMS")
+    public ResponseEntity<ApiResponse<Void>> resendCredentials(@PathVariable Long id) {
+        studentService.resendCredentials(id);
+        return ResponseEntity.ok(ApiResponse.success(
+                "New credentials sent to the student's email and phone. "
+                        + "They will be asked to choose a password at their next sign-in."));
     }
 
     @PostMapping("/{id}/transfer")

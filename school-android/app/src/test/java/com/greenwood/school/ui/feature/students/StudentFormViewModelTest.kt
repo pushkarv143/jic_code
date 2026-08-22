@@ -12,6 +12,7 @@ import com.greenwood.school.domain.repository.StudentRepository
 import com.greenwood.school.navigation.Routes
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
@@ -74,11 +75,17 @@ class StudentFormViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel(studentId: Long) = StudentFormViewModel(
-        studentRepository = students,
-        academicRepository = academic,
-        savedStateHandle = SavedStateHandle(mapOf(Routes.ARG_STUDENT_ID to studentId)),
-    )
+    private fun viewModel(studentId: Long, canResendCredentials: Boolean = false) =
+        StudentFormViewModel(
+            studentRepository = students,
+            academicRepository = academic,
+            // Relaxed: the form reads exactly one grant off it, and every other
+            // member is irrelevant to what these tests assert.
+            accessStore = mockk(relaxed = true) {
+                every { can("STUDENT_CREDENTIALS_RESET") } returns canResendCredentials
+            },
+            savedStateHandle = SavedStateHandle(mapOf(Routes.ARG_STUDENT_ID to studentId)),
+        )
 
     @Test
     // Roll number is deliberately not prefilled: the field is gone from the form.

@@ -71,6 +71,16 @@ interface StudentApi {
     @DELETE("students/{id}")
     suspend fun deleteStudent(@Path("id") id: Long)
 
+    /**
+     * Regenerates the student's temporary password and sends it by email and SMS.
+     *
+     * Requires STUDENT_CREDENTIALS_RESET, held by SUPER_ADMIN alone. Returns no
+     * body and never the password: an administrator resetting somebody else's
+     * account must not be handed their credentials.
+     */
+    @POST("students/{id}/resend-credentials")
+    suspend fun resendStudentCredentials(@Path("id") id: Long): ApiEnvelope<Unit>
+
     @PATCH("students/{id}/status")
     suspend fun updateStudentStatus(
         @Path("id") id: Long,

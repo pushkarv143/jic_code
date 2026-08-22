@@ -150,6 +150,20 @@ export const studentsApi = {
     return data;
   },
 
+  /**
+   * Regenerates the student's temporary password and resends it by email and SMS.
+   *
+   * Requires STUDENT_CREDENTIALS_RESET, held by SUPER_ADMIN alone. Resolves with
+   * the server's message and nothing else — the new password goes to the student's
+   * own email and phone, never into this response.
+   */
+  resendCredentials: async (id: number): Promise<ApiResponse<null>> => {
+    const { data } = await axiosInstance.post<ApiResponse<null>>(
+      ENDPOINTS.STUDENTS.RESEND_CREDENTIALS(id),
+    );
+    return data;
+  },
+
   updateStatus: async (id: number, status: StudentStatus): Promise<ApiResponse<Student>> => {
     const { data } = await axiosInstance.patch<ApiResponse<Student>>(
       ENDPOINTS.STUDENTS.STATUS(id),

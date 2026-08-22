@@ -114,6 +114,10 @@ export const ENDPOINTS = {
     ME: '/students/me',
     BY_ID: (id: number | string) => `/students/${id}`,
     STATUS: (id: number | string) => `/students/${id}/status`,
+    // Regenerates the temporary password and sends it to the student. Returns no
+    // body and never the password: an administrator resetting somebody else's
+    // account must not be handed their credentials.
+    RESEND_CREDENTIALS: (id: number | string) => `/students/${id}/resend-credentials`,
     PHOTO: (id: number | string) => `/students/${id}/photo`,
     GUARDIANS: (id: number | string) => `/students/${id}/guardians`,
     GUARDIAN_BY_ID: (id: number | string, guardianId: number | string) =>

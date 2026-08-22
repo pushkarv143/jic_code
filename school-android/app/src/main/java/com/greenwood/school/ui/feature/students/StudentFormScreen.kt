@@ -272,8 +272,52 @@ fun StudentFormScreen(
                 modifier = Modifier.fillMaxWidth().height(50.dp),
             ) { Text(if (state.isSaving) "Saving…" else if (state.isEditing) "Save changes" else "Admit student") }
 
+            // Only on an existing student, and only for a caller holding
+            // STUDENT_CREDENTIALS_RESET — SUPER_ADMIN alone by default. Nothing to
+            // resend while a record is being created: there is no account yet.
+            if (state.isEditing && state.canResendCredentials) {
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { viewModel.askToResendCredentials() },
+                    enabled = !state.isResendingCredentials,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                ) {
+                    Text(
+                        if (state.isResendingCredentials) "Sending…" else "Resend credentials",
+                    )
+                }
+            }
+
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    // Guarded by a confirmation because it is destructive in a way the button text
+    // cannot fully carry: the student's current password stops working, and any
+    // device they are signed in on is signed out.
+    if (state.confirmResendCredentials) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = viewModel::dismissResendCredentials,
+            title = { Text("Resend login credentials") },
+            text = {
+                Text(
+                    "This will reset the student's password and resend their login " +
+                        "credentials by email and SMS. Their current password stops working " +
+                        "immediately, any device they are signed in on is signed out, and they " +
+                        "will be asked to choose a new password at their next sign-in. Continue?",
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = viewModel::resendCredentials) {
+                    Text("Reset and send")
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = viewModel::dismissResendCredentials) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 
@@ -281,18 +325,63 @@ fun StudentFormScreen(
 class StudentFormViewModel @Inject constructor(
     private val studentRepository: StudentRepository,
     private val academicRepository: AcademicRepository,
+    accessStore: com.greenwood.school.core.session.AccessStore,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     /** The route passes -1 for "new"; anything else is the id being edited. */
     private val studentId: Long? = savedStateHandle.get<Long>(Routes.ARG_STUDENT_ID)?.takeIf { it > 0 }
 
-    private val _state = MutableStateFlow(StudentFormUiState(isEditing = studentId != null))
+    private val _state = MutableStateFlow(
+        StudentFormUiState(
+            isEditing = studentId != null,
+            // STUDENT_CREDENTIALS_RESET, held by SUPER_ADMIN alone. Read from
+            // AccessStore rather than compared against a role name, so a school that
+            // delegates it needs no new build, and so the button appears exactly when
+            // the endpoint behind it would accept the call.
+            canResendCredentials = accessStore.can("STUDENT_CREDENTIALS_RESET"),
+        ),
+    )
     val state: StateFlow<StudentFormUiState> = _state.asStateFlow()
 
     fun update(transform: StudentFormUiState.() -> StudentFormUiState) = _state.update(transform)
 
     fun consumeMessage() = _state.update { it.copy(message = null) }
+
+    fun askToResendCredentials() = _state.update { it.copy(confirmResendCredentials = true) }
+
+    fun dismissResendCredentials() = _state.update { it.copy(confirmResendCredentials = false) }
+
+    /**
+     * Regenerates the student's temporary password and has the server send it.
+     *
+     * <p>The new password is never returned to this app — it goes to the student's
+     * own email and phone. What comes back is the server's sentence about where it
+     * went, which is the one thing an administrator cannot see for themselves.
+     */
+    fun resendCredentials() {
+        val id = studentId ?: return
+        _state.update { it.copy(confirmResendCredentials = false, isResendingCredentials = true) }
+        viewModelScope.launch {
+            when (val result = studentRepository.resendCredentials(id)) {
+                is ApiResult.Success -> _state.update {
+                    it.copy(
+                        isResendingCredentials = false,
+                        message = UiMessage(
+                            "New credentials sent to the student's email and phone.",
+                        ),
+                    )
+                }
+
+                is ApiResult.Failure -> _state.update {
+                    it.copy(
+                        isResendingCredentials = false,
+                        message = UiMessage(result.error.userMessage, isError = true),
+                    )
+                }
+            }
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -458,6 +547,11 @@ data class StudentFormUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
+
+    /** STUDENT_CREDENTIALS_RESET — SUPER_ADMIN alone by default. */
+    val canResendCredentials: Boolean = false,
+    val confirmResendCredentials: Boolean = false,
+    val isResendingCredentials: Boolean = false,
 
     val classes: List<SchoolClassDto> = emptyList(),
     val sections: List<SectionDto> = emptyList(),

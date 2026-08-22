@@ -89,6 +89,9 @@ class StudentRepositoryImpl @Inject constructor(
     override suspend fun updateStatus(id: Long, status: String): ApiResult<StudentDto> =
         call { api.updateStudentStatus(id, StatusRequestDto(status)) }
 
+    override suspend fun resendCredentials(id: Long): ApiResult<Unit> =
+        ack { api.resendStudentCredentials(id) }
+
     /** The endpoint answers `{ "photoUrl": "..." }`; callers only need the URL. */
     override suspend fun uploadPhoto(id: Long, file: File): ApiResult<String> =
         call { api.uploadStudentPhoto(id, file.asFilePart()) }

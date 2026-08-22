@@ -46,10 +46,14 @@ import com.school.sms.service.EmailService;
 import com.school.sms.service.FileStorageService;
 import com.school.sms.service.StudentService;
 import com.school.sms.util.AppConstants;
+import com.school.sms.entity.RefreshToken;
+import com.school.sms.repository.RefreshTokenRepository;
+import com.school.sms.service.SmsService;
 import com.school.sms.util.CredentialGenerator;
 import com.school.sms.util.specification.SearchOperation;
 import com.school.sms.util.specification.SpecificationBuilder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -65,6 +69,7 @@ import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StudentServiceImpl implements StudentService {
@@ -84,6 +89,8 @@ public class StudentServiceImpl implements StudentService {
     private final AuditLogService auditLogService;
     private final StudentAccessGuard studentAccessGuard;
     private final CredentialGenerator credentialGenerator;
+    private final SmsService smsService;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final StudentMapper studentMapper;
     private final GuardianMapper guardianMapper;
     private final MedicalDetailsMapper medicalDetailsMapper;
@@ -404,6 +411,63 @@ public class StudentServiceImpl implements StudentService {
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new BadRequestException(
                         "Your login is not linked to a student record"));
+    }
+
+    @Override
+    @Transactional
+    public void resendCredentials(Long id) {
+        Student student = findEntity(id);
+        User user = student.getUser();
+        if (user == null) {
+            // Admitted before provisioning was automatic. There is no account to
+            // reset, and silently creating one here would hide that from the caller.
+            throw new BadRequestException(
+                    "This student has no login yet, so there are no credentials to resend");
+        }
+
+        String temporaryPassword = credentialGenerator.temporaryPassword();
+        user.setPassword(passwordEncoder.encode(temporaryPassword));
+        // Re-arms the forced first-login reset: the account is back on a password the
+        // student did not choose, so it may do nothing but replace it.
+        user.setMustChangePassword(true);
+        userRepository.save(user);
+
+        // Every existing session dies with the old password. Without this a device
+        // already signed in would keep working indefinitely on credentials that no
+        // longer exist, and the forced reset would apply to everyone except whoever
+        // is holding that device — which is the one person it was aimed at.
+        List<RefreshToken> live = refreshTokenRepository.findAllByUserAndRevokedFalse(user);
+        live.forEach(token -> token.setRevoked(true));
+        refreshTokenRepository.saveAll(live);
+
+        // Audited before the sending, so the record exists even if delivery fails.
+        // A credential reset is a thing done to somebody else's account, so who did
+        // it and when is the point; the password itself is never written down.
+        auditLogService.record("RESEND_STUDENT_CREDENTIALS", "Student", student.getId(),
+                null, "username=" + user.getUsername() + ", sessionsRevoked=" + live.size());
+
+        String displayName = StringUtils.hasText(user.getFirstName())
+                ? user.getFirstName()
+                : user.getUsername();
+
+        if (StringUtils.hasText(user.getEmail())) {
+            emailService.sendAccountCredentialsEmail(
+                    user.getEmail(), displayName, user.getUsername(), temporaryPassword);
+        }
+
+        // SMS is best effort and secondary: the student's own record first, falling
+        // back to the account's number. A missing gateway or number leaves the email
+        // as the delivery, which is why this neither throws nor is waited on.
+        String phone = StringUtils.hasText(student.getPhone()) ? student.getPhone() : user.getPhone();
+        if (StringUtils.hasText(phone) && smsService.isAvailable()) {
+            smsService.send(phone,
+                    "Greenwood School: your username is " + user.getUsername()
+                            + " and your temporary password is " + temporaryPassword
+                            + ". You will be asked to choose your own password when you sign in.");
+        }
+
+        log.info("Credentials resent for student {} (user {}), {} session(s) revoked",
+                student.getId(), user.getId(), live.size());
     }
 
     @Override

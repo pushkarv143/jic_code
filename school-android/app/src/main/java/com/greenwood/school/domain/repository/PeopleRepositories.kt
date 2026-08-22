@@ -53,6 +53,15 @@ interface StudentRepository {
     suspend fun updateStudent(id: Long, request: StudentRequestDto): ApiResult<StudentDto>
     suspend fun deleteStudent(id: Long): ApiResult<Unit>
     suspend fun updateStatus(id: Long, status: String): ApiResult<StudentDto>
+
+    /**
+     * Regenerates this student's temporary password and resends it.
+     *
+     * The username is left alone — it is the student's identity, and a lost password
+     * says nothing about it. Every session on the account is ended server-side, and
+     * the forced first-login reset is re-armed.
+     */
+    suspend fun resendCredentials(id: Long): ApiResult<Unit>
     suspend fun uploadPhoto(id: Long, file: File): ApiResult<String>
 
     suspend fun getGuardians(studentId: Long): ApiResult<List<GuardianDto>>
