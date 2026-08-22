@@ -1,23 +1,35 @@
 package com.greenwood.school.ui.feature.classes
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Class
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greenwood.school.core.common.Formatters
 import com.greenwood.school.data.remote.dto.ClassOfficialDto
 import com.greenwood.school.data.remote.dto.ClassOverviewDto
+import com.greenwood.school.data.remote.dto.StudentDto
 import com.greenwood.school.data.remote.dto.TimetableSlotDto
 import com.greenwood.school.ui.components.DetailRow
 import com.greenwood.school.ui.components.EmptyView
@@ -28,10 +40,21 @@ import com.greenwood.school.ui.components.StatCard
 /* ------------------------------------------------------------------------- */
 /* Class module tabs: overview, posts and timetable.                          */
 /*                                                                            */
-/* Read-only on the phone. Appointing a post-holder and editing the weekly    */
-/* grid stay on the web app, where the dropdowns and clash handling live;     */
-/* what a phone is actually wanted for here is looking the answers up.        */
+/* The overview and the weekly grid are read-only - both are summaries, and    */
+/* the grid is edited a period at a time from the Teachers tab, where the      */
+/* teacher a period needs is already on screen. Posts are appointed and ended  */
+/* here, gated on CLASS_MANAGE, which is what the endpoints behind them ask    */
+/* for.                                                                       */
 /* ------------------------------------------------------------------------- */
+
+/** The posts a class can fill, and who is eligible for each. Matches the web. */
+private val OFFICIAL_ROLES = listOf(
+    Triple("HEAD_BOY", "Head Boy", "MALE"),
+    Triple("HEAD_GIRL", "Head Girl", "FEMALE"),
+    Triple("MONITOR", "Monitor", null),
+    Triple("SPORTS_CAPTAIN", "Sports Captain", null),
+    Triple("CULTURAL_SECRETARY", "Cultural Secretary", null),
+)
 
 /**
  * Strength against capacity, the cross-module figures, and the setup gaps an
@@ -139,12 +162,44 @@ fun ClassOverviewTab(overview: ClassOverviewDto?) {
 fun ClassOfficialsTab(
     current: List<ClassOfficialDto>,
     history: List<ClassOfficialDto>,
+    /**
+     * CLASS_MANAGE. Appointing school-wide is the office's job; a class teacher
+     * appoints within their own section on the My Class screen instead, which is
+     * homeroom-scoped server-side.
+     */
+    canManage: Boolean = false,
+    /** This class's active students - the candidates for a post. */
+    students: List<StudentDto> = emptyList(),
+    onAppoint: (Long, String) -> Unit = { _, _ -> },
+    onEnd: (Long) -> Unit = {},
 ) {
-    if (current.isEmpty() && history.isEmpty()) {
-        EmptyView(
-            title = "No posts filled",
-            message = "Head boy, head girl and other posts appear here once appointed.",
+    var appointing by remember { mutableStateOf(false) }
+
+    if (appointing) {
+        AppointDialog(
+            students = students,
+            onDismiss = { appointing = false },
+            onConfirm = { studentId, role ->
+                appointing = false
+                onAppoint(studentId, role)
+            },
         )
+    }
+
+    // An empty class still needs the button: the first post is appointed from here.
+    if (current.isEmpty() && history.isEmpty()) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            EmptyView(
+                title = "No posts filled",
+                message = "Head boy, head girl and other posts appear here once appointed.",
+            )
+            if (canManage) {
+                Button(onClick = { appointing = true }) { Text("Appoint") }
+            }
+        }
         return
     }
 
@@ -154,6 +209,15 @@ fun ClassOfficialsTab(
         contentPadding = PaddingValues(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        if (canManage) {
+            item(key = "appoint") {
+                // Appointing over a sitting holder is a succession, not a
+                // replacement: the server ends the current tenure and opens a new
+                // one, so the history below keeps both.
+                Button(onClick = { appointing = true }) { Text("Appoint") }
+            }
+        }
+
         items(current.size, key = { "current-${current[it].id}" }) { index ->
             val official = current[index]
             EntityRowCard(
@@ -164,6 +228,17 @@ fun ClassOfficialsTab(
                     official.fromDate?.let { "Since ${Formatters.date(it)}" },
                 ).joinToString(" · ").ifBlank { null },
                 leadingInitials = Formatters.initials(official.displayName),
+                // Ending a tenure closes it rather than deleting the record, so the
+                // history below keeps every holder the class has had.
+                trailing = if (canManage) {
+                    {
+                        androidx.compose.material3.TextButton(onClick = { onEnd(official.id) }) {
+                            Text("End term")
+                        }
+                    }
+                } else {
+                    null
+                },
             )
         }
 
@@ -187,6 +262,85 @@ fun ClassOfficialsTab(
             }
         }
     }
+}
+
+/**
+ * Picks a post and a student for it.
+ *
+ * The eligible list narrows with the post - only boys can be head boy - and the
+ * choice is cleared when the post changes, because a student picked under the
+ * previous one may no longer qualify. The server enforces the same rule; this
+ * just stops the app offering a save it would refuse.
+ */
+@Composable
+private fun AppointDialog(
+    students: List<StudentDto>,
+    onDismiss: () -> Unit,
+    onConfirm: (Long, String) -> Unit,
+) {
+    var role by remember { mutableStateOf(OFFICIAL_ROLES.first()) }
+    var studentId by remember { mutableStateOf<Long?>(null) }
+    val eligible = role.third?.let { required -> students.filter { it.gender == required } }
+        ?: students
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Appoint a post-holder") },
+        text = {
+            Column {
+                Text("Post", style = MaterialTheme.typography.labelLarge)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(OFFICIAL_ROLES.size, key = { OFFICIAL_ROLES[it].first }) { i ->
+                        val option = OFFICIAL_ROLES[i]
+                        FilterChip(
+                            selected = option.first == role.first,
+                            onClick = {
+                                role = option
+                                studentId = null
+                            },
+                            label = { Text(option.second) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("Student", style = MaterialTheme.typography.labelLarge)
+                if (eligible.isEmpty()) {
+                    Text(
+                        role.third?.let { "No ${it.lowercase()} students in this class." }
+                            ?: "No active students in this class.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                } else {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(eligible.size, key = { eligible[it].id }) { i ->
+                            val student = eligible[i]
+                            val name = listOfNotNull(student.firstName, student.lastName)
+                                .joinToString(" ")
+                                .ifBlank { student.admissionNumber }
+                            FilterChip(
+                                selected = studentId == student.id,
+                                onClick = { studentId = student.id },
+                                label = {
+                                    Text(
+                                        student.rollNumber?.let { "$name ($it)" } ?: name,
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                enabled = studentId != null,
+                onClick = { studentId?.let { onConfirm(it, role.first) } },
+            ) { Text("Appoint") }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 /**

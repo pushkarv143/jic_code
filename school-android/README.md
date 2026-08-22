@@ -443,7 +443,7 @@ None of these block the app — it works against the API exactly as deployed tod
 | Auth | Login, Register, Forgot/Reset password |
 | Shell | Dashboard (role-aware), Academics / Admin / More hubs, Search |
 | People | Student list, Student detail, Student form, Teacher list, Teacher detail, Staff, Users, My Children |
-| Academics | Classes, Class detail, Attendance (4 tabs), Leave, Exams, Exam detail, Marks entry, Assignments, Assignment detail, Online classes |
+| Academics | Classes (add / rename), Class detail — room & capacity, class teacher, subjects, subject teachers, periods, class posts — Attendance (4 tabs), Leave, Exams, Exam detail, Marks entry, Assignments, Assignment detail, Online classes |
 | Administration | Fees, Fee setup, Scholarships, Payroll, Library, Transport, Hostel, Admission enquiries |
 | Communication & insights | Notice board, Calendar, Notifications, Reports |
 | Account | Profile (change password, sign out), Settings |
@@ -455,11 +455,11 @@ and none of them blocks a mobile workflow:
 |---|---|
 | Student Excel import/export, bulk promote/transfer | Bulk operations over a spreadsheet; the API is wired (`StudentRepository.importExcel`/`exportExcel`/`promote`) but there is no sane phone UI for reviewing 40 skipped rows |
 | Teacher/user create & edit forms | Account provisioning with password setting — an admin desk task |
-| Academic setup writes (years, departments, designations, classes, sections, subjects) | Configured once a year; read views are present via Classes |
+| Academic setup writes: years, departments, designations | Configured once a year, and a year is the thing every other record hangs off — a mistyped one on a phone is expensive to unpick. Classes, sections and subjects *are* editable on the phone as of 1.7.0, from the class module |
 | Notice / assignment / online-class authoring | All three are multipart composers with attachments; reading them is the mobile need |
 | Audit logs | Forensic tool over raw JSON diffs |
 | System settings editing | Free-form key/value pairs whose semantics live server-side; shown read-only |
-| Public marketing pages, chat | Brochure content; chat has no backend controller |
+| Public marketing pages, chat | Brochure content. Chat is deliberately absent rather than pending: the web page is a client-side placeholder over seeded conversations — there is no chat controller, no table and no message ever sent — so porting it would ship a screen that looks like messaging and is not |
 
 Repository methods exist for **all** of the above, so adding any of them is UI work
 only. `navigation/Destinations.kt` holds the complete menu; `IMPLEMENTED_ROUTES`

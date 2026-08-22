@@ -4,6 +4,8 @@ import com.greenwood.school.core.network.ApiResult
 import com.greenwood.school.data.remote.dto.AcademicYearDto
 import com.greenwood.school.data.remote.dto.AcademicYearRequestDto
 import com.greenwood.school.data.remote.dto.ClassOfficialDto
+import com.greenwood.school.data.remote.dto.ClassOfficialRequestDto
+import com.greenwood.school.data.remote.dto.SaveTimetableRequestDto
 import com.greenwood.school.data.remote.dto.ClassOverviewDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherRequestDto
@@ -69,6 +71,25 @@ interface AcademicRepository {
 
     /** The whole class's week, one entry per period. Management only, server-side. */
     suspend fun getClassTimetable(classId: Long): ApiResult<List<TimetableSlotDto>>
+
+    /** Appoints a student to a post school-wide. Management only (CLASS_MANAGE). */
+    suspend fun appointClassOfficial(classId: Long, request: ClassOfficialRequestDto): ApiResult<ClassOfficialDto>
+
+    /** Ends an appointment, leaving the post vacant. The record is kept. */
+    suspend fun endClassOfficial(classId: Long, officialId: Long): ApiResult<Unit>
+
+    /** One section's week. */
+    suspend fun getSectionTimetable(classId: Long, sectionId: Long): ApiResult<List<TimetableSlotDto>>
+
+    /**
+     * Replaces a section's whole week. Needs TIMETABLE_MANAGE, which SUPER_ADMIN
+     * alone holds by default.
+     */
+    suspend fun saveSectionTimetable(
+        classId: Long,
+        sectionId: Long,
+        request: SaveTimetableRequestDto,
+    ): ApiResult<List<TimetableSlotDto>>
 
     /**
      * The signed-in user's own week: the periods a teacher teaches, or the week of

@@ -5,6 +5,8 @@ import com.greenwood.school.data.remote.dto.AcademicYearRequestDto
 import com.greenwood.school.data.remote.dto.ApiEnvelope
 import com.greenwood.school.data.remote.dto.AssignClassTeacherRequestDto
 import com.greenwood.school.data.remote.dto.ClassOfficialDto
+import com.greenwood.school.data.remote.dto.ClassOfficialRequestDto
+import com.greenwood.school.data.remote.dto.SaveTimetableRequestDto
 import com.greenwood.school.data.remote.dto.ClassOverviewDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherRequestDto
@@ -155,6 +157,24 @@ interface AcademicApi {
     suspend fun getClassOfficialHistory(@Path("classId") classId: Long): ApiEnvelope<List<ClassOfficialDto>>
 
     /**
+     * Appoints a student to a post, ending the sitting holder's tenure if there is
+     * one. Management-only server-side (CLASS_MANAGE); a class teacher appoints
+     * within their own section through MyClassApi instead.
+     */
+    @POST("classes/{classId}/officials")
+    suspend fun appointClassOfficial(
+        @Path("classId") classId: Long,
+        @Body request: ClassOfficialRequestDto,
+    ): ApiEnvelope<ClassOfficialDto>
+
+    /** Ends an appointment, leaving the post vacant. The record is kept, not deleted. */
+    @DELETE("classes/{classId}/officials/{officialId}")
+    suspend fun endClassOfficial(
+        @Path("classId") classId: Long,
+        @Path("officialId") officialId: Long,
+    )
+
+    /**
      * Every section of a class, for the weekly grid. Slots carry their own clash
      * warnings.
      *
@@ -184,6 +204,20 @@ interface AcademicApi {
     suspend fun getSectionTimetable(
         @Path("classId") classId: Long,
         @Path("sectionId") sectionId: Long,
+    ): ApiEnvelope<List<TimetableSlotDto>>
+
+    /**
+     * Replaces a section's whole week in one call - an empty slot list clears it.
+     *
+     * Whole-week rather than per-slot because the server deletes and reinserts: a
+     * slot-at-a-time save would trip the (section, day, period) unique key mid-swap.
+     * Gated on TIMETABLE_MANAGE, which SUPER_ADMIN alone holds by default.
+     */
+    @PUT("timetable/classes/{classId}/sections/{sectionId}")
+    suspend fun saveSectionTimetable(
+        @Path("classId") classId: Long,
+        @Path("sectionId") sectionId: Long,
+        @Body request: SaveTimetableRequestDto,
     ): ApiEnvelope<List<TimetableSlotDto>>
 
     @POST("classes/{classId}/subjects")

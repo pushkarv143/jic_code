@@ -11,7 +11,9 @@ import com.greenwood.school.data.remote.dto.AcademicYearDto
 import com.greenwood.school.data.remote.dto.AcademicYearRequestDto
 import com.greenwood.school.data.remote.dto.AssignClassTeacherRequestDto
 import com.greenwood.school.data.remote.dto.ClassOfficialDto
+import com.greenwood.school.data.remote.dto.ClassOfficialRequestDto
 import com.greenwood.school.data.remote.dto.ClassOverviewDto
+import com.greenwood.school.data.remote.dto.SaveTimetableRequestDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherDto
 import com.greenwood.school.data.remote.dto.ClassSubjectTeacherRequestDto
 import com.greenwood.school.data.remote.dto.DepartmentDto
@@ -154,6 +156,25 @@ class AcademicRepositoryImpl @Inject constructor(
 
     override suspend fun getClassTimetable(classId: Long): ApiResult<List<TimetableSlotDto>> =
         call { api.getClassTimetable(classId) }
+
+    override suspend fun appointClassOfficial(
+        classId: Long,
+        request: ClassOfficialRequestDto,
+    ): ApiResult<ClassOfficialDto> = call { api.appointClassOfficial(classId, request) }
+
+    override suspend fun endClassOfficial(classId: Long, officialId: Long): ApiResult<Unit> =
+        ack { api.endClassOfficial(classId, officialId) }
+
+    override suspend fun getSectionTimetable(
+        classId: Long,
+        sectionId: Long,
+    ): ApiResult<List<TimetableSlotDto>> = call { api.getSectionTimetable(classId, sectionId) }
+
+    override suspend fun saveSectionTimetable(
+        classId: Long,
+        sectionId: Long,
+        request: SaveTimetableRequestDto,
+    ): ApiResult<List<TimetableSlotDto>> = call { api.saveSectionTimetable(classId, sectionId, request) }
 
     override suspend fun getMyTimetable(): ApiResult<List<TimetableSlotDto>> =
         call { api.getMyTimetable() }

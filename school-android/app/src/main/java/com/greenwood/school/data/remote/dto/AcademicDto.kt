@@ -258,3 +258,48 @@ data class TimetableSlotDto(
             null
         }
 }
+
+/**
+ * Appointing a class post school-wide, via `POST /classes/{classId}/officials`.
+ *
+ * Management-only server-side. A class teacher appoints within their own section
+ * through `MyClassApi`, which needs no classId because the server resolves the
+ * section from the homeroom assignment.
+ */
+@Serializable
+data class ClassOfficialRequestDto(
+    val studentId: Long,
+    val role: String,
+    val sectionId: Long? = null,
+    /** Defaults to today server-side when omitted. */
+    val fromDate: String? = null,
+    val remarks: String? = null,
+)
+
+/**
+ * One period in a week being saved.
+ *
+ * `subjectId`/`teacherId` are nullable because assembly, games and free periods
+ * occupy a slot with neither. The server rejects a subject with no teacher, and
+ * insists period 1 is taught by the class teacher in a subject they are mapped to.
+ */
+@Serializable
+data class TimetableSlotRequestDto(
+    val dayOfWeek: String,
+    val periodNumber: Int,
+    val startTime: String,
+    val endTime: String,
+    val subjectId: Long? = null,
+    val teacherId: Long? = null,
+    val roomNumber: String? = null,
+    val label: String? = null,
+)
+
+/**
+ * A section's whole week. Absolute, not a delta: whatever is missing is removed,
+ * matching `PUT /timetable/classes/{classId}/sections/{sectionId}`.
+ */
+@Serializable
+data class SaveTimetableRequestDto(
+    val slots: List<TimetableSlotRequestDto> = emptyList(),
+)

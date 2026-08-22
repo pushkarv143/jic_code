@@ -56,12 +56,20 @@ android {
         // role; taking the register narrowed to the class teacher; and the roll-number
         // field is gone, being server-assigned and unique per class.
         //
+        // 1.7.0 gives the class module its write side on the phone. It was a viewer:
+        // six tabs that could show a class teacher, a subject list, a subject-teacher
+        // mapping and the posts, but change none of them. It now assigns the class
+        // teacher, adds and removes subjects, assigns subject teachers, ends a post,
+        // and sets a period - filling Monday to Saturday in one tap, as the web app
+        // does. Every control is gated on the same grant the endpoint behind it
+        // enforces, so nothing is offered that the API would refuse.
+        //
         // Carries 1.5.0 before it (one section per class and My Timetable), 1.4.0 before
         // that (the class module on the phone), 1.3.0 before that (passcode sign-in and
         // recovery). A new versionCode is what lets the device recognise this as an
         // upgrade rather than refusing to install over the previous build.
-        versionCode = 7
-        versionName = "1.6.0"
+        versionCode = 8
+        versionName = "1.7.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
