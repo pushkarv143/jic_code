@@ -53,9 +53,9 @@ public class TeacherController {
     // contact, blood group) for anyone who is not management, the accountant, or the
     // teacher themselves. Role gate here, field gate there.
     private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','RECEPTIONIST','ACCOUNTANT')";
     private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
-    private static final String SELF_SERVICE_ROLES = "hasAnyRole('TEACHER','CLASS_TEACHER')";
+    private static final String SELF_SERVICE_ROLES = "hasAnyRole('TEACHER')";
     // Not READ_ROLES: ExcelService queries the repository directly and so is not
     // redacted by the guard, which would hand every teacher the whole staff list
     // with salaries attached. Bulk export stays with the roles entitled to that data.

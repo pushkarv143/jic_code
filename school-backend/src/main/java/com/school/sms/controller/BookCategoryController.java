@@ -33,7 +33,7 @@ public class BookCategoryController {
     private final BookCategoryService bookCategoryService;
 
     private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','LIBRARIAN','TEACHER','CLASS_TEACHER','STUDENT','PARENT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','LIBRARIAN','TEACHER','STUDENT','PARENT')";
     private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','LIBRARIAN')";
 
     @GetMapping

@@ -52,7 +52,7 @@ public class TimetableController {
      * branching, and because they may see everything regardless.
      */
     private static final String SELF_SERVICE_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','STUDENT','PARENT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','STUDENT','PARENT')";
 
     /**
      * Assembling the week is the administrator's job.

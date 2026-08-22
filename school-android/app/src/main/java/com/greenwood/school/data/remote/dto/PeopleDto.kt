@@ -173,6 +173,15 @@ data class TeacherDto(
     val id: Long,
     val userId: Long = 0,
     val employeeId: String? = null,
+    /**
+     * Whether this teacher also heads a class as its class teacher.
+     *
+     * Replaces the CLASS_TEACHER role: the base role stays TEACHER for a teacher's
+     * whole career and this flag comes and goes with the section assignment,
+     * granting the extra homeroom permissions while it is set. Server-maintained
+     * from sections.class_teacher_id, so it is shown and never sent.
+     */
+    val classTeacher: Boolean = false,
     val departmentId: Long = 0,
     val departmentName: String? = null,
     val designationId: Long = 0,

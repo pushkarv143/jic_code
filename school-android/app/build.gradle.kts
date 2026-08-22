@@ -74,12 +74,24 @@ android {
         // Settings > Roles & Permissions > Menus, and a signed-in phone picks it up
         // on its next token refresh without an update.
         //
+        // 1.9.0 drops the CLASS_TEACHER role. There is one Teacher role now, and
+        // being a class teacher is teachers.is_class_teacher — a flag that comes
+        // and goes with the section assignment and grants six extra permissions
+        // while it is set. The two roles were never two kinds of person: the second
+        // held exactly the first's permissions plus those six, and 44 users carried
+        // it while only 17 headed a section. The app reads the capability from
+        // /me/access as it already did, so the change is mostly subtraction — but
+        // Role.from still maps the retired name to TEACHER, so a phone holding an
+        // access token issued before the migration is not left staring at an empty
+        // shell until it expires. Who is a class teacher is now shown on the
+        // teacher list, where the role used to answer it.
+        //
         // Carries 1.5.0 before it (one section per class and My Timetable), 1.4.0 before
         // that (the class module on the phone), 1.3.0 before that (passcode sign-in and
         // recovery). A new versionCode is what lets the device recognise this as an
         // upgrade rather than refusing to install over the previous build.
-        versionCode = 9
-        versionName = "1.8.0"
+        versionCode = 10
+        versionName = "1.9.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true

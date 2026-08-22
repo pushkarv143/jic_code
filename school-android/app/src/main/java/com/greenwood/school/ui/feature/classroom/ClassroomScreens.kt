@@ -115,7 +115,7 @@ class AssignmentListViewModel @Inject constructor(
             // A student sees their own class/section; a teacher sees what they set.
             classId = user?.classId.takeIf { role.isSelfService },
             sectionId = user?.sectionId.takeIf { role.isSelfService },
-            teacherId = user?.teacherId.takeIf { role == Role.TEACHER || role == Role.CLASS_TEACHER },
+            teacherId = user?.teacherId.takeIf { role == Role.TEACHER },
             page = page,
             size = size,
         )

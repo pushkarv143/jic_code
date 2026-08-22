@@ -29,7 +29,7 @@ import type { OnlineClass, Role, SchoolClass } from '@/types';
 import type { OnlineClassPayload } from '@/api/onlineClassesApi';
 import OnlineClassFormDialog from './components/OnlineClassFormDialog';
 
-const WRITE_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'CLASS_TEACHER'];
+const WRITE_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER'];
 
 function ManagementOnlineClassesView() {
   const { enqueueSnackbar } = useSnackbar();
@@ -292,7 +292,7 @@ function StudentOnlineClassesView() {
   );
 }
 
-/** Branches by role: TEACHER/CLASS_TEACHER/admin get the management table; STUDENT/PARENT get an upcoming-classes card list. */
+/** Branches by role: TEACHER and admin get the management table; STUDENT/PARENT get an upcoming-classes card list. */
 export function OnlineClassesPage() {
   const role = useAppSelector((state) => state.auth.user?.role);
   const isManagement = !!role && WRITE_ROLES.includes(role);

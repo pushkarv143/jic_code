@@ -27,7 +27,7 @@ public class AssignmentSubmissionController {
     private final AssignmentService assignmentService;
 
     private static final String WRITE_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER')";
 
     @PatchMapping("/{id}/grade")
     @PreAuthorize(WRITE_ROLES)

@@ -138,15 +138,6 @@ class StudentAccessGuardTest {
                 .isInstanceOf(AccessDeniedException.class);
     }
 
-    @Test
-    void classTeacherIsScopedTheSameWayAsTeacher() {
-        signIn(8L, "CLASS_TEACHER");
-        when(teacherRepository.findByUserId(8L)).thenReturn(Optional.of(teacher(80L)));
-        when(studentRepository.findIdsTaughtByTeacherId(80L)).thenReturn(List.of(TAUGHT_STUDENT_ID));
-
-        assertThat(guard.resolveStudentDirectoryScope()).containsExactly(TAUGHT_STUDENT_ID);
-    }
-
     /**
      * A TEACHER login with no teacher row is a data problem. It must fail closed —
      * returning null here would read as "unrestricted" and hand them the whole

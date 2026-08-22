@@ -30,6 +30,11 @@ public interface TeacherMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "employeeId", ignore = true)
+    // Server-maintained, from sections.class_teacher_id — see SectionServiceImpl.
+    // Ignored here so a client cannot make itself a class teacher by putting the
+    // flag in a teacher update, which is the whole point of not letting the two
+    // sources of truth diverge.
+    @Mapping(target = "classTeacher", ignore = true)
     @Mapping(target = "department", ignore = true)
     @Mapping(target = "designation", ignore = true)
     @Mapping(target = "gender", ignore = true)

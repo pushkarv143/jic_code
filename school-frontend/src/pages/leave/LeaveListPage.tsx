@@ -24,10 +24,16 @@ import StatusChip from '@/components/common/StatusChip';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import leaveApi from '@/api/leaveApi';
 import { useAppSelector } from '@/store/hooks';
+import { useAccess } from '@/access/AccessProvider';
 import type { LeaveApplicantType, LeaveApplication, LeaveStatus, Role } from '@/types';
 import LeaveFormDialog from './components/LeaveFormDialog';
 
-const APPROVER_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'CLASS_TEACHER'];
+// Management approves anyone. A class teacher approves their own homeroom
+// students, and that is now a permission rather than a role: MY_CLASS_VIEW is
+// what teachers.is_class_teacher grants, so it is held by exactly the teachers
+// who head a section. 'TEACHER' here would offer the approve controls to every
+// teacher in the school and let the server refuse them.
+const APPROVER_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'];
 
 const TYPE_OPTIONS: Array<{ label: string; value: LeaveApplicantType | '' }> = [
   { label: 'All types', value: '' },
@@ -47,7 +53,13 @@ const STATUS_OPTIONS: Array<{ label: string; value: LeaveStatus | '' }> = [
 export function LeaveListPage() {
   const { enqueueSnackbar } = useSnackbar();
   const role = useAppSelector((state) => state.auth.user?.role);
-  const isApprover = !!role && APPROVER_ROLES.includes(role);
+  // Management by role, plus a class teacher for their own homeroom students. The
+  // second half used to be the CLASS_TEACHER role in APPROVER_ROLES; it is the
+  // homeroom assignment now, read from the server rather than inferred, so a
+  // teacher who heads a section gets the approve controls and one who does not
+  // never sees a button the API would refuse.
+  const { isClassTeacherOfOwnSection } = useAccess();
+  const isApprover = (!!role && APPROVER_ROLES.includes(role)) || isClassTeacherOfOwnSection;
 
   const [scope, setScope] = useState<'all' | 'mine'>(isApprover ? 'all' : 'mine');
 

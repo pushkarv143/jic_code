@@ -12,7 +12,7 @@ import PageHeader from '@/components/common/PageHeader';
 import { useAppSelector } from '@/store/hooks';
 import type { Role } from '@/types';
 
-const STAFF_MARKING_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'CLASS_TEACHER'];
+const STAFF_MARKING_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER'];
 
 interface AttendanceTab {
   value: string;

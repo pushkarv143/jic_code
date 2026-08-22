@@ -10,7 +10,6 @@ export type Role =
   | 'PRINCIPAL'
   | 'VICE_PRINCIPAL'
   | 'TEACHER'
-  | 'CLASS_TEACHER'
   | 'ACCOUNTANT'
   | 'LIBRARIAN'
   | 'RECEPTIONIST'
@@ -36,7 +35,7 @@ export interface User {
   // Round-3 addition (ASSUMPTION - reconcile with backend): self-service attendance/fees
   // pages need to know "which student/teacher am I" without a dedicated lookup endpoint.
   // Expecting the backend to populate these on /auth/login and /auth/me for the relevant
-  // roles (STUDENT -> studentId/classId/sectionId, TEACHER/CLASS_TEACHER -> teacherId).
+  // roles (STUDENT -> studentId/classId/sectionId, TEACHER -> teacherId).
   // All optional/nullable so nothing breaks if the backend hasn't wired this up yet.
   studentId?: number | null;
   teacherId?: number | null;
@@ -378,6 +377,15 @@ export interface Teacher {
   id: number;
   userId: number;
   employeeId: string;
+  /**
+   * Whether this teacher also heads a class as its class teacher.
+   *
+   * Replaces the CLASS_TEACHER role: the base role stays TEACHER for a teacher's
+   * whole career, and this flag comes and goes with the section assignment,
+   * granting the extra homeroom permissions while it is set. Server-maintained
+   * from sections.class_teacher_id, so show it and never send it.
+   */
+  classTeacher: boolean;
   departmentId: number;
   departmentName?: string;
   designationId: number;

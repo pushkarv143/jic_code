@@ -85,7 +85,14 @@ fun TeacherListScreen(
             subtitle = listOfNotNull(teacher.designationName, teacher.departmentName)
                 .joinToString(" · ")
                 .ifBlank { teacher.employeeId },
-            metadata = teacher.employeeId?.let { "Employee ID $it" },
+            // Who is a class teacher used to be readable from the role, because it
+            // was a role. It is a flag on the teacher now, so it is said here —
+            // otherwise collapsing the two roles into one would have quietly
+            // removed the answer from the directory.
+            metadata = listOfNotNull(
+                teacher.employeeId?.let { "Employee ID $it" },
+                "Class teacher".takeIf { teacher.classTeacher },
+            ).joinToString(" · ").ifBlank { null },
             leadingInitials = Formatters.initials(teacher.displayName),
             trailing = { StatusChip(teacher.status) },
             onClick = { onOpenTeacher(teacher.id) },

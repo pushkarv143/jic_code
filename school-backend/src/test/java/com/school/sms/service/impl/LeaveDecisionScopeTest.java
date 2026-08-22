@@ -159,7 +159,7 @@ class LeaveDecisionScopeTest {
     @DisplayName("a class teacher may approve their own homeroom student's leave")
     void approvesOwnHomeroomStudent() {
         pending(OWN_STUDENT_USER_ID, LeaveApplicantType.STUDENT);
-        signInAs(APPROVER_USER_ID, AppConstants.ROLE_CLASS_TEACHER);
+        signInAs(APPROVER_USER_ID, AppConstants.ROLE_TEACHER);
 
         service.approve(100L);
 
@@ -170,7 +170,7 @@ class LeaveDecisionScopeTest {
     @DisplayName("a class teacher may NOT approve a student from another class")
     void refusesStudentOfAnotherClass() {
         pending(OTHER_STUDENT_USER_ID, LeaveApplicantType.STUDENT);
-        signInAs(APPROVER_USER_ID, AppConstants.ROLE_CLASS_TEACHER);
+        signInAs(APPROVER_USER_ID, AppConstants.ROLE_TEACHER);
 
         assertThatThrownBy(() -> service.approve(100L)).isInstanceOf(AccessDeniedException.class);
         verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
@@ -180,7 +180,7 @@ class LeaveDecisionScopeTest {
     @DisplayName("a class teacher may NOT approve a colleague's leave, even in their own class")
     void refusesTeacherLeave() {
         pending(A_TEACHERS_USER_ID, LeaveApplicantType.TEACHER);
-        signInAs(APPROVER_USER_ID, AppConstants.ROLE_CLASS_TEACHER);
+        signInAs(APPROVER_USER_ID, AppConstants.ROLE_TEACHER);
 
         assertThatThrownBy(() -> service.approve(100L)).isInstanceOf(AccessDeniedException.class);
         verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
@@ -190,7 +190,7 @@ class LeaveDecisionScopeTest {
     @DisplayName("rejecting is held to the same rule as approving")
     void rejectUsesTheSameCheck() {
         pending(OTHER_STUDENT_USER_ID, LeaveApplicantType.STUDENT);
-        signInAs(APPROVER_USER_ID, AppConstants.ROLE_CLASS_TEACHER);
+        signInAs(APPROVER_USER_ID, AppConstants.ROLE_TEACHER);
 
         assertThatThrownBy(() -> service.reject(100L)).isInstanceOf(AccessDeniedException.class);
         verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
@@ -201,18 +201,37 @@ class LeaveDecisionScopeTest {
     void refusesWhenApproverHasNoHomeroom() {
         pending(OWN_STUDENT_USER_ID, LeaveApplicantType.STUDENT);
         when(sectionRepository.findByClassTeacherId(APPROVER_TEACHER_ID)).thenReturn(Optional.empty());
-        signInAs(APPROVER_USER_ID, AppConstants.ROLE_CLASS_TEACHER);
+        signInAs(APPROVER_USER_ID, AppConstants.ROLE_TEACHER);
 
         assertThatThrownBy(() -> service.approve(100L)).isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
-    @DisplayName("a plain TEACHER decides nothing, homeroom or not")
-    void refusesPlainTeacher() {
+    @DisplayName("the homeroom decides, not the role: same teacher, refused without one and allowed with one")
+    void theHomeroomIsWhatDecides() {
+        // This replaced a test asserting that a plain TEACHER "decides nothing,
+        // homeroom or not" - the rule when CLASS_TEACHER was a role of its own and
+        // the role, not the assignment, was what the service checked. 44 users held
+        // that role and 17 held a section, so the two disagreed for 27 people.
+        //
+        // One role now, and the section row is the whole answer. Asserted as a pair
+        // because either half alone would pass against the old behaviour too.
         pending(OWN_STUDENT_USER_ID, LeaveApplicantType.STUDENT);
+        when(sectionRepository.findByClassTeacherId(APPROVER_TEACHER_ID)).thenReturn(Optional.empty());
         signInAs(APPROVER_USER_ID, AppConstants.ROLE_TEACHER);
 
         assertThatThrownBy(() -> service.approve(100L)).isInstanceOf(AccessDeniedException.class);
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
+
+        // Same teacher, same role, same student - now heading their section.
+        Section theirSection = new Section();
+        theirSection.setId(OWN_SECTION_ID);
+        when(sectionRepository.findByClassTeacherId(APPROVER_TEACHER_ID))
+                .thenReturn(Optional.of(theirSection));
+
+        service.approve(100L);
+
+        verify(leaveApplicationRepository).save(any(LeaveApplication.class));
     }
 
     @Test
@@ -230,7 +249,7 @@ class LeaveDecisionScopeTest {
     @DisplayName("the approved application records who decided it")
     void recordsApprover() {
         LeaveApplication application = pending(OWN_STUDENT_USER_ID, LeaveApplicantType.STUDENT);
-        signInAs(APPROVER_USER_ID, AppConstants.ROLE_CLASS_TEACHER);
+        signInAs(APPROVER_USER_ID, AppConstants.ROLE_TEACHER);
 
         service.approve(100L);
 

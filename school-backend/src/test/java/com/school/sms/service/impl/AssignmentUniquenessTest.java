@@ -137,7 +137,11 @@ class AssignmentUniquenessTest {
                     .hasMessageContaining("only one section");
 
             verify(sectionRepository, never()).save(any());
-            verify(userService, never()).promoteToClassTeacher(any());
+            // Nothing may touch the class-teacher flag when the assignment is
+            // refused. This replaced a check on UserService.promoteToClassTeacher,
+            // which used to swap the user's role to CLASS_TEACHER and no longer
+            // exists — the duty is teachers.is_class_teacher now.
+            verify(teacherRepository, never()).save(any());
         }
 
         @Test

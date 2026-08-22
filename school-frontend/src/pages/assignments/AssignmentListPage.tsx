@@ -36,9 +36,9 @@ import AssignmentFormDialog from './components/AssignmentFormDialog';
 import SubmissionsDialog from './components/SubmissionsDialog';
 import SubmitAssignmentDialog from './components/SubmitAssignmentDialog';
 
-const WRITE_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'CLASS_TEACHER'];
+const WRITE_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER'];
 
-/** Management view for TEACHER/CLASS_TEACHER/admin roles: filterable DataTable, add/edit/delete, view submissions. */
+/** Management view for TEACHER and admin roles: filterable DataTable, add/edit/delete, view submissions. */
 function ManagementAssignmentsView() {
   const { enqueueSnackbar } = useSnackbar();
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -399,7 +399,7 @@ function StudentAssignmentsView() {
   );
 }
 
-/** Branches by role: TEACHER/CLASS_TEACHER/admin get the management table, STUDENT gets a card list + submit workflow. */
+/** Branches by role: TEACHER and admin get the management table, STUDENT gets a card list + submit workflow. */
 export function AssignmentListPage() {
   const role = useAppSelector((state) => state.auth.user?.role);
   const isManagement = !!role && WRITE_ROLES.includes(role);

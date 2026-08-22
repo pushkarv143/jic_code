@@ -63,7 +63,7 @@ public class StudentController {
     // service, which likewise narrows TEACHER/CLASS_TEACHER to the students they
     // teach. Role here, row-level scope there: neither check substitutes for the other.
     private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
     private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
 
     /**
@@ -94,7 +94,7 @@ public class StudentController {
     // teacher completing a student's file); we do not further restrict this to only the
     // student's own homeroom teacher — see deviations note in the round report.
     private static final String UPLOAD_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER')";
     // ID card printing: front-desk/admin roles only, per the bonus-round spec.
     private static final String ID_CARD_ROLES =
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','RECEPTIONIST')";

@@ -28,6 +28,17 @@ public class TeacherDto {
     private boolean active;
 
     private String employeeId;
+
+    /**
+     * Whether this teacher also holds a class as its class teacher.
+     *
+     * <p>Replaces the CLASS_TEACHER role: the base role stays TEACHER for a
+     * teacher's whole career and this flag comes and goes with the assignment,
+     * granting the six permissions in {@code class_teacher_permissions} while it is
+     * set. Server-maintained from {@code sections.class_teacher_id}, so a client
+     * shows it and never sends it.
+     */
+    private boolean classTeacher;
     private Long departmentId;
     private String departmentName;
     private Long designationId;

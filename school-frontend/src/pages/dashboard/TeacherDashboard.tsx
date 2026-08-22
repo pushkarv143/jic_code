@@ -42,7 +42,7 @@ import type {
   OnlineClass,
 } from '@/types';
 
-/** Teaching-focused dashboard for TEACHER / CLASS_TEACHER, built from the teacher's own assignments/classes/leave/attendance data. */
+/** Teaching-focused dashboard for TEACHER, built from the teacher's own assignments/classes/leave/attendance data. */
 export function TeacherDashboard() {
   const { enqueueSnackbar } = useSnackbar();
   const teacherId = useAppSelector((state) => state.auth.user?.teacherId);

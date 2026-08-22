@@ -21,11 +21,4 @@ public interface UserService {
 
     void deleteUser(Long id);
 
-    /**
-     * Promotes a user's role from TEACHER to CLASS_TEACHER when they are
-     * assigned as a section's class teacher. No-ops if the user's current
-     * role is anything other than plain TEACHER (e.g. already CLASS_TEACHER,
-     * or a VICE_PRINCIPAL/PRINCIPAL who also teaches).
-     */
-    void promoteToClassTeacher(Long userId);
 }

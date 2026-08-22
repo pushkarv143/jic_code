@@ -146,8 +146,17 @@ class RoleTest {
     @Test
     fun `every seeded role maps from its wire name`() {
         assertEquals(Role.SUPER_ADMIN, Role.from("SUPER_ADMIN"))
-        assertEquals(Role.CLASS_TEACHER, Role.from("CLASS_TEACHER"))
+        assertEquals(Role.TEACHER, Role.from("TEACHER"))
         assertEquals(Role.SECURITY_GUARD, Role.from("SECURITY_GUARD"))
+    }
+
+    @Test
+    fun `the retired CLASS_TEACHER role still resolves, for tokens issued before it went`() {
+        // The row is gone from the database, so nothing new can send this. An access
+        // token issued before the migration still carries it until it expires, and
+        // falling through to UNKNOWN would show that user an empty shell until they
+        // worked out for themselves that signing out and back in fixes it.
+        assertEquals(Role.TEACHER, Role.from("CLASS_TEACHER"))
     }
 
     @Test
@@ -162,7 +171,7 @@ class RoleTest {
         assertTrue(Role.PRINCIPAL.isManagement)
         assertTrue(Role.VICE_PRINCIPAL.isManagement)
         assertTrue(!Role.TEACHER.isManagement)
-        assertTrue(Role.CLASS_TEACHER.isTeaching)
+        assertTrue(Role.TEACHER.isTeaching)
         assertTrue(Role.PARENT.isSelfService)
     }
 }

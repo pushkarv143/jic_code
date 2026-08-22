@@ -12,7 +12,7 @@ import StaffDashboard from './StaffDashboard';
 import type { Role } from '@/types';
 
 const MANAGEMENT_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'];
-const TEACHER_ROLES: Role[] = ['TEACHER', 'CLASS_TEACHER'];
+const TEACHER_ROLES: Role[] = ['TEACHER'];
 const LEARNER_ROLES: Role[] = ['STUDENT', 'PARENT'];
 
 /**

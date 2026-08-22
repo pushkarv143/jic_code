@@ -126,7 +126,7 @@ public class OnlineClassServiceImpl implements OnlineClassService {
                 .orElseThrow(() -> new AccessDeniedException("No authenticated user found"));
         boolean isTeacherRole = principal.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .anyMatch(a -> a.equals(ROLE_PREFIX + AppConstants.ROLE_TEACHER) || a.equals(ROLE_PREFIX + AppConstants.ROLE_CLASS_TEACHER));
+                .anyMatch(a -> a.equals(ROLE_PREFIX + AppConstants.ROLE_TEACHER));
 
         if (isTeacherRole) {
             return teacherRepository.findByUserId(principal.getId())

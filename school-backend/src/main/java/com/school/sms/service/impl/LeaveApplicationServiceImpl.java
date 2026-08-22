@@ -105,12 +105,9 @@ public class LeaveApplicationServiceImpl implements LeaveApplicationService {
         if (coreApprover) {
             return null;
         }
-        if (!authorities.contains(ROLE_PREFIX + AppConstants.ROLE_CLASS_TEACHER)) {
-            // The endpoint's @PreAuthorize admits nobody else, so this is a
-            // belt-and-braces empty rather than a reachable branch.
-            return List.of();
-        }
-
+        // No role check: the lookup below *is* the check. It resolves the caller's
+        // own homeroom section and returns empty when they head none, which was
+        // already the only thing the old CLASS_TEACHER role test could tell us.
         return teacherRepository.findByUserId(principal.getId())
                 .flatMap(teacher -> sectionRepository.findByClassTeacherId(teacher.getId()))
                 .map(section -> studentRepository.findUserIdsBySectionId(section.getId()))
@@ -216,8 +213,11 @@ public class LeaveApplicationServiceImpl implements LeaveApplicationService {
             return;
         }
 
-        boolean isClassTeacher = authorities.contains(ROLE_PREFIX + AppConstants.ROLE_CLASS_TEACHER);
-        if (isClassTeacher && application.getApplicantType() == LeaveApplicantType.STUDENT
+        // isOwnHomeroomStudent resolves the approver's own homeroom and returns
+        // false when they have none, so it already answers "is this a class teacher,
+        // and is this their student" in one question. The separate CLASS_TEACHER
+        // role test that used to guard it added nothing once the role was gone.
+        if (application.getApplicantType() == LeaveApplicantType.STUDENT
                 && isOwnHomeroomStudent(principal.getId(), application.getApplicantId())) {
             return;
         }
@@ -255,7 +255,7 @@ public class LeaveApplicationServiceImpl implements LeaveApplicationService {
         if (AppConstants.ROLE_STUDENT.equals(roleName)) {
             return LeaveApplicantType.STUDENT;
         }
-        if (AppConstants.ROLE_TEACHER.equals(roleName) || AppConstants.ROLE_CLASS_TEACHER.equals(roleName)) {
+        if (AppConstants.ROLE_TEACHER.equals(roleName)) {
             return LeaveApplicantType.TEACHER;
         }
         return LeaveApplicantType.STAFF;

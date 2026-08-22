@@ -35,12 +35,12 @@ public class OnlineClassController {
     private final OnlineClassService onlineClassService;
 
     private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
     // Not spelled out explicitly in the round brief's Security section (only
     // assignment creation is) — mirrored from it for consistency; see the
     // round report's deviations note.
     private static final String WRITE_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER')";
 
     @GetMapping
     @PreAuthorize(READ_ROLES)

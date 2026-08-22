@@ -33,7 +33,7 @@ public class ScholarshipController {
     private final ScholarshipService scholarshipService;
 
     private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','ACCOUNTANT','TEACHER','CLASS_TEACHER')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','ACCOUNTANT','TEACHER')";
     private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','ACCOUNTANT')";
 
     @GetMapping

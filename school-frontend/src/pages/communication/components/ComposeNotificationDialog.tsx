@@ -23,7 +23,7 @@ import { formatRoleLabel } from '@/utils/format';
 import type { NotificationChannel, Role, SendNotificationPayload } from '@/types';
 
 const ROLES: Role[] = [
-  'SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER', 'CLASS_TEACHER',
+  'SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'TEACHER',
   'ACCOUNTANT', 'LIBRARIAN', 'RECEPTIONIST', 'STUDENT', 'PARENT', 'SECURITY_GUARD',
 ];
 

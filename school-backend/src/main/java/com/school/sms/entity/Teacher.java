@@ -44,6 +44,28 @@ public class Teacher extends AuditableEntity {
     @JoinColumn(name = "designation_id", nullable = false)
     private Designation designation;
 
+    /**
+     * Whether this teacher is also a class teacher, and so holds the six extra
+     * permissions in {@code class_teacher_permissions} on top of the TEACHER role.
+     *
+     * <p>Replaces the old CLASS_TEACHER role. The two were never two kinds of
+     * person: CLASS_TEACHER held exactly TEACHER's permissions plus six, and the
+     * identity did not match reality — 44 users carried the role while only 17
+     * appeared in {@code sections.class_teacher_id}. Being a class teacher is a
+     * duty a teacher picks up at the start of a year and puts down at the end, and
+     * a role is the wrong shape for that.
+     *
+     * <p><b>Server-maintained.</b> Set when this teacher is assigned to
+     * {@code sections.class_teacher_id} and cleared when they hold no section any
+     * more — see {@code SectionServiceImpl}. Not hand-editable, because two
+     * sources of truth for one fact is how they drift: the section row stays
+     * authoritative for *which* class, and this column answers the cheaper
+     * "any at all?" that every request's authority lookup needs.
+     */
+    @Column(name = "is_class_teacher", nullable = false)
+    @Builder.Default
+    private boolean classTeacher = false;
+
     @Column(name = "qualification")
     private String qualification;
 

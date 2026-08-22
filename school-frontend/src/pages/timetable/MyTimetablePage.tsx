@@ -32,7 +32,7 @@ import type { ClassSubjectTeacher, ParentChild, TimetableDay, TimetableSlot } fr
 
 const DAYS: TimetableDay[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
-const TEACHER_ROLES = ['TEACHER', 'CLASS_TEACHER'];
+const TEACHER_ROLES = ['TEACHER'];
 
 function titleCase(day: string) {
   return day.charAt(0) + day.slice(1).toLowerCase();

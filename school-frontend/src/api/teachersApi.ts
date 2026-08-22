@@ -76,7 +76,7 @@ export const teachersApi = {
     return data;
   },
 
-  /** The signed-in teacher's own record, unredacted. TEACHER/CLASS_TEACHER only. */
+  /** The signed-in teacher's own record, unredacted. TEACHER only. */
   getOwnProfile: async (): Promise<ApiResponse<Teacher>> => {
     const { data } = await axiosInstance.get<ApiResponse<Teacher>>(ENDPOINTS.TEACHERS.ME);
     return data;

@@ -211,6 +211,17 @@ export function TeacherListPage() {
               </Box>
               <Box sx={{ fontSize: '0.75rem', lineHeight: 1.3, color: 'text.secondary' }}>{params.row.employeeId}</Box>
             </Box>
+            {/*
+              Who is a class teacher used to be readable from the role, because it
+              was a role. It is a flag on the teacher now, so it is shown here —
+              otherwise collapsing the two roles into one would have quietly
+              removed the answer from the directory.
+            */}
+            {params.row.classTeacher && (
+              <Tooltip title="Also class teacher of a section">
+                <Chip size="small" color="primary" variant="outlined" label="Class teacher" />
+              </Tooltip>
+            )}
           </Stack>
         ),
       },

@@ -37,9 +37,9 @@ import java.util.Set;
  *       from a different snapshot than the grants can disagree with them.</li>
  * </ul>
  *
- * <p>Note that permissions are filtered by module but the role is not: a
- * {@code CLASS_TEACHER} whose MY_CLASS module is disabled keeps the role and loses
- * the capability, which is the intended shape.
+ * <p>Note that permissions are filtered by module but the role is not: a class
+ * teacher whose MY_CLASS module is disabled keeps the flag and loses the
+ * capability, which is the intended shape.
  */
 @Getter
 @Setter

@@ -55,7 +55,7 @@ class AdminAuthorizationAuditTest {
     private static final List<String> SELF_SERVICE_EXPRESSIONS = List.of(
             "hasRole('STUDENT')",
             "hasRole('PARENT')",
-            "hasAnyRole('TEACHER','CLASS_TEACHER')"
+            "hasAnyRole('TEACHER')"
     );
 
     /**

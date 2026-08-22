@@ -143,14 +143,6 @@ class TeacherControllerAccessTest {
     }
 
     @Test
-    @WithMockUser(roles = "CLASS_TEACHER")
-    void classTeacherCanReadTheirOwnProfile() throws Exception {
-        when(teacherService.getOwnProfile()).thenReturn(new TeacherDto());
-
-        mockMvc.perform(get("/api/v1/teachers/me")).andExpect(status().isOk());
-    }
-
-    @Test
     @WithMockUser(roles = "TEACHER")
     void teacherCanUpdateTheirOwnContactDetails() throws Exception {
         when(teacherService.updateOwnProfile(any())).thenReturn(new TeacherDto());

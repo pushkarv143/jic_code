@@ -39,16 +39,16 @@ public class StudentAttendanceController {
     private final StudentAttendanceService studentAttendanceService;
 
     private static final String STAFF_READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','RECEPTIONIST','ACCOUNTANT')";
     private static final String MARK_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER')";
     // /report, /summary and /monthly are also opened to STUDENT/PARENT; the service
     // layer (StudentAccessGuard) restricts them to their own record, and likewise
     // narrows TEACHER/CLASS_TEACHER to the students they teach. For /monthly that
     // narrowing is what keeps a student from reading their classmates' register by
     // asking for their own section — the roster is intersected with their scope.
     private static final String REPORT_READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
     // Self-service: a student reads their own percentage without passing an id.
     // PARENT is excluded — they have no single "own" record and use the by-id
     // endpoint, which the guard already narrows to their own children.

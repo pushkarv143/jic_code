@@ -67,7 +67,7 @@ public class SectionController {
 
     @PatchMapping("/{id}/assign-class-teacher")
     @PreAuthorize(WRITE)
-    @Operation(summary = "Assign a class teacher to a section (promotes a plain TEACHER to CLASS_TEACHER)")
+    @Operation(summary = "Assign a class teacher to a section (sets teachers.is_class_teacher)")
     public ResponseEntity<ApiResponse<SectionDto>> assignClassTeacher(@PathVariable Long id,
                                                                        @Valid @RequestBody AssignClassTeacherRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Class teacher assigned successfully",

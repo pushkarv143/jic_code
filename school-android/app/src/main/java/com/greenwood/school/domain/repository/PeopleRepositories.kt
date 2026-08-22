@@ -97,7 +97,7 @@ interface PeopleRepository {
 
     suspend fun getTeacher(id: Long): ApiResult<TeacherDto>
 
-    /** The signed-in teacher's own record, unredacted. TEACHER/CLASS_TEACHER only. */
+    /** The signed-in teacher's own record, unredacted. TEACHER only. */
     suspend fun getOwnTeacherProfile(): ApiResult<TeacherDto>
 
     /** Updates the contact/qualification fields a teacher may maintain themselves. */

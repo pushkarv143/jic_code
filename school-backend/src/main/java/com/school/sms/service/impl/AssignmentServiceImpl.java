@@ -216,14 +216,14 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
     }
 
-    /** TEACHER/CLASS_TEACHER callers are always pinned to their own teacher record; only an admin
+    /** A TEACHER caller is always pinned to their own teacher record; only an admin
      *  caller's explicit teacherId (if any) is honored — see AssignmentFormRequest.teacherId. */
     private Teacher resolveTeacherForWrite(Long explicitTeacherId) {
         UserPrincipal principal = SecurityUtils.getCurrentUserPrincipal()
                 .orElseThrow(() -> new AccessDeniedException("No authenticated user found"));
         boolean isTeacherRole = principal.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .anyMatch(a -> a.equals(ROLE_PREFIX + AppConstants.ROLE_TEACHER) || a.equals(ROLE_PREFIX + AppConstants.ROLE_CLASS_TEACHER));
+                .anyMatch(a -> a.equals(ROLE_PREFIX + AppConstants.ROLE_TEACHER));
 
         if (isTeacherRole) {
             return teacherRepository.findByUserId(principal.getId())

@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
  * The section a user is class teacher of. Null on [MyAccessDto] for everyone else,
  * which includes most administrators.
  *
- * <p>This — not the CLASS_TEACHER role — is what decides whether "My Class" exists
+ * <p>This — not a role — is what decides whether "My Class" exists
  * for a user. On the seeded database 44 users hold that role while only 17 are
  * homeroom of anything, so the role alone would advertise an empty screen to 27 of
  * them.

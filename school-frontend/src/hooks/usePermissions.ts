@@ -17,7 +17,7 @@ export interface PermissionsApi {
   is: (...roles: Role[]) => boolean;
   /** True for the roles that see the whole school rather than a slice of it. */
   isManagement: boolean;
-  /** True for TEACHER/CLASS_TEACHER, whose data is scoped to what they teach. */
+  /** True for TEACHER, whose data is scoped to the students they teach. */
   isTeaching: boolean;
   /** True for STUDENT/PARENT, whose data is scoped to themselves/their children. */
   isSelfScoped: boolean;

@@ -33,7 +33,6 @@ const ROLE_OPTIONS: Array<{ label: string; value: Role | '' }> = [
   { label: 'Principal', value: 'PRINCIPAL' },
   { label: 'Vice Principal', value: 'VICE_PRINCIPAL' },
   { label: 'Teacher', value: 'TEACHER' },
-  { label: 'Class Teacher', value: 'CLASS_TEACHER' },
   { label: 'Accountant', value: 'ACCOUNTANT' },
   { label: 'Librarian', value: 'LIBRARIAN' },
   { label: 'Receptionist', value: 'RECEPTIONIST' },

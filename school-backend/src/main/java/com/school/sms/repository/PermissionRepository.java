@@ -22,6 +22,20 @@ public interface PermissionRepository extends JpaRepository<Permission, Long> {
     List<Permission> findAllByNameIn(Collection<String> names);
 
     /**
+     * The permissions a class teacher holds on top of the TEACHER role.
+     *
+     * <p>{@code class_teacher_permissions} has no JPA entity — same "no entity
+     * needed, just a native-query join" approach this repository already takes for
+     * {@code role_permissions}. Data rather than a constant in Java so the set can
+     * be tuned without a release, and so 21_single_teacher_role.sql could seed it
+     * by computing what CLASS_TEACHER held and TEACHER did not.
+     */
+    @Query(value = "SELECT p.* FROM permissions p " +
+            "JOIN class_teacher_permissions ctp ON ctp.permission_id = p.id " +
+            "ORDER BY p.module, p.name", nativeQuery = true)
+    List<Permission> findClassTeacherPermissions();
+
+    /**
      * Permission count per module, as {@code [module, count]} rows.
      *
      * <p>Drives the "switching this off withdraws N permissions" label on the

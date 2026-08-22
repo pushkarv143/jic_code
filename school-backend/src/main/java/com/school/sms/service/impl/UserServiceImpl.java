@@ -156,20 +156,4 @@ public class UserServiceImpl implements UserService {
         log.info("User {} soft-deleted (deactivated) rather than hard-deleted", id);
     }
 
-    @Override
-    @Transactional
-    public void promoteToClassTeacher(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
-
-        if (!AppConstants.ROLE_TEACHER.equals(user.getRole().getName())) {
-            return;
-        }
-
-        Role classTeacherRole = roleRepository.findByName(AppConstants.ROLE_CLASS_TEACHER)
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "name", AppConstants.ROLE_CLASS_TEACHER));
-
-        user.setRole(classTeacherRole);
-        userRepository.save(user);
-    }
 }

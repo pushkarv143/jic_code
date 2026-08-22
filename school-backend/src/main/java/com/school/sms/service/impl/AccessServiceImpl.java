@@ -9,17 +9,20 @@ import com.school.sms.entity.Permission;
 import com.school.sms.entity.Role;
 import com.school.sms.entity.Section;
 import com.school.sms.entity.StudentStatus;
+import com.school.sms.entity.Teacher;
 import com.school.sms.exception.BadRequestException;
 import com.school.sms.exception.ResourceNotFoundException;
 import com.school.sms.repository.OrgModuleRepository;
 import com.school.sms.repository.PermissionRepository;
 import com.school.sms.repository.RoleRepository;
 import com.school.sms.repository.StudentRepository;
+import com.school.sms.repository.TeacherRepository;
 import com.school.sms.security.HomeroomGuard;
 import com.school.sms.security.SecurityUtils;
 import com.school.sms.security.UserPrincipal;
 import com.school.sms.service.AccessService;
 import com.school.sms.service.MenuService;
+import com.school.sms.util.AppConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -49,6 +52,7 @@ public class AccessServiceImpl implements AccessService {
     private final PermissionRepository permissionRepository;
     private final OrgModuleRepository orgModuleRepository;
     private final StudentRepository studentRepository;
+    private final TeacherRepository teacherRepository;
     private final HomeroomGuard homeroomGuard;
     private final MenuService menuService;
 
@@ -71,6 +75,21 @@ public class AccessServiceImpl implements AccessService {
                 .filter(permission -> !disabledModules.contains(permission.getModule()))
                 .map(Permission::getName)
                 .collect(Collectors.toCollection(TreeSet::new));
+
+        // The class-teacher flag's extra grants, on the same terms the authority
+        // path applies them — see CustomUserDetailsService. Both have to agree or
+        // this endpoint would tell the UI it may do something @PreAuthorize refuses,
+        // or hide something it would allow.
+        boolean holdsClassTeacherFlag = AppConstants.ROLE_TEACHER.equals(role.getName())
+                && teacherRepository.findByUserId(principal.getId())
+                        .map(Teacher::isClassTeacher)
+                        .orElse(false);
+        if (holdsClassTeacherFlag) {
+            permissionRepository.findClassTeacherPermissions().stream()
+                    .filter(permission -> !disabledModules.contains(permission.getModule()))
+                    .map(Permission::getName)
+                    .forEach(effective::add);
+        }
 
         List<String> enabledModules = orgModuleRepository.findAllByOrderBySortOrderAscLabelAsc().stream()
                 .filter(OrgModule::isEnabled)

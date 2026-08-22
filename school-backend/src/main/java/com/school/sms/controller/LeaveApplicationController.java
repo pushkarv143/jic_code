@@ -5,6 +5,7 @@ import com.school.sms.dto.response.ApiResponse;
 import com.school.sms.dto.response.LeaveApplicationDto;
 import com.school.sms.dto.response.PageResponse;
 import com.school.sms.service.LeaveApplicationService;
+import com.school.sms.util.AppConstants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,7 +35,16 @@ public class LeaveApplicationController {
 
     // Class teachers are included here so they can approve/reject student leave;
     // the service layer restricts them to STUDENT-type applications only.
-    private static final String ADMIN_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','CLASS_TEACHER')";
+    // Management, plus a class teacher for their own homeroom students.
+    //
+    // The class-teacher half was 'CLASS_TEACHER' in this list until the role was
+    // retired. It is MY_CLASS_VIEW now rather than 'TEACHER': the role would admit
+    // every teacher in the school to an endpoint only a homeroom teacher can
+    // usefully call, and this permission is precisely what teachers.is_class_teacher
+    // grants. The service still narrows an approver to their own section's students.
+    private static final String ADMIN_ROLES =
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL') or hasAuthority('"
+                    + AppConstants.PERMISSION_AUTHORITY_PREFIX + "MY_CLASS_VIEW')";
     // Every role applies for and views their own leave, so these are open to any
     // signed-in user. Stated explicitly rather than left off: an endpoint with no
     // gate is indistinguishable from one where the gate was forgotten, which is how

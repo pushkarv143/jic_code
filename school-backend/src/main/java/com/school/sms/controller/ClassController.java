@@ -51,7 +51,7 @@ public class ClassController {
     private final ClassOverviewService classOverviewService;
 
     private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','RECEPTIONIST','ACCOUNTANT')";
     /*
      * Permission-gated rather than role-gated, for the reason spelled out on
      * SectionController.WRITE: a hardcoded role list cannot be reconfigured, so

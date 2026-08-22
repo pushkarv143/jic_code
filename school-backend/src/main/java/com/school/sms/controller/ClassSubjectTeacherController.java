@@ -34,7 +34,7 @@ public class ClassSubjectTeacherController {
     private final ClassSubjectTeacherService classSubjectTeacherService;
 
     private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','RECEPTIONIST','ACCOUNTANT')";
     /*
      * Permission-gated, matching ClassController.SUBJECT_WRITE and the
      * SUBJECT_MANAGE check the frontend applies to the same controls. See
@@ -49,7 +49,7 @@ public class ClassSubjectTeacherController {
     // ordinary, being able to page the whole staff-to-subject mapping is not. The
     // service narrows these to the caller's own record either way.
     private static final String SELF_SERVICE_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST',"
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','RECEPTIONIST',"
                     + "'ACCOUNTANT','STUDENT','PARENT')";
 
     @GetMapping

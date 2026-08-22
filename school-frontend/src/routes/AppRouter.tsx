@@ -120,7 +120,7 @@ import type { Role } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
 
 const MANAGEMENT_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'];
-const EXAM_STAFF_ROLES: Role[] = [...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER'];
+const EXAM_STAFF_ROLES: Role[] = [...MANAGEMENT_ROLES, 'TEACHER'];
 const ADMISSION_STAFF_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'RECEPTIONIST'];
 
 /**
@@ -190,7 +190,7 @@ const router = createBrowserRouter([
             path: 'students',
             element: (
               <RoleBasedRoute
-                allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER', 'RECEPTIONIST', 'STUDENT']}
+                allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER', 'RECEPTIONIST', 'STUDENT']}
               />
             ),
             children: [
@@ -210,7 +210,7 @@ const router = createBrowserRouter([
             // than the staff directory. The create/edit routes stay behind
             // MANAGEMENT_ROLES, matching the backend's WRITE_ROLES.
             path: 'teachers',
-            element: <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER']} />,
+            element: <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER']} />,
             children: [
               { index: true, element: <TeachersIndexRoute /> },
               {
@@ -231,7 +231,7 @@ const router = createBrowserRouter([
           {
             path: 'classes',
             element: (
-              <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER']} />
+              <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER']} />
             ),
             children: [
               { index: true, element: <ClassListPage /> },
@@ -254,7 +254,7 @@ const router = createBrowserRouter([
             // whose week that is, so the same route serves all three.
             path: 'my-timetable',
             element: (
-              <RoleBasedRoute allowedRoles={['TEACHER', 'CLASS_TEACHER', 'STUDENT', 'PARENT']} />
+              <RoleBasedRoute allowedRoles={['TEACHER', 'STUDENT', 'PARENT']} />
             ),
             children: [{ index: true, element: <MyTimetablePage /> }],
           },
@@ -265,14 +265,14 @@ const router = createBrowserRouter([
               { index: true, element: <Navigate to="reports" replace /> },
               {
                 path: 'mark',
-                element: <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER']} />,
+                element: <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER']} />,
                 children: [{ index: true, element: <MarkAttendancePage /> }],
               },
               { path: 'reports', element: <AttendanceReportPage /> },
               { path: 'monthly', element: <MonthlyAttendancePage /> },
               {
                 path: 'teachers',
-                element: <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER', 'CLASS_TEACHER']} />,
+                element: <RoleBasedRoute allowedRoles={[...MANAGEMENT_ROLES, 'TEACHER']} />,
                 children: [{ index: true, element: <TeacherAttendancePage /> }],
               },
             ],

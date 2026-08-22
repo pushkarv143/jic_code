@@ -86,7 +86,7 @@ class AccessStore @Inject constructor(
 
     /**
      * Holds a homeroom AND the MY_CLASS module is on. Read from the server rather
-     * than inferred from the CLASS_TEACHER role, which 27 of its 44 holders cannot
+     * than inferred from a role — the CLASS_TEACHER role was retired because 27 of its 44 holders could not
      * back with an actual assignment.
      */
     val isClassTeacherOfOwnSection: Boolean

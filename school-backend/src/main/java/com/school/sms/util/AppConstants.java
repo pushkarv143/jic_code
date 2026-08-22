@@ -10,7 +10,6 @@ public final class AppConstants {
     public static final String ROLE_PRINCIPAL = "PRINCIPAL";
     public static final String ROLE_VICE_PRINCIPAL = "VICE_PRINCIPAL";
     public static final String ROLE_TEACHER = "TEACHER";
-    public static final String ROLE_CLASS_TEACHER = "CLASS_TEACHER";
     public static final String ROLE_ACCOUNTANT = "ACCOUNTANT";
     public static final String ROLE_LIBRARIAN = "LIBRARIAN";
     public static final String ROLE_RECEPTIONIST = "RECEPTIONIST";
@@ -58,8 +57,13 @@ public final class AppConstants {
             ROLE_SUPER_ADMIN, ROLE_PRINCIPAL, ROLE_VICE_PRINCIPAL);
 
     // Roles whose view of student data is narrowed to the students they teach.
-    public static final java.util.Set<String> TEACHING_ROLES = java.util.Set.of(
-            ROLE_TEACHER, ROLE_CLASS_TEACHER);
+    //
+    // One role since 21_single_teacher_role.sql. CLASS_TEACHER used to sit beside
+    // TEACHER here, but the two were never two kinds of person: it held exactly
+    // TEACHER's permissions plus six, and 44 users carried it while only 17 held a
+    // section. Being a class teacher is now teachers.is_class_teacher, which grants
+    // those six on top of this role — see CustomUserDetailsService.
+    public static final java.util.Set<String> TEACHING_ROLES = java.util.Set.of(ROLE_TEACHER);
 
     // Roles whose view of student data is narrowed to their own record (STUDENT)
     // or their own children's records (PARENT).

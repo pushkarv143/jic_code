@@ -34,7 +34,7 @@ public class FeeStructureController {
     private final FeeStructureService feeStructureService;
 
     private static final String READ_ROLES =
-            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','ACCOUNTANT','TEACHER','CLASS_TEACHER','RECEPTIONIST')";
+            "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','ACCOUNTANT','TEACHER','RECEPTIONIST')";
     private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','ACCOUNTANT')";
 
     @GetMapping

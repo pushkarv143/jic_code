@@ -12,7 +12,7 @@ import { useAppSelector } from '@/store/hooks';
 import type { Homeroom, MyAccess, Permission, Role } from '@/types';
 
 export const MANAGEMENT_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'];
-export const TEACHING_ROLES: Role[] = ['TEACHER', 'CLASS_TEACHER'];
+export const TEACHING_ROLES: Role[] = ['TEACHER'];
 export const SELF_SCOPED_ROLES: Role[] = ['STUDENT', 'PARENT'];
 
 /**
@@ -73,7 +73,7 @@ export interface AccessContextValue {
   is: (...roles: Role[]) => boolean;
   /** True for the roles that see the whole school rather than a slice of it. */
   isManagement: boolean;
-  /** True for TEACHER/CLASS_TEACHER, whose data is scoped to what they teach. */
+  /** True for TEACHER, whose data is scoped to the students they teach. */
   isTeaching: boolean;
   /** True for STUDENT/PARENT, scoped to themselves or their children. */
   isSelfScoped: boolean;
@@ -174,8 +174,10 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       permissions,
       enabledModules,
       homeroom: access?.homeroom ?? null,
-      // Strictly from the server. Never inferred from the CLASS_TEACHER role,
-      // which 27 of its 44 holders cannot back with an actual assignment.
+      // Strictly from the server, which reads it from the homeroom assignment.
+      // There is no longer a role to infer it from — the CLASS_TEACHER role was
+      // retired precisely because 27 of its 44 holders could not back it with an
+      // actual section.
       isClassTeacherOfOwnSection: Boolean(access?.classTeacherOfOwnSection),
       can,
       canAny,

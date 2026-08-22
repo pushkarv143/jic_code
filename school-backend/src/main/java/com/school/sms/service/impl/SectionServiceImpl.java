@@ -85,10 +85,16 @@ public class SectionServiceImpl implements SectionService {
     @Transactional
     public SectionDto assignClassTeacher(Long id, AssignClassTeacherRequest request) {
         Section entity = findEntity(id);
+        Teacher previous = entity.getClassTeacher();
 
         if (request.getTeacherId() == null) {
             entity.setClassTeacher(null);
             Section saved = sectionRepository.save(entity);
+            sectionRepository.flush();
+            // Unassigning used to leave the outgoing teacher on the CLASS_TEACHER
+            // role for good: nothing demoted them, so they kept homeroom privileges
+            // over a homeroom they no longer had. The flag is cleared here.
+            refreshClassTeacherFlag(previous);
             return toDto(saved);
         }
 
@@ -99,10 +105,43 @@ public class SectionServiceImpl implements SectionService {
 
         entity.setClassTeacher(teacher);
         Section saved = sectionRepository.save(entity);
+        // Flushed before the flags are refreshed: the refresh asks the database
+        // whether each teacher still holds a section, and without this it would be
+        // answered from the rows as they were when the transaction started.
+        sectionRepository.flush();
 
-        userService.promoteToClassTeacher(teacher.getUser().getId());
+        refreshClassTeacherFlag(previous);
+        refreshClassTeacherFlag(teacher);
 
         return toDto(saved);
+    }
+
+    /**
+     * Brings {@code teachers.is_class_teacher} back in line with the section rows.
+     *
+     * <p>This is what replaced promoting a teacher to the CLASS_TEACHER role. The
+     * flag grants the six permissions in {@code class_teacher_permissions} on the
+     * caller's next request — see {@code CustomUserDetailsService} — so the teacher
+     * keeps one role for their whole career and the duty comes and goes with the
+     * assignment.
+     *
+     * <p>Derived from the section rows rather than set to a literal true/false,
+     * which costs one indexed lookup and makes the two impossible to disagree: the
+     * question "does this teacher head a section" has exactly one answer and it
+     * lives in {@code sections}. {@code uq_sections_class_teacher} allows at most
+     * one, so the outgoing teacher normally holds none by the time this runs — but
+     * asking is cheaper than assuming, and it is the same query the migration's
+     * drift check uses.
+     */
+    private void refreshClassTeacherFlag(Teacher teacher) {
+        if (teacher == null) {
+            return;
+        }
+        boolean holdsASection = sectionRepository.findByClassTeacherId(teacher.getId()).isPresent();
+        if (teacher.isClassTeacher() != holdsASection) {
+            teacher.setClassTeacher(holdsASection);
+            teacherRepository.save(teacher);
+        }
     }
 
     /**
