@@ -242,9 +242,12 @@ public class StudentServiceImpl implements StudentService {
         Student saved = studentRepository.save(student);
         auditLogService.record("CREATE_STUDENT", "Student", saved.getId(), null, null);
 
-        if (user != null) {
-            emailService.sendWelcomeEmail(user.getEmail(), user.getFirstName(), user.getUsername());
-        }
+        // No welcome email here. It used to greet the new account and name its
+        // username, which made sense when the password was something an
+        // administrator had typed and passed on separately. The credentials email
+        // above now carries the username *and* the password, so sending both meant
+        // two messages minutes apart, one of them missing the half that matters.
+        // The null-check on the user went with it: provisioning is unconditional.
 
         return toFullDto(saved);
     }
