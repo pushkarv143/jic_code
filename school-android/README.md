@@ -466,6 +466,7 @@ and none of them blocks a mobile workflow:
 |---|---|
 | Student Excel import/export, bulk promote/transfer | Bulk operations over a spreadsheet; the API is wired (`StudentRepository.importExcel`/`exportExcel`/`promote`) but there is no sane phone UI for reviewing 40 skipped rows |
 | Teacher/user create & edit forms | Account provisioning with password setting — an admin desk task |
+| Roles & Permissions, and Privileges (menu assignment) | Both configure the whole organisation from a checkbox board dozens of rows wide. The phone *follows* both — a grant or a menu an administrator changes reaches a signed-in device on its next token refresh — it just does not edit them. The `PRIVILEGES` menu key has no entry in `MENU_CATALOGUE`, so the server can send it and this app simply skips it |
 | Academic setup writes: years, departments, designations | Configured once a year, and a year is the thing every other record hangs off — a mistyped one on a phone is expensive to unpick. Classes, sections and subjects *are* editable on the phone as of 1.7.0, from the class module |
 | Notice / assignment / online-class authoring | All three are multipart composers with attachments; reading them is the mobile need |
 | Audit logs | Forensic tool over raw JSON diffs |

@@ -102,6 +102,11 @@ export type Permission =
   // purpose: these only reach the one section the holder is class teacher of.
   | 'MY_CLASS_VIEW'
   | 'MY_CLASS_ROSTER_MANAGE'
+  // Menu administration — which menus each role is offered. Granted to
+  // SUPER_ADMIN alone by 20_privilege_module.sql, but a permission rather than a
+  // role so an organisation can delegate it without a code change.
+  | 'PRIVILEGE_VIEW'
+  | 'PRIVILEGE_MANAGE'
   | (string & {});
 
 export interface AuthResponse {

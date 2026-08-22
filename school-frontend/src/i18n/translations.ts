@@ -47,6 +47,7 @@ export const translations = {
       reports: 'Reports',
       myProfile: 'My Profile',
       users: 'Users',
+      privileges: 'Privileges',
       settings: 'Settings',
       // Section headings. Translatable for the first time here: they used to be
       // hard-coded group titles in the client's nav config, which the language
@@ -98,6 +99,7 @@ export const translations = {
       reports: 'रिपोर्ट',
       myProfile: 'मेरी प्रोफ़ाइल',
       users: 'उपयोगकर्ता',
+      privileges: 'विशेषाधिकार',
       settings: 'सेटिंग्स',
       sectionOverview: 'अवलोकन',
       sectionAcademics: 'शैक्षणिक',

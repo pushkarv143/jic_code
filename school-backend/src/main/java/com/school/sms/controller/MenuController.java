@@ -27,10 +27,21 @@ import java.util.Set;
  *
  * <p>Two audiences, two authorization rules. {@code /me/menus} is the caller's own
  * menu and needs nothing but a login — refusing a user their own menu would leave
- * them staring at an empty shell. The catalogue and the per-role assignment are
- * administration, gated on the same {@code ROLE_MANAGE} grant as the permission
- * editor, because assigning menus and granting permissions are two halves of the
- * same job and splitting them across two grants only invites one to be forgotten.
+ * them staring at an empty shell.
+ *
+ * <p>The catalogue and the per-role assignment are administration, gated on the
+ * PRIVILEGE module's own two grants. They were first written against the ROLE
+ * grants, on the reasoning that assigning a menu and granting a permission are two
+ * halves of one job. That is true of the work but not of the authority: ROLE_MANAGE
+ * is held by the principal so they can adjust what a teacher may do, while deciding
+ * what appears on every role's navigation shapes what the whole organisation sees.
+ * PRIVILEGE_VIEW and PRIVILEGE_MANAGE are granted to SUPER_ADMIN alone, and an
+ * organisation that wants to delegate can grant them from the role editor — which
+ * is why they are permissions and not a hard-coded role list.
+ *
+ * <p>(The first version also named {@code ROLE_READ}, which is not a permission
+ * that exists: the catalogue answered 403 to a principal holding ROLE_VIEW and
+ * only ever succeeded through the SUPER_ADMIN override.)
  *
  * @see com.school.sms.entity.Menu for why a menu assignment is not authority
  */
@@ -44,11 +55,11 @@ public class MenuController {
     private final MenuService menuService;
 
     private static final String READ_CONFIG =
-            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "ROLE_READ') or "
+            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "PRIVILEGE_VIEW') or "
                     + AppConstants.ADMIN_OVERRIDE;
 
     private static final String MANAGE_CONFIG =
-            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "ROLE_MANAGE') or "
+            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "PRIVILEGE_MANAGE') or "
                     + AppConstants.ADMIN_OVERRIDE;
 
     /**

@@ -25,6 +25,7 @@ import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined';
 import FamilyRestroomOutlinedIcon from '@mui/icons-material/FamilyRestroomOutlined';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined';
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import CircleOutlinedIcon from '@mui/icons-material/CircleOutlined';
 
 /**
@@ -61,6 +62,7 @@ const ICONS: Record<string, ReactNode> = {
   FamilyRestroomOutlined: <FamilyRestroomOutlinedIcon />,
   NotificationsOutlined: <NotificationsOutlinedIcon />,
   ChatOutlined: <ChatOutlinedIcon />,
+  AdminPanelSettingsOutlined: <AdminPanelSettingsOutlinedIcon />,
 };
 
 /**

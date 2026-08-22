@@ -108,6 +108,7 @@ import TransportReportPage from '@/pages/reports/TransportReportPage';
 
 import SettingsPage from '@/pages/settings/SettingsPage';
 import RolesPermissionsPage from '@/pages/settings/RolesPermissionsPage';
+import PrivilegesPage from '@/pages/privileges/PrivilegesPage';
 import UserListPage from '@/pages/users/UserListPage';
 
 import ProfilePage from '@/pages/misc/ProfilePage';
@@ -436,6 +437,18 @@ const router = createBrowserRouter([
             path: 'users',
             element: <RoleBasedRoute allowedRoles={['SUPER_ADMIN', 'PRINCIPAL']} />,
             children: [{ index: true, element: <UserListPage /> }],
+          },
+          // Privileges — which menus each role is offered.
+          //
+          // Guarded by permission and module rather than by a role list, for the
+          // same reason as /settings/roles: who may configure this is itself
+          // configurable. PRIVILEGE_VIEW is granted to SUPER_ADMIN alone today, so
+          // in practice this is admin-only — but an organisation can delegate it
+          // without a code change, which a hardcoded role list would prevent.
+          {
+            path: 'privileges',
+            element: <PermissionRoute anyOf={['PRIVILEGE_VIEW', 'PRIVILEGE_MANAGE']} module="PRIVILEGE" />,
+            children: [{ index: true, element: <PrivilegesPage /> }],
           },
           // Open to all roles - the page itself shows a graceful message for non-PARENT accounts.
           { path: 'parent', element: <ParentDashboardPage /> },
