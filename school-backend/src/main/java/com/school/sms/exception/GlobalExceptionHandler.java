@@ -20,6 +20,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -186,6 +187,29 @@ public class GlobalExceptionHandler {
             response.allow(allowed.toArray(HttpMethod[]::new));
         }
         return response.body(body);
+    }
+
+    /**
+     * An unknown path is a 404, not a server error.
+     *
+     * <p>Spring resolves a request that matches no controller against the static
+     * resource handlers, and when those miss too it raises this. With no handler for
+     * it the catch-all below answered 500 "An unexpected error occurred" and logged a
+     * stack trace as an unhandled exception - so every client typo read as though the
+     * backend had fallen over, and the log filled with errors that were nothing of
+     * the kind. A sweep of GET /api/v1/subjects and GET /api/v1/sections - neither of
+     * which exists; subjects are read per class and sections per class - is what
+     * surfaced it.
+     *
+     * <p>The path is echoed back because a 404 with no subject is hard to act on when
+     * the caller is a client library building URLs from a base.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex,
+                                                              HttpServletRequest request) {
+        log.warn("No endpoint matches {} {}", request.getMethod(), request.getRequestURI());
+        return respond(HttpStatus.NOT_FOUND,
+                "No endpoint matches " + request.getMethod() + " " + request.getRequestURI(), request);
     }
 
     @ExceptionHandler(ExpiredJwtException.class)
