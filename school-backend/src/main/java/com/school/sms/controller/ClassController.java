@@ -52,7 +52,27 @@ public class ClassController {
 
     private static final String READ_ROLES =
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT')";
-    private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
+    /*
+     * Permission-gated rather than role-gated, for the reason spelled out on
+     * SectionController.WRITE: a hardcoded role list cannot be reconfigured, so
+     * revoking the grant would hide the button and still accept the request.
+     *
+     * Split by what each endpoint actually writes, matching the grants the
+     * frontend checks on the same controls:
+     *
+     *   CLASS_MANAGE   - the class itself, and its nested section create
+     *   SUBJECT_MANAGE - the class's subjects
+     *
+     * No behaviour change on a seeded database: SUPER_ADMIN, PRINCIPAL and
+     * VICE_PRINCIPAL all hold both today.
+     */
+    private static final String WRITE_ROLES =
+            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "CLASS_MANAGE') or "
+                    + AppConstants.ADMIN_OVERRIDE;
+
+    private static final String SUBJECT_WRITE =
+            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "SUBJECT_MANAGE') or "
+                    + AppConstants.ADMIN_OVERRIDE;
 
     @GetMapping
     @PreAuthorize(READ_ROLES)
@@ -153,7 +173,7 @@ public class ClassController {
     }
 
     @PostMapping("/{classId}/subjects")
-    @PreAuthorize(WRITE_ROLES)
+    @PreAuthorize(SUBJECT_WRITE)
     @Operation(summary = "Create a new subject under a class")
     public ResponseEntity<ApiResponse<SubjectDto>> createSubject(@PathVariable Long classId,
                                                                   @Valid @RequestBody SubjectRequest request) {

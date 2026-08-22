@@ -45,11 +45,23 @@ fun HubScreen(
     tabRoute: String,
     onNavigate: (String) -> Unit,
     onSignOut: (() -> Unit)? = null,
-    /** The signed-in role's permission grants; empty falls back to role-only filtering. */
+    /**
+     * The signed-in role's effective grants, from `GET /api/v1/me/access`.
+     *
+     * Not the login response's copy: that is a snapshot written to disk and goes
+     * stale the moment an administrator edits a role. Empty now means "this role
+     * holds nothing" rather than "unknown" — the caller waits for the fetch to
+     * settle before composing this screen.
+     */
     permissions: Set<String> = emptySet(),
+    /** Whether an org module is switched on. Unknown keys read as enabled. */
+    moduleEnabled: (String) -> Boolean = { true },
+    /** Whether this user is class teacher of a section — gates the My Class entry. */
+    hasHomeroom: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val sections = menuForRole(role, permissions).filter { it.title in sectionsFor(tabRoute) }
+    val sections = menuForRole(role, permissions, moduleEnabled, hasHomeroom)
+        .filter { it.title in sectionsFor(tabRoute) }
         // "Dashboard" is the Home tab itself; showing it again inside a hub is noise.
         .map { section -> section.copy(entries = section.entries.filterNot { it.route == Routes.DASHBOARD }) }
         .filter { it.entries.isNotEmpty() }

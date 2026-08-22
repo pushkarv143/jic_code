@@ -74,6 +74,9 @@ class TokenAuthenticator @Inject constructor(
             }
 
             sessionManager.saveRefreshedBlocking(refreshed)
+            // Tells AccessStore to re-read the caller's grants. This authenticator is
+            // synchronous and cannot fetch, so the work is handed to a collector.
+            authEventBus.publish(AuthEvent.TokensRefreshed)
             return response.request.withToken(refreshed.accessToken)
         }
     }

@@ -10,8 +10,8 @@ import Divider from '@mui/material/Divider';
 import Tooltip from '@mui/material/Tooltip';
 import SchoolIcon from '@mui/icons-material/School';
 import { useTranslation } from '@/i18n/LanguageProvider';
-import { usePermissions } from '@/hooks/usePermissions';
-import { getNavForRole } from './navConfig';
+import { useAccess } from '@/access/AccessProvider';
+import { getNavForAccess } from './navConfig';
 
 export const SIDEBAR_WIDTH = 264;
 export const SIDEBAR_WIDTH_COLLAPSED = 76;
@@ -24,8 +24,10 @@ interface SidebarContentProps {
 function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { role, permissions } = usePermissions();
-  const groups = getNavForRole(role, permissions);
+  // Live access rather than the login-cached grants: a permission an administrator
+  // revokes, or a module they switch off, has to reach an open session's menu.
+  const { role, permissions, moduleEnabled, isClassTeacherOfOwnSection } = useAccess();
+  const groups = getNavForAccess({ role, permissions, moduleEnabled, isClassTeacherOfOwnSection });
   const t = useTranslation();
 
   return (

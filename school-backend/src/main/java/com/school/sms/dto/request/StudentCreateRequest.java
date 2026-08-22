@@ -54,8 +54,15 @@ public class StudentCreateRequest {
     @NotNull(message = "Section is required")
     private Long sectionId;
 
-    private Integer rollNumber;
-
+    /*
+     * roll_number is deliberately absent.
+     *
+     * It is a student position in their class, assigned by the server and unique
+     * per class (uq_students_class_roll) - not a fact about the student that
+     * anyone types. Accepting it and validating it is what allowed duplicates and
+     * values like 151611; leaving the field out means there is nothing to
+     * validate and nothing to silently ignore.
+     */
     private LocalDate admissionDate;
 
     @Past(message = "Date of birth must be in the past")

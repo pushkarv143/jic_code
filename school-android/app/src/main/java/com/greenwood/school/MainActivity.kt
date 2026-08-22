@@ -73,7 +73,23 @@ class MainActivity : ComponentActivity() {
                         minimumSplashElapsed = true
                     }
 
-                    val showSplash = state.isRestoringSession || !minimumSplashElapsed
+                    /*
+                     * A signed-in shell also waits for `GET /me/access`.
+                     *
+                     * Menus and in-screen controls are gated strictly now: before that
+                     * answer arrives every permission check is false, so composing the
+                     * shell early would briefly hide entries the user does have. Holding
+                     * the splash for one request is the alternative to every screen
+                     * having to render a "maybe".
+                     *
+                     * Only on the way in. `isAccessSettled` latches true, so a later
+                     * background re-read — after a token refresh, or an administrator
+                     * changing a role — updates the menu in place rather than throwing
+                     * the user back to the splash.
+                     */
+                    val showSplash = state.isRestoringSession ||
+                        !minimumSplashElapsed ||
+                        (state.isSignedIn && !state.isAccessSettled)
 
                     if (showSplash) {
                         SplashScreen()
@@ -82,6 +98,7 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             isSignedIn = state.isSignedIn,
                             currentUser = state.user,
+                            access = state.access,
                         )
                     }
                 }

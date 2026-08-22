@@ -31,6 +31,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import classesApi from '@/api/classesApi';
 import studentsApi from '@/api/studentsApi';
 import { getStudentDisplayName, getStudentInitials } from '@/utils/format';
+import { useAccess } from '@/access/AccessProvider';
 import type { ClassOfficial, ClassOfficialRole, Student } from '@/types';
 
 export interface ClassOfficialsTabProps {
@@ -60,6 +61,13 @@ function roleLabel(role: string): string {
  */
 export function ClassOfficialsTab({ classId, onChanged }: ClassOfficialsTabProps) {
   const { enqueueSnackbar } = useSnackbar();
+
+  // Reading who holds a post needs no grant beyond reaching this class screen —
+  // it is roster information. Changing one is CLASS_MANAGE, matching
+  // ClassOfficialController's WRITE_ROLES, so the controls disappear for a
+  // teacher rather than 403ing on click.
+  const { can } = useAccess();
+  const canManageOfficials = can('CLASS_MANAGE');
 
   const [officials, setOfficials] = useState<ClassOfficial[]>([]);
   const [history, setHistory] = useState<ClassOfficial[]>([]);
@@ -179,9 +187,14 @@ export function ClassOfficialsTab({ classId, onChanged }: ClassOfficialsTabProps
           >
             {showHistory ? 'Hide history' : 'History'}
           </Button>
-          <Button size="small" variant="contained" startIcon={<PersonAddAltOutlinedIcon />} onClick={openDialog}>
-            Appoint
-          </Button>
+          {/* CLASS_MANAGE, matching ClassOfficialController's WRITE_ROLES. Appointing
+              school-wide is the office's job; a class teacher appoints within their
+              own section under My Class instead. */}
+          {canManageOfficials && (
+            <Button size="small" variant="contained" startIcon={<PersonAddAltOutlinedIcon />} onClick={openDialog}>
+              Appoint
+            </Button>
+          )}
         </Stack>
       </Stack>
 
@@ -217,9 +230,11 @@ export function ClassOfficialsTab({ classId, onChanged }: ClassOfficialsTabProps
                     </Box>
                   </Stack>
                   <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1 }}>
-                    <Button size="small" color="error" onClick={() => setEndTarget(official)}>
-                      End term
-                    </Button>
+                    {canManageOfficials && (
+                      <Button size="small" color="error" onClick={() => setEndTarget(official)}>
+                        End term
+                      </Button>
+                    )}
                   </Stack>
                 </CardContent>
               </Card>

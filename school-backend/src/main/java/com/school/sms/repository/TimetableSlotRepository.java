@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.DayOfWeek;
+import java.util.Collection;
 import java.util.List;
 
 public interface TimetableSlotRepository extends JpaRepository<TimetableSlot, Long> {
@@ -30,6 +31,25 @@ public interface TimetableSlotRepository extends JpaRepository<TimetableSlot, Lo
             "WHERE ts.teacher IS NOT NULL " +
             "GROUP BY ts.teacher.id, ts.dayOfWeek, ts.periodNumber HAVING COUNT(ts) > 1")
     List<Object[]> findTeacherClashes();
+
+    /**
+     * Where these teachers are already booked, ignoring the section being saved.
+     *
+     * <p>Backs the hard rule that a teacher cannot be in two rooms at once. The
+     * section under edit is excluded because its rows are deleted and rewritten by
+     * the same transaction — counting them would make every save conflict with the
+     * week it is replacing.
+     *
+     * <p>Class and section are fetched so the rejection can name where the teacher
+     * already is ("Krishna Bansal already teaches Class 2 A at this time") instead
+     * of reporting an anonymous clash.
+     */
+    @Query("SELECT ts FROM TimetableSlot ts "
+            + "JOIN FETCH ts.schoolClass "
+            + "JOIN FETCH ts.section "
+            + "WHERE ts.teacher.id IN :teacherIds AND ts.section.id <> :excludedSectionId")
+    List<TimetableSlot> findBookingsForTeachersOutsideSection(@Param("teacherIds") Collection<Long> teacherIds,
+                                                             @Param("excludedSectionId") Long excludedSectionId);
 
     /** Same shape as {@link #findTeacherClashes()} but keyed on room. */
     @Query("SELECT ts.roomNumber, ts.dayOfWeek, ts.periodNumber, COUNT(ts) FROM TimetableSlot ts " +

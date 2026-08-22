@@ -46,6 +46,46 @@ public class SectionAccessGuard {
         }
     }
 
+    /**
+     * The narrower check: homeroom teacher of <em>this</em> section, or management.
+     *
+     * <p>Distinct from {@link #verifyCanAccessSection} in dropping the subject-teacher
+     * grant. Both are legitimate rules for different acts — a subject teacher marking
+     * their own lesson's marks is normal, a subject teacher marking the class register
+     * is not. The register is the class teacher's responsibility and is taken once a
+     * day in period 1, so it belongs to whoever holds
+     * {@code sections.class_teacher_id} and to nobody else.
+     *
+     * <p>Management keeps its pass, unlike in {@link HomeroomGuard}: the office does
+     * legitimately correct a register, and unlike "my class" there is a real section
+     * here for them to act on.
+     *
+     * @throws AccessDeniedException if the caller is neither management nor this
+     *                               section's class teacher
+     */
+    public void verifyIsHomeroomOrManagement(Long classId, Long sectionId) {
+        UserPrincipal principal = SecurityUtils.getCurrentUserPrincipal()
+                .orElseThrow(() -> new AccessDeniedException("No authenticated user found"));
+
+        String roleName = principal.getRoleName();
+        if (AppConstants.MANAGEMENT_ROLES.contains(roleName)) {
+            return;
+        }
+
+        if (AppConstants.TEACHING_ROLES.contains(roleName) && classId != null && sectionId != null) {
+            boolean homeroom = teacherRepository.findByUserId(principal.getId())
+                    .map(teacher -> isHomeroomOf(teacher.getId(), classId, sectionId))
+                    // A teaching login with no teacher record is a data problem, not a
+                    // licence to mark a register: fail closed.
+                    .orElse(false);
+            if (homeroom) {
+                return;
+            }
+        }
+
+        throw new AccessDeniedException("Only this class's class teacher can take its attendance");
+    }
+
     public boolean canAccessSection(Long classId, Long sectionId) {
         UserPrincipal principal = SecurityUtils.getCurrentUserPrincipal()
                 .orElseThrow(() -> new AccessDeniedException("No authenticated user found"));

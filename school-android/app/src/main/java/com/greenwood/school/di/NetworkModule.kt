@@ -8,6 +8,7 @@ import com.greenwood.school.core.network.RefreshClient
 import com.greenwood.school.core.network.TokenAuthenticator
 import com.greenwood.school.data.remote.api.AcademicApi
 import com.greenwood.school.data.remote.api.AttendanceApi
+import com.greenwood.school.data.remote.api.AccessApi
 import com.greenwood.school.data.remote.api.AuthApi
 import com.greenwood.school.data.remote.api.ClassroomApi
 import com.greenwood.school.data.remote.api.CommunicationApi
@@ -15,6 +16,7 @@ import com.greenwood.school.data.remote.api.ExamApi
 import com.greenwood.school.data.remote.api.FeeApi
 import com.greenwood.school.data.remote.api.HostelApi
 import com.greenwood.school.data.remote.api.LibraryApi
+import com.greenwood.school.data.remote.api.MyClassApi
 import com.greenwood.school.data.remote.api.PayrollApi
 import com.greenwood.school.data.remote.api.PeopleApi
 import com.greenwood.school.data.remote.api.ReportApi
@@ -110,6 +112,12 @@ object NetworkModule {
         .build()
 
     @Provides @Singleton fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides @Singleton fun provideAccessApi(retrofit: Retrofit): AccessApi =
+        retrofit.create(AccessApi::class.java)
+
+    @Provides @Singleton fun provideMyClassApi(retrofit: Retrofit): MyClassApi =
+        retrofit.create(MyClassApi::class.java)
 
     @Provides @Singleton fun provideAcademicApi(retrofit: Retrofit): AcademicApi =
         retrofit.create(AcademicApi::class.java)

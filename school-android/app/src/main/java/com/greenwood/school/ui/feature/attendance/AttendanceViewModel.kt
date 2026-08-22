@@ -9,6 +9,7 @@ import com.greenwood.school.core.common.isTeaching
 import com.greenwood.school.core.network.ApiResult
 import com.greenwood.school.core.network.AppError
 import com.greenwood.school.core.network.getOrNull
+import com.greenwood.school.core.session.AccessStore
 import com.greenwood.school.core.session.SessionManager
 import com.greenwood.school.data.remote.dto.MonthlyAttendanceRowDto
 import com.greenwood.school.data.remote.dto.SchoolClassDto
@@ -44,17 +45,30 @@ class AttendanceViewModel @Inject constructor(
     private val attendanceRepository: AttendanceRepository,
     private val academicRepository: AcademicRepository,
     sessionManager: SessionManager,
+    accessStore: AccessStore,
 ) : ViewModel() {
 
     private val user = sessionManager.currentUser
     private val role = Role.from(user?.role)
 
-    /** A student or parent only ever sees their own register, never the marking grid. */
-    val canMark: Boolean = role.isManagement || role.isTeaching
+    /**
+     * A student or parent only ever sees their own register, never the marking grid.
+     *
+     * A teacher reaches the grid only if they hold a homeroom somewhere — taking the
+     * register is the class teacher's job, not every teacher's. Which section they may
+     * actually save is decided per selection by [refreshSectionPermission], because
+     * holding one homeroom does not make every class theirs.
+     */
+    private val homeroomSectionId: Long? = accessStore.homeroom?.sectionId
+    val canMark: Boolean = role.isManagement || (role.isTeaching && homeroomSectionId != null)
     val ownStudentId: Long? = user?.studentId
 
     private val _state = MutableStateFlow(
-        AttendanceUiState(canMark = canMark, isSelfServiceOnly = !canMark),
+        AttendanceUiState(
+            canMark = canMark,
+            isSelfServiceOnly = !canMark,
+            homeroomSectionId = homeroomSectionId,
+        ),
     )
     val state: StateFlow<AttendanceUiState> = _state.asStateFlow()
 
@@ -91,7 +105,27 @@ class AttendanceViewModel @Inject constructor(
 
     fun onSectionSelected(section: SectionDto?) {
         _state.update { it.copy(selectedSection = section) }
+        refreshSectionPermission()
         loadGrid()
+    }
+
+    /**
+     * Recomputes whether the selected section's register is this user's to take.
+     *
+     * Management may correct any register; a teacher may take only the one they are
+     * class teacher of. Mirrors `SectionAccessGuard.verifyIsHomeroomOrManagement`, so
+     * Save is offered exactly when the request would be accepted — before this, a
+     * subject teacher who merely taught the class was offered it and got a 403 after
+     * filling the whole register in.
+     */
+    private fun refreshSectionPermission() {
+        _state.update { s ->
+            val selected = s.selectedSection?.id
+            s.copy(
+                canMarkSelectedSection = role.isManagement ||
+                    (selected != null && selected == homeroomSectionId),
+            )
+        }
     }
 
     fun onDateSelected(date: LocalDate) {
@@ -276,6 +310,7 @@ class AttendanceViewModel @Inject constructor(
     private fun loadSections(classId: Long) = viewModelScope.launch {
         val sections = academicRepository.getSections(classId).getOrNull().orEmpty()
         _state.update { it.copy(sections = sections, selectedSection = sections.firstOrNull()) }
+        refreshSectionPermission()
         if (sections.isNotEmpty()) loadGrid()
     }
 
@@ -299,7 +334,26 @@ class AttendanceViewModel @Inject constructor(
 }
 
 data class AttendanceUiState(
+    /**
+     * May this user reach the marking screens at all — management, or a teacher who
+     * holds a homeroom somewhere.
+     *
+     * Whether they may mark *the selected section* is [canMarkSelectedSection]; a
+     * class teacher can open the screen and still be looking at someone else's class.
+     */
     val canMark: Boolean = false,
+    /**
+     * True when the register for the currently selected section is this user's to take.
+     *
+     * Management may correct any register. A teacher may only take their own: the
+     * register is the class teacher's responsibility, and the server enforces exactly
+     * this through `SectionAccessGuard.verifyIsHomeroomOrManagement`. Before this, any
+     * teacher — including a subject teacher who merely teaches the class — was offered
+     * the Save button and got a 403 after filling the whole register in.
+     */
+    val canMarkSelectedSection: Boolean = false,
+    /** The section this user is class teacher of, if any. Null for most users. */
+    val homeroomSectionId: Long? = null,
     val isSelfServiceOnly: Boolean = false,
     val classes: List<SchoolClassDto> = emptyList(),
     val sections: List<SectionDto> = emptyList(),
@@ -329,6 +383,12 @@ data class AttendanceUiState(
     val isSaving: Boolean = false,
     val message: UiMessage? = null,
 ) {
-    val canSave: Boolean get() = selectedClass != null && selectedSection != null && !isSaving
+    /**
+     * Save is offered only for a register this user may actually take —
+     * [canMarkSelectedSection] — so a teacher looking at another class's grid sees it
+     * disabled rather than getting a 403 after filling it in.
+     */
+    val canSave: Boolean
+        get() = selectedClass != null && selectedSection != null && !isSaving && canMarkSelectedSection
     val markedCount: Int get() = marks.size
 }

@@ -24,7 +24,7 @@ import EmptyState from '@/components/common/EmptyState';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import classesApi from '@/api/classesApi';
 import teachersApi from '@/api/teachersApi';
-import { usePermissions } from '@/hooks/usePermissions';
+import { useAccess } from '@/access/AccessProvider';
 import type { ClassOverview, SchoolClass, Section, Subject, Teacher } from '@/types';
 import SectionFormDialog from './components/SectionFormDialog';
 import SubjectFormDialog from './components/SubjectFormDialog';
@@ -37,12 +37,12 @@ import ClassTimetableTab from './components/ClassTimetableTab';
 // tab shows that section's room, capacity and class teacher without naming it a
 // section or offering to add another. The tab positions are unchanged so the
 // index checks below keep lining up.
-const TABS = ['Overview', 'Class Setup', 'Subjects', 'Teacher Mapping', 'Officials', 'Timetable'] as const;
+const TABS = ['Overview', 'Class Setup', 'Subjects', 'Teachers & Timetable', 'Officials', 'Week Grid'] as const;
 
 // Assigning periods is the office's job, and /api/v1/timetable/classes/** is
 // management-only, so a teacher opening this tab would only reach a 403. They read
 // their own week on My Timetable instead.
-const TIMETABLE_TAB_INDEX = TABS.indexOf('Timetable');
+const TIMETABLE_TAB_INDEX = TABS.indexOf('Week Grid');
 
 /** Class detail: room/capacity and class teacher, subjects, and a subject x teacher mapping grid. */
 export function ClassDetailPage() {
@@ -50,7 +50,24 @@ export function ClassDetailPage() {
   const classId = Number(id);
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
-  const { isManagement } = usePermissions();
+  /*
+   * Write gates for this screen, matched to what the API actually enforces:
+   *
+   *   SECTION_MANAGE - room/capacity and the class-teacher assignment, both of
+   *                    which write to `sections`
+   *   SUBJECT_MANAGE - adding, editing and deleting a class's subjects
+   *
+   * Read access is deliberately wider than write here: a teacher needs to see
+   * who the class teacher is and which subjects the class runs. So the controls
+   * are rendered disabled rather than removed where the value itself is the
+   * information — see the class-teacher Autocomplete below.
+   */
+  const { can } = useAccess();
+  const canManageSection = can('SECTION_MANAGE');
+  const canManageSubjects = can('SUBJECT_MANAGE');
+  // The whole-week grid writes the timetable, so it is hidden without the grant
+  // rather than shown read-only — it is an editor, not a view.
+  const canManageTimetable = can('TIMETABLE_MANAGE');
 
   const [schoolClass, setSchoolClass] = useState<SchoolClass | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
@@ -207,7 +224,7 @@ export function ClassDetailPage() {
               label={t}
               // Kept mounted (rather than filtered out) so every tab keeps the index
               // the content checks below use.
-              sx={index === TIMETABLE_TAB_INDEX && !isManagement ? { display: 'none' } : undefined}
+              sx={index === TIMETABLE_TAB_INDEX && !canManageTimetable ? { display: 'none' } : undefined}
             />
           ))}
         </Tabs>
@@ -237,27 +254,47 @@ export function ClassDetailPage() {
                                 Room {sec.roomNumber ?? '-'} · Capacity {sec.capacity ?? '-'}
                               </Typography>
                             </Box>
-                            <Tooltip title="Edit room and capacity">
-                              <IconButton
-                                size="small"
-                                onClick={() => {
-                                  setEditingSection(sec);
-                                  setSectionDialogOpen(true);
-                                }}
-                              >
-                                <EditOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
+                            {canManageSection && (
+                              <Tooltip title="Edit room and capacity">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    setEditingSection(sec);
+                                    setSectionDialogOpen(true);
+                                  }}
+                                >
+                                  <EditOutlinedIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                           </Stack>
                           <Box sx={{ mt: 2 }}>
+                            {/*
+                              Disabled rather than hidden, and `readOnly` so the
+                              text cannot be typed into or the popup opened: who
+                              the class teacher is, is information a teacher
+                              legitimately needs on this screen. Removing the
+                              field would take the answer away with the control.
+                              Assigning one writes sections.class_teacher_id and
+                              is refused by the API without SECTION_MANAGE.
+                            */}
                             <Autocomplete
                               size="small"
+                              disabled={!canManageSection}
+                              readOnly={!canManageSection}
                               options={teacherOptions}
                               getOptionLabel={(o) => o.label}
                               value={teacherOptions.find((t) => t.id === sec.classTeacherId) ?? null}
                               onChange={(_e, value) => handleAssignClassTeacher(sec, value)}
                               isOptionEqualToValue={(o, v) => o.id === v.id}
-                              renderInput={(params) => <TextField {...params} label="Class Teacher" placeholder="Search teacher..." />}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  label="Class Teacher"
+                                  placeholder={canManageSection ? 'Search teacher...' : undefined}
+                                  helperText={canManageSection ? undefined : 'Only an administrator can change this'}
+                                />
+                              )}
                             />
                           </Box>
                         </CardContent>
@@ -271,19 +308,21 @@ export function ClassDetailPage() {
 
           {tab === 2 && (
             <Box>
-              <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<AddOutlinedIcon />}
-                  onClick={() => {
-                    setEditingSubject(null);
-                    setSubjectDialogOpen(true);
-                  }}
-                >
-                  Add Subject
-                </Button>
-              </Stack>
+              {canManageSubjects && (
+                <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<AddOutlinedIcon />}
+                    onClick={() => {
+                      setEditingSubject(null);
+                      setSubjectDialogOpen(true);
+                    }}
+                  >
+                    Add Subject
+                  </Button>
+                </Stack>
+              )}
               {subjects.length === 0 ? (
                 <EmptyState title="No subjects yet" description="Add a subject taught in this class." />
               ) : (
@@ -302,24 +341,26 @@ export function ClassDetailPage() {
                               </Typography>
                               {subj.isElective && <Chip label="Elective" size="small" sx={{ ml: 1 }} />}
                             </Box>
-                            <Stack direction="row" spacing={0.5}>
-                              <Tooltip title="Edit">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => {
-                                    setEditingSubject(subj);
-                                    setSubjectDialogOpen(true);
-                                  }}
-                                >
-                                  <EditOutlinedIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Delete">
-                                <IconButton size="small" onClick={() => setDeleteSubjectTarget(subj)}>
-                                  <DeleteOutlineOutlinedIcon fontSize="small" color="error" />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
+                            {canManageSubjects && (
+                              <Stack direction="row" spacing={0.5}>
+                                <Tooltip title="Edit">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                      setEditingSubject(subj);
+                                      setSubjectDialogOpen(true);
+                                    }}
+                                  >
+                                    <EditOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete">
+                                  <IconButton size="small" onClick={() => setDeleteSubjectTarget(subj)}>
+                                    <DeleteOutlineOutlinedIcon fontSize="small" color="error" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            )}
                           </Stack>
                         </CardContent>
                       </Card>
@@ -338,7 +379,7 @@ export function ClassDetailPage() {
               refetches it rather than leaving a stale "No current head boy". */}
           {tab === 4 && <ClassOfficialsTab classId={classId} onChanged={loadOverview} />}
 
-          {tab === 5 && isManagement && (
+          {tab === 5 && canManageTimetable && (
             <ClassTimetableTab
               classId={classId}
               sections={sections}

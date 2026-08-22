@@ -135,23 +135,28 @@ data class UserSession(
     val permissions: Set<String> get() = user.permissions.toSet()
 
     /**
-     * True when the signed-in role holds every one of [names].
-     *
-     * When the grant set is empty — a session cached before the backend started
-     * returning permissions — this answers `true` and the caller falls back to
-     * role checks alone. That is a display decision only: the API re-checks the
-     * same grant on every request, so a permission the user does not actually
-     * hold still yields 403 rather than data.
-     */
-    /**
      * The administrator is never gated by a permission grant, mirroring
-     * AppConstants.ADMIN_OVERRIDE on the backend and usePermissions() on the web.
+     * AppConstants.ADMIN_OVERRIDE on the backend.
      */
     private val isAdmin: Boolean get() = role == Role.SUPER_ADMIN
 
+    /**
+     * True when the signed-in role holds every one of [names].
+     *
+     * <p>Strict: an empty grant set means this role holds nothing, not "unknown".
+     * The earlier version answered `true` on an empty set so callers could fall back
+     * to role checks, which meant a user was briefly offered actions their role does
+     * not have — the whole problem [AccessStore] exists to remove.
+     *
+     * <p>Prefer [AccessStore] in new code. These read the permission list embedded in
+     * the login response and written to disk, so they cannot see a grant an
+     * administrator changed mid-session; [AccessStore] re-reads `/me/access` on login,
+     * on token refresh and on demand, and also knows about disabled modules and the
+     * caller's homeroom.
+     */
     fun can(vararg names: String): Boolean =
-        isAdmin || permissions.isEmpty() || names.all { it in permissions }
+        isAdmin || (names.isNotEmpty() && names.all { it in permissions })
 
     fun canAny(vararg names: String): Boolean =
-        isAdmin || permissions.isEmpty() || names.any { it in permissions }
+        isAdmin || names.any { it in permissions }
 }

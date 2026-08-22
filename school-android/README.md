@@ -220,6 +220,41 @@ refresh fails → session cleared → AuthEventBus → MainActivity → Login (b
 `/auth/reset-password` and `/public/admission-enquiries` are the only unauthenticated
 paths, and `AuthInterceptor` skips them.
 
+### Authorization — what the user may actually do
+
+Separate from authentication, and read from the server rather than inferred:
+
+```
+sign in / restore session / silent token refresh
+        ↓
+AccessStore  →  GET /me/access  →  { role, permissions, enabledModules, homeroom }
+        ↓
+menus (menuForRole) + in-screen controls + MainActivity's splash gate
+```
+
+`UserDto.permissions` from the login response is a snapshot written to disk, so it
+cannot see a grant an administrator changes mid-session. `AccessStore` re-reads
+`/me/access` on **sign-in**, on **app start**, on **every silent token refresh** (the
+`TokenAuthenticator` is synchronous, so it publishes `AuthEvent.TokensRefreshed` and a
+collector does the fetch) and on **sign-out**, where it drops the grants rather than
+leaving them for whoever signs in next.
+
+Three independent things narrow what a user sees, and the app keeps them distinct:
+
+| Gate | Source | Notes |
+|---|---|---|
+| **Module** | `enabledModules` | Checked first, and the one gate `SUPER_ADMIN` does **not** bypass — it is a statement about the organisation, not the user. Unknown keys read as *enabled*, matching the backend. |
+| **Homeroom** | `homeroom` / `classTeacherOfOwnSection` | Not a permission — a row in `sections`. Gates My Class. 44 users hold the `CLASS_TEACHER` role and 17 hold an assignment, so the role would advertise an empty screen to 27 of them. |
+| **Permission** | `permissions` | **Strict**: an entry declaring a permission is hidden unless the user holds it. There is no "empty set means unknown, so show it" fallback — that briefly offered actions a role does not have. |
+
+`MainActivity` holds the splash until the first `/me/access` answers, so no screen is
+ever composed from a guess. It latches, so a later background re-read updates the menu
+in place instead of throwing the user back to the splash.
+
+None of this is a security boundary — every endpoint re-checks the same grant on every
+request. It only decides what the interface *offers*, so a control is never shown that
+the API would refuse.
+
 ## Error handling
 
 Every failure becomes one `AppError` case in `core/network/ErrorMapper.kt`:

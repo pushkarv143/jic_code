@@ -116,13 +116,15 @@ data class StudentRequestDto(
     val classId: Long,
     val sectionId: Long,
     val academicYearId: Long,
-    /**
-     * Null lets the backend allocate the next roll number in the class/section
-     * sequence. Sending a value is still allowed but is rejected if already taken —
-     * this used to be required free text, which is how duplicates and values like
-     * 151611 got in.
+    /*
+     * roll_number is deliberately absent.
+     *
+     * It is the student's position in their class, assigned by the server and
+     * unique per class (uq_students_class_roll) — not a fact about the student
+     * that anyone types. The API no longer accepts it on create or update, so
+     * there is nothing to send. It used to be required free text here, which is
+     * how duplicates and values like 151611 got in.
      */
-    val rollNumber: String? = null,
     val admissionDate: String,
     val dateOfBirth: String,
     val gender: String,

@@ -109,6 +109,8 @@ export function StudentFormPage() {
   const [loadingInitial, setLoadingInitial] = useState(isEdit);
   const [submitting, setSubmitting] = useState(false);
   const [admissionNumber, setAdmissionNumber] = useState<string | null>(null);
+  // Display-only, so it is held outside the form: nothing submits it.
+  const [loadedRollNumber, setLoadedRollNumber] = useState<number | string | null>(null);
 
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [years, setYears] = useState<AcademicYear[]>([]);
@@ -150,7 +152,6 @@ export function StudentFormPage() {
       classId: '',
       sectionId: '',
       academicYearId: '',
-      rollNumber: '',
       guardians: [emptyGuardian],
     },
   });
@@ -203,6 +204,7 @@ export function StudentFormPage() {
         const res = await studentsApi.getById(studentId);
         const student = res.data;
         setAdmissionNumber(student.admissionNumber);
+        setLoadedRollNumber(student.rollNumber ?? null);
         setPhotoPreview(student.photoUrl);
         reset({
           firstName: student.firstName ?? '',
@@ -221,7 +223,6 @@ export function StudentFormPage() {
           classId: String(student.classId),
           sectionId: String(student.sectionId),
           academicYearId: String(student.academicYearId),
-          rollNumber: student.rollNumber,
           admissionDate: dayjs(student.admissionDate) as any,
           guardians:
             student.guardians && student.guardians.length > 0
@@ -363,7 +364,6 @@ export function StudentFormPage() {
       classId: 'Class',
       sectionId: 'Section',
       academicYearId: 'Academic year',
-      rollNumber: 'Roll number',
       admissionDate: 'Admission date',
       guardians: 'Guardians',
     };
@@ -397,7 +397,6 @@ export function StudentFormPage() {
         academicYearId: Number(values.academicYearId),
         // Omitted rather than sent empty, so the backend allocates the next number
         // in the section rather than trying to parse "".
-        rollNumber: values.rollNumber?.trim() ? values.rollNumber.trim() : undefined,
         admissionDate: dayjs(values.admissionDate).format('YYYY-MM-DD'),
         dateOfBirth: dayjs(values.dateOfBirth).format('YYYY-MM-DD'),
         gender: values.gender,
@@ -819,15 +818,24 @@ export function StudentFormPage() {
                       ))}
                     </ControlledSelect>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label="Roll Number"
-                      fullWidth
-                      {...register('rollNumber')}
-                      error={!!errors.rollNumber}
-                      helperText={errors.rollNumber?.message ?? 'Leave blank to auto-assign the next number'}
-                    />
-                  </Grid>
+                  {/*
+                    Roll number is not editable, on create or on edit. It is the
+                    student's position in their class, assigned by the server and
+                    unique per class, so there is nothing here to type — the request
+                    no longer carries the field at all. Shown read-only when editing,
+                    because it is worth seeing on the record it belongs to.
+                  */}
+                  {isEdit && (
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        label="Roll Number"
+                        fullWidth
+                        disabled
+                        value={loadedRollNumber ?? ''}
+                        helperText="Assigned automatically, unique within the class"
+                      />
+                    </Grid>
+                  )}
                   <Grid item xs={12} sm={6}>
                     <Controller
                       name="admissionDate"

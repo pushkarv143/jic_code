@@ -8,6 +8,7 @@ import Tab from '@mui/material/Tab';
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
+import { Link as RouterLink } from 'react-router-dom';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
@@ -219,6 +220,14 @@ export function SettingsPage() {
         title="Settings"
         subtitle="Configure school information, system settings and role permissions"
         breadcrumbs={[{ label: 'Dashboard', to: '/app/dashboard' }, { label: 'Settings' }]}
+        action={
+          // The existing Permissions tab here is read-only. Editing lives on its own
+          // screen because it is a different job: a checkbox board per role plus the
+          // module switches, both of which now take effect without a redeploy.
+          <Button variant="outlined" component={RouterLink} to="/app/settings/roles">
+            Manage Roles &amp; Modules
+          </Button>
+        }
       />
 
       {readOnly && (

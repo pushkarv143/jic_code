@@ -194,7 +194,7 @@ public class StudentServiceImpl implements StudentService {
                 .admissionNumber(admissionNumber)
                 .schoolClass(schoolClass)
                 .section(section)
-                .rollNumber(resolveRollNumber(schoolClass.getId(), section.getId(), request.getRollNumber()))
+                .rollNumber(nextRollNumberIn(schoolClass.getId()))
                 .admissionDate(request.getAdmissionDate())
                 .dateOfBirth(request.getDateOfBirth())
                 .gender(request.getGender())
@@ -237,10 +237,21 @@ public class StudentServiceImpl implements StudentService {
         Section section = findSection(request.getSectionId());
         AcademicYear academicYear = findAcademicYear(request.getAcademicYearId());
 
+        // Captured before the mapper runs, so a class change can be detected below.
+        Long previousClassId = student.getSchoolClass() != null ? student.getSchoolClass().getId() : null;
+
         studentMapper.updateEntityFromRequest(request, student);
         student.setSchoolClass(schoolClass);
         student.setSection(section);
         student.setAcademicYear(academicYear);
+
+        // Moving a class means a new roll number: the old one is a position in the
+        // class they left, and carrying it over would either collide with a student
+        // already holding it in the new class — uq_students_class_roll would reject
+        // the save — or leave them out of sequence if it happened to be free.
+        if (previousClassId != null && !previousClassId.equals(schoolClass.getId())) {
+            student.setRollNumber(nextRollNumberIn(schoolClass.getId()));
+        }
 
         Student saved = studentRepository.save(student);
         // Name, email and phone live on the linked users row, so the mapper above
@@ -512,12 +523,39 @@ public class StudentServiceImpl implements StudentService {
         AcademicYear academicYear = findAcademicYear(request.getAcademicYearId());
 
         List<Student> students = studentRepository.findAllByIdIn(request.getStudentIds());
-        students.forEach(student -> {
+
+        /*
+         * Renumbered into the destination class, continuing its sequence.
+         *
+         * Promotion previously carried each student's old roll number across. With
+         * uq_students_class_roll in place that fails outright the moment two
+         * promoted students, or a promoted student and a sitting one, hold the same
+         * number — which is the normal case when a whole class moves up.
+         *
+         * Ordered by the roll they held so the class keeps its existing sequence
+         * rather than being shuffled by whatever order the ids arrived in, and
+         * counted forward from one cursor so the batch does not re-query the max
+         * between every student.
+         */
+        int nextRoll = nextRollNumberIn(toClass.getId());
+        List<Student> inRollOrder = students.stream()
+                .sorted(java.util.Comparator.comparing(
+                        Student::getRollNumber, java.util.Comparator.nullsLast(Integer::compareTo)))
+                .toList();
+
+        for (Student student : inRollOrder) {
+            // A student already in the destination class keeps their number: they are
+            // not moving, and renumbering them would collide with the cursor.
+            boolean alreadyThere = student.getSchoolClass() != null
+                    && student.getSchoolClass().getId().equals(toClass.getId());
             student.setSchoolClass(toClass);
             student.setSection(toSection);
             student.setAcademicYear(academicYear);
-        });
-        studentRepository.saveAll(students);
+            if (!alreadyThere) {
+                student.setRollNumber(nextRoll++);
+            }
+        }
+        studentRepository.saveAll(inRollOrder);
 
         return students.size();
     }
@@ -602,26 +640,25 @@ public class StudentServiceImpl implements StudentService {
      * used to probe which ids are real.
      */
     /**
-     * Resolves the roll number for an admission.
+     * The next roll number in a class. Always server-assigned.
      *
-     * Left to the caller, this field produced duplicates and values like 151611 —
-     * it was free text with nothing checking it. When omitted it now continues the
-     * section's sequence; when supplied it is rejected if already taken, so a roll
-     * number identifies exactly one student in a section either way.
+     * <p>A roll number is a student's position in their class, not a fact about
+     * them, so nobody types it. It used to be accepted from the caller and merely
+     * validated, which produced duplicates and values like 151611; the request DTOs
+     * no longer carry the field at all, and {@code uq_students_class_roll} enforces
+     * uniqueness underneath.
+     *
+     * <p>Scoped to the class rather than the section, matching that key: two
+     * students in different sections of one class should not share roll 1.
+     *
+     * <p>Gaps are left alone. Numbering from {@code max + 1} means a student who
+     * leaves does not cause the class to be renumbered around them — every other
+     * student's roll would change, and a roll number is what a register, a mark
+     * sheet and a parent all refer to.
      */
-    private Integer resolveRollNumber(Long classId, Long sectionId, Integer requested) {
-        if (requested == null) {
-            Integer highest = studentRepository.findMaxRollNumberInSection(classId, sectionId);
-            return highest == null ? 1 : highest + 1;
-        }
-        if (requested < 1) {
-            throw new BadRequestException("Roll number must be 1 or greater");
-        }
-        if (studentRepository.existsBySchoolClassIdAndSectionIdAndRollNumber(classId, sectionId, requested)) {
-            throw new BadRequestException(
-                    "Roll number " + requested + " is already used in this class/section");
-        }
-        return requested;
+    private Integer nextRollNumberIn(Long classId) {
+        Integer highest = studentRepository.findMaxRollNumberInClass(classId);
+        return highest == null ? 1 : highest + 1;
     }
 
     private Student findEntity(Long id) {

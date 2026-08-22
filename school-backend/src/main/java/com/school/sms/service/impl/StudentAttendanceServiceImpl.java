@@ -92,7 +92,12 @@ public class StudentAttendanceServiceImpl implements StudentAttendanceService {
         // Checked before anything is read or written: marking is a batch operation,
         // so an unauthorised caller must be stopped up front rather than part-way
         // through a partially-applied batch.
-        sectionAccessGuard.verifyCanAccessSection(request.getClassId(), request.getSectionId());
+        //
+        // The homeroom check, not the wider section one. Taking the register is the
+        // class teacher's job — a subject teacher who happens to teach this section
+        // may read its attendance and enter its marks, but not mark it present.
+        // Management keeps its pass so the office can still correct a register.
+        sectionAccessGuard.verifyIsHomeroomOrManagement(request.getClassId(), request.getSectionId());
 
         SchoolClass schoolClass = findClass(request.getClassId());
         Section section = findSection(request.getSectionId());

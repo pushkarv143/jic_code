@@ -4,6 +4,7 @@ import com.school.sms.dto.request.SubjectRequest;
 import com.school.sms.dto.response.ApiResponse;
 import com.school.sms.dto.response.SubjectDto;
 import com.school.sms.service.SubjectService;
+import com.school.sms.util.AppConstants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,7 +28,14 @@ public class SubjectController {
 
     private final SubjectService subjectService;
 
-    private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
+    /*
+     * Permission-gated, matching ClassController.SUBJECT_WRITE and the
+     * SUBJECT_MANAGE check the frontend applies to the same controls. See
+     * SectionController.WRITE for why a hardcoded role list was the wrong shape.
+     */
+    private static final String WRITE_ROLES =
+            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "SUBJECT_MANAGE') or "
+                    + AppConstants.ADMIN_OVERRIDE;
 
     @PutMapping("/{id}")
     @PreAuthorize(WRITE_ROLES)

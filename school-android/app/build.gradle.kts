@@ -47,12 +47,21 @@ android {
         // applications and students of their own class - both already scoped
         // server-side, so they need no client change beyond not asking.
         //
-        // Carries 1.4.0 before it (the class module on the phone), 1.3.0 before that
-        // (passcode sign-in and recovery). A new versionCode is what lets the device
-        // recognise this as an upgrade rather than refusing to install over the
-        // previous build.
-        versionCode = 6
-        versionName = "1.5.0"
+        // 1.6.0 brings the web app's live authorization model to the phone: the app
+        // reads GET /me/access on sign-in and after every silent token refresh, so a
+        // permission an administrator grants or revokes — or a module they switch off —
+        // reaches a signed-in device without waiting for the next login. Menu and
+        // in-screen filtering became strict with it (no grants, no action); the My Class
+        // module arrived, keyed on the homeroom assignment rather than the CLASS_TEACHER
+        // role; taking the register narrowed to the class teacher; and the roll-number
+        // field is gone, being server-assigned and unique per class.
+        //
+        // Carries 1.5.0 before it (one section per class and My Timetable), 1.4.0 before
+        // that (the class module on the phone), 1.3.0 before that (passcode sign-in and
+        // recovery). A new versionCode is what lets the device recognise this as an
+        // upgrade rather than refusing to install over the previous build.
+        versionCode = 7
+        versionName = "1.6.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true

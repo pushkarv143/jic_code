@@ -9,6 +9,7 @@ import com.greenwood.school.data.repository.ExamRepositoryImpl
 import com.greenwood.school.data.repository.FeeRepositoryImpl
 import com.greenwood.school.data.repository.HostelRepositoryImpl
 import com.greenwood.school.data.repository.LibraryRepositoryImpl
+import com.greenwood.school.data.repository.MyClassRepositoryImpl
 import com.greenwood.school.data.repository.PayrollRepositoryImpl
 import com.greenwood.school.data.repository.PeopleRepositoryImpl
 import com.greenwood.school.data.repository.ReportRepositoryImpl
@@ -24,6 +25,7 @@ import com.greenwood.school.domain.repository.ExamRepository
 import com.greenwood.school.domain.repository.FeeRepository
 import com.greenwood.school.domain.repository.HostelRepository
 import com.greenwood.school.domain.repository.LibraryRepository
+import com.greenwood.school.domain.repository.MyClassRepository
 import com.greenwood.school.domain.repository.PayrollRepository
 import com.greenwood.school.domain.repository.PeopleRepository
 import com.greenwood.school.domain.repository.ReportRepository
@@ -77,4 +79,6 @@ abstract class RepositoryModule {
     @Binds @Singleton abstract fun bindReportRepository(impl: ReportRepositoryImpl): ReportRepository
 
     @Binds @Singleton abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
+
+    @Binds @Singleton abstract fun bindMyClassRepository(impl: MyClassRepositoryImpl): MyClassRepository
 }

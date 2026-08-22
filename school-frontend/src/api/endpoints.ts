@@ -365,6 +365,30 @@ export const ENDPOINTS = {
   ROLES: {
     BASE: '/roles',
     PERMISSIONS: (id: number | string) => `/roles/${id}/permissions`,
+    PERMISSION_CATALOGUE: '/roles/permission-catalogue',
+  },
+
+  // What the signed-in user may actually do. Fetched on app start rather than
+  // read from the cached login response, so a permission or module an
+  // administrator changes reaches an open session. See MyAccessDto on the backend.
+  ME: {
+    ACCESS: '/me/access',
+  },
+
+  ORG: {
+    MODULES: '/org/modules',
+  },
+
+  // The caller's own homeroom section. No class or section id is ever sent:
+  // the backend resolves it from sections.class_teacher_id.
+  MY_CLASS: {
+    BASE: '/my-class',
+    STUDENTS: '/my-class/students',
+    STUDENT: (id: number | string) => `/my-class/students/${id}`,
+    // Homeroom-scoped class posts. The school-wide equivalent under
+    // CLASSES.OFFICIALS stays management-only.
+    OFFICIALS: '/my-class/officials',
+    OFFICIAL: (id: number | string) => `/my-class/officials/${id}`,
   },
 
   AUDIT_LOGS: {

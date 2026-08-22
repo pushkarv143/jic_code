@@ -68,6 +68,26 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
 
     boolean existsBySchoolClassIdAndSectionIdAndRollNumber(Long classId, Long sectionId, Integer rollNumber);
 
+    /**
+     * Highest roll number currently used in a class, or null for an empty class.
+     *
+     * <p>Scoped to the class rather than the section, matching
+     * {@code uq_students_class_roll}: a roll number is a position in a class, and two
+     * students in different sections of the same class must not share one.
+     *
+     * <p>Soft-deleted rows are counted deliberately. They still hold their roll
+     * number as far as the unique key is concerned, so skipping them would hand the
+     * next admission a number that is already taken and fail on insert.
+     */
+    @Query("SELECT MAX(s.rollNumber) FROM Student s WHERE s.schoolClass.id = :classId")
+    Integer findMaxRollNumberInClass(@Param("classId") Long classId);
+
+    // My Class module: is this student actually on the caller's homeroom roster?
+    // Checked directly rather than through StudentAccessGuard because that guard's
+    // teacher scope is the union of homeroom AND subject-taught sections, which is
+    // wider than the one section the My Class screens are allowed to touch.
+    boolean existsByIdAndSectionIdAndDeletedFalse(Long id, Long sectionId);
+
     // Calendar / birthdays widget: active students born in a given month, in day-of-month order.
     @Query("SELECT s FROM Student s WHERE s.deleted = false AND s.dateOfBirth IS NOT NULL " +
             "AND MONTH(s.dateOfBirth) = :month ORDER BY DAY(s.dateOfBirth) ASC")

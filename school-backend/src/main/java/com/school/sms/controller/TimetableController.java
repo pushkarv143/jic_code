@@ -4,6 +4,7 @@ import com.school.sms.dto.request.SaveTimetableRequest;
 import com.school.sms.dto.response.ApiResponse;
 import com.school.sms.dto.response.TimetableSlotDto;
 import com.school.sms.service.TimetableService;
+import com.school.sms.util.AppConstants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,12 +55,21 @@ public class TimetableController {
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','STUDENT','PARENT')";
 
     /**
-     * Only the office assigns periods — the same set as {@link #MANAGEMENT_ONLY},
-     * spelled out rather than aliased so the roles are readable at the constant
-     * itself (AdminAuthorizationAuditTest resolves these textually, and an alias
-     * hides the role list from it).
+     * Assembling the week is the administrator's job.
+     *
+     * <p>This was {@code hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')} —
+     * three roles, and unchangeable. It is now the TIMETABLE_MANAGE grant, which
+     * {@code database/16_timetable_permission.sql} gives to SUPER_ADMIN alone. Two
+     * things follow: the timetable is administrator-only by default, and a school
+     * that wants its principal to help can grant the permission on the Roles &amp;
+     * Permissions screen instead of asking for a code change.
+     *
+     * <p>Reads are untouched — a teacher still gets their own week from
+     * {@code /timetable/me} and the class-wide views stay management-only.
      */
-    private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
+    private static final String WRITE_ROLES =
+            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "TIMETABLE_MANAGE') or "
+                    + AppConstants.ADMIN_OVERRIDE;
 
     @GetMapping("/classes/{classId}/sections/{sectionId}")
     @PreAuthorize(MANAGEMENT_ONLY)

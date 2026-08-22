@@ -35,4 +35,15 @@ class AuthEventBus @Inject constructor() {
 sealed interface AuthEvent {
     /** Refresh token rejected or absent — force a sign-out and show Login. */
     data object SessionExpired : AuthEvent
+
+    /**
+     * The access token was silently swapped for a fresh one.
+     *
+     * <p>Emitted so [AccessStore] can re-read `GET /api/v1/me/access`. The new token's
+     * `PERM_*` authorities were rebuilt from `role_permissions` server-side, so this
+     * is exactly the moment the app's cached idea of what the user may do can have
+     * gone stale — and the authenticator that performs the swap is synchronous, so it
+     * cannot do the fetch itself.
+     */
+    data object TokensRefreshed : AuthEvent
 }

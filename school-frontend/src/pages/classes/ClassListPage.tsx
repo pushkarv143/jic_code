@@ -33,15 +33,40 @@ import type {
   Student,
   Teacher,
 } from '@/types';
+import { useAccess } from '@/access/AccessProvider';
 import ClassFormDialog from './components/ClassFormDialog';
 import AcademicYearManagerDialog from './components/AcademicYearManagerDialog';
 import ClassTeacherCell from './components/ClassTeacherCell';
 import ClassOfficialCell from './components/ClassOfficialCell';
 
-/** Class directory: filter by academic year, add/edit/delete classes, drill into a class for subjects/mapping/timetable. */
+/**
+ * Class directory: filter by academic year, add/edit/delete classes, drill into a
+ * class for subjects/mapping/timetable.
+ *
+ * <p>Readable by teachers, editable only by whoever holds the matching permission.
+ * The page previously rendered every control to everyone who could reach it, so a
+ * class teacher was shown an editable class-teacher dropdown, an Add Class button
+ * and row delete actions — all of which the API answers with 403. Nothing was
+ * exposed by that, but every one of those controls was a dead end, and the most
+ * prominent of them looked like the authority to appoint a colleague.
+ */
 export function ClassListPage() {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+
+  /*
+   * CLASS_MANAGE covers creating, editing and deleting a class.
+   * SECTION_MANAGE covers the class-teacher assignment, which is a section-level
+   * change (sections.class_teacher_id) even though the class grid is where it is
+   * offered — these are the same two grants SectionController and ClassController
+   * enforce, so the buttons now appear exactly when the request would succeed.
+   */
+  const { can } = useAccess();
+  const canManageClasses = can('CLASS_MANAGE');
+  const canAssignClassTeacher = can('SECTION_MANAGE');
+  // Appointing head boy/girl/monitor across any class. The homeroom-scoped
+  // equivalent lives in My Class and needs only MY_CLASS_OFFICIALS_MANAGE.
+  const canManageOfficials = can('CLASS_MANAGE');
 
   const [rows, setRows] = useState<SchoolClass[]>([]);
   const [rowCount, setRowCount] = useState(0);
@@ -236,6 +261,9 @@ export function ClassListPage() {
             sections={params.row.sections ?? []}
             teachers={teachers}
             takenBy={takenBy}
+            // The reported bug: without this the dropdown was live for every role
+            // that can read the page, and saving returned 403.
+            disabled={!canAssignClassTeacher}
             onAssign={(sectionId, teacherId) =>
               applyAssignment(
                 () => classesApi.assignClassTeacher(sectionId, teacherId as number),
@@ -255,6 +283,11 @@ export function ClassListPage() {
           <ClassOfficialCell
             classId={params.row.id}
             role={role}
+            // Same bug class as the class-teacher dropdown: appointing school-wide
+            // is management-only (ClassOfficialController's WRITE_ROLES), so for a
+            // teacher these were live selects that always returned 403. A class
+            // teacher appoints posts for their own section under My Class instead.
+            disabled={!canManageOfficials}
             officials={params.row.officials ?? []}
             students={studentsByClass[params.row.id]}
             onRequestStudents={() => requestStudents(params.row.id)}
@@ -281,32 +314,48 @@ export function ClassListPage() {
         filterable: false,
         renderCell: (params) => (
           <Stack direction="row" spacing={0.5}>
+            {/* Open stays available to everyone who can read the page — the detail
+                screen is where a teacher reads the timetable and subject mapping. */}
             <Tooltip title="Open">
               <IconButton size="small" onClick={() => navigate(`/app/classes/${params.row.id}`)}>
                 <ArrowForwardOutlinedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Edit">
-              <IconButton
-                size="small"
-                onClick={() => {
-                  setEditing(params.row);
-                  setFormOpen(true);
-                }}
-              >
-                <EditOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton size="small" onClick={() => setDeleteTarget(params.row)}>
-                <DeleteOutlineOutlinedIcon fontSize="small" color="error" />
-              </IconButton>
-            </Tooltip>
+            {canManageClasses && (
+              <>
+                <Tooltip title="Edit">
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      setEditing(params.row);
+                      setFormOpen(true);
+                    }}
+                  >
+                    <EditOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <IconButton size="small" onClick={() => setDeleteTarget(params.row)}>
+                    <DeleteOutlineOutlinedIcon fontSize="small" color="error" />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
           </Stack>
         ),
       },
     ],
-    [navigate, teachers, takenBy, studentsByClass, requestStudents, applyAssignment],
+    [
+      navigate,
+      teachers,
+      takenBy,
+      studentsByClass,
+      requestStudents,
+      applyAssignment,
+      canManageClasses,
+      canAssignClassTeacher,
+      canManageOfficials,
+    ],
   );
 
   return (
@@ -316,21 +365,25 @@ export function ClassListPage() {
         subtitle="Manage classes, subjects, teacher mapping and timetables"
         breadcrumbs={[{ label: 'Dashboard', to: '/app/dashboard' }, { label: 'Classes & Subjects' }]}
         action={
-          <Stack direction="row" spacing={1.5}>
-            <Button variant="outlined" startIcon={<CalendarMonthOutlinedIcon />} onClick={() => setYearManagerOpen(true)}>
-              Academic Years
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddOutlinedIcon />}
-              onClick={() => {
-                setEditing(null);
-                setFormOpen(true);
-              }}
-            >
-              Add Class
-            </Button>
-          </Stack>
+          // Both of these write. Rendered only for a caller who may actually use
+          // them, rather than shown to every reader and refused by the API.
+          canManageClasses ? (
+            <Stack direction="row" spacing={1.5}>
+              <Button variant="outlined" startIcon={<CalendarMonthOutlinedIcon />} onClick={() => setYearManagerOpen(true)}>
+                Academic Years
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<AddOutlinedIcon />}
+                onClick={() => {
+                  setEditing(null);
+                  setFormOpen(true);
+                }}
+              >
+                Add Class
+              </Button>
+            </Stack>
+          ) : undefined
         }
       />
 

@@ -6,6 +6,7 @@ import DashboardLayout from '@/layouts/DashboardLayout';
 
 import ProtectedRoute from './ProtectedRoute';
 import RoleBasedRoute from './RoleBasedRoute';
+import PermissionRoute from './PermissionRoute';
 
 import LandingPage from '@/pages/public/LandingPage';
 import AboutPage from '@/pages/public/AboutPage';
@@ -37,6 +38,7 @@ import MyTimetablePage from '@/pages/timetable/MyTimetablePage';
 
 import ClassListPage from '@/pages/classes/ClassListPage';
 import ClassDetailPage from '@/pages/classes/ClassDetailPage';
+import MyClassPage from '@/pages/my-class/MyClassPage';
 
 import StudyMaterialsPage from '@/pages/materials/StudyMaterialsPage';
 
@@ -105,6 +107,7 @@ import LibraryReportPage from '@/pages/reports/LibraryReportPage';
 import TransportReportPage from '@/pages/reports/TransportReportPage';
 
 import SettingsPage from '@/pages/settings/SettingsPage';
+import RolesPermissionsPage from '@/pages/settings/RolesPermissionsPage';
 import UserListPage from '@/pages/users/UserListPage';
 
 import ProfilePage from '@/pages/misc/ProfilePage';
@@ -233,6 +236,16 @@ const router = createBrowserRouter([
               { index: true, element: <ClassListPage /> },
               { path: ':id', element: <ClassDetailPage /> },
             ],
+          },
+          {
+            // The homeroom teacher's own section. Gated on the permission and the
+            // module, but deliberately NOT on `requiresHomeroom`: a user who holds
+            // the grant without an assignment — 27 of the 44 CLASS_TEACHER role
+            // holders — gets the page's own explanation of why it is empty, which is
+            // more use to them than a bare /403.
+            path: 'my-class',
+            element: <PermissionRoute anyOf={['MY_CLASS_VIEW']} module="MY_CLASS" />,
+            children: [{ index: true, element: <MyClassPage /> }],
           },
           {
             // One self-service timetable for the three roles that have one of
@@ -406,7 +419,18 @@ const router = createBrowserRouter([
           {
             path: 'settings',
             element: <RoleBasedRoute allowedRoles={['SUPER_ADMIN', 'PRINCIPAL']} />,
-            children: [{ index: true, element: <SettingsPage /> }],
+            children: [
+              { index: true, element: <SettingsPage /> },
+              // Guarded by permission rather than role, because who may edit roles
+              // is itself one of the things this screen configures. Pinning it to a
+              // role list would mean an organisation could grant ROLE_MANAGE to
+              // someone the router still turns away.
+              {
+                path: 'roles',
+                element: <PermissionRoute anyOf={['ROLE_VIEW', 'ROLE_MANAGE']} />,
+                children: [{ index: true, element: <RolesPermissionsPage /> }],
+              },
+            ],
           },
           {
             path: 'users',

@@ -1,6 +1,10 @@
-import { useMemo } from 'react';
-import { useAppSelector } from '@/store/hooks';
 import type { Permission, Role } from '@/types';
+import {
+  useAccess,
+  MANAGEMENT_ROLES as ACCESS_MANAGEMENT_ROLES,
+  TEACHING_ROLES as ACCESS_TEACHING_ROLES,
+  SELF_SCOPED_ROLES as ACCESS_SELF_SCOPED_ROLES,
+} from '@/access/AccessProvider';
 
 export interface PermissionsApi {
   role: Role | undefined;
@@ -19,61 +23,26 @@ export interface PermissionsApi {
   isSelfScoped: boolean;
 }
 
-export const MANAGEMENT_ROLES: Role[] = ['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL'];
-export const TEACHING_ROLES: Role[] = ['TEACHER', 'CLASS_TEACHER'];
-export const SELF_SCOPED_ROLES: Role[] = ['STUDENT', 'PARENT'];
+export const MANAGEMENT_ROLES = ACCESS_MANAGEMENT_ROLES;
+export const TEACHING_ROLES = ACCESS_TEACHING_ROLES;
+export const SELF_SCOPED_ROLES = ACCESS_SELF_SCOPED_ROLES;
 
 /**
- * Reads the role and permission grants the backend returned at login.
+ * Thin adapter over {@link useAccess}, kept so the pages already written against
+ * this shape do not each need editing.
  *
- * These drive what the UI *offers*, not what the user may actually do — the API
- * enforces the same grants independently, so hiding a button here is a usability
- * choice and never the thing standing between a student and someone else's data.
+ * <p>It used to read the permission list cached in `localStorage` at login and
+ * treat an empty set as "grants unknown, so allow" — which meant two different
+ * definitions of what a user could do, one of them optimistic. Everything now
+ * resolves to the single live answer from `GET /api/v1/me/access`, re-read on
+ * login, on token refresh and on logout, and strict: no grant, no action.
+ *
+ * <p>Prefer `useAccess()` in new code — it also exposes `settled`, `error`,
+ * `moduleEnabled` and the homeroom assignment, none of which fit this interface.
  */
 export function usePermissions(): PermissionsApi {
-  const user = useAppSelector((state) => state.auth.user);
-
-  return useMemo(() => {
-    const role = user?.role;
-    const permissions = new Set<Permission>(user?.permissions ?? []);
-
-    /**
-     * The administrator is never gated by a permission grant, mirroring
-     * AppConstants.ADMIN_OVERRIDE on the backend. Without this, a missing
-     * role_permissions row — a data problem, not a policy decision — hides
-     * controls from the one role that is supposed to have all of them.
-     */
-    const isAdmin = role === 'SUPER_ADMIN';
-
-    /**
-     * An empty grant set means "unknown", not "denied": a session cached before
-     * the backend started returning permissions has none, and blanking every
-     * action for those users is a worse answer than falling back to role checks.
-     * This matches getNavForRole() and the Android UserSession.can().
-     *
-     * Safe because it is a display decision only — the API re-checks the same
-     * grant on every request, so an action offered here that the user does not
-     * actually hold still returns 403 rather than data.
-     */
-    const unknownGrants = permissions.size === 0;
-
-    const can = (...names: Permission[]) =>
-      isAdmin || unknownGrants || names.every((name) => permissions.has(name));
-    const canAny = (...names: Permission[]) =>
-      isAdmin || unknownGrants || names.some((name) => permissions.has(name));
-    const is = (...roles: Role[]) => Boolean(role && roles.includes(role));
-
-    return {
-      role,
-      permissions,
-      can,
-      canAny,
-      is,
-      isManagement: is(...MANAGEMENT_ROLES),
-      isTeaching: is(...TEACHING_ROLES),
-      isSelfScoped: is(...SELF_SCOPED_ROLES),
-    };
-  }, [user]);
+  const { role, permissions, can, canAny, is, isManagement, isTeaching, isSelfScoped } = useAccess();
+  return { role, permissions, can, canAny, is, isManagement, isTeaching, isSelfScoped };
 }
 
 export default usePermissions;

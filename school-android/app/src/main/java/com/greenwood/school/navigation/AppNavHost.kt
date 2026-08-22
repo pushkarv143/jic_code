@@ -24,7 +24,11 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.greenwood.school.core.common.Role
+import com.greenwood.school.data.remote.dto.MyAccessDto
 import com.greenwood.school.data.remote.dto.UserDto
+import com.greenwood.school.data.remote.dto.isClassTeacherOfOwnSection
+import com.greenwood.school.data.remote.dto.moduleIsEnabled
+import com.greenwood.school.data.remote.dto.permissionSet
 import com.greenwood.school.ui.feature.attendance.AttendanceScreen
 import com.greenwood.school.ui.feature.auth.ForgotPasswordScreen
 import com.greenwood.school.ui.feature.auth.LoginScreen
@@ -54,6 +58,7 @@ import com.greenwood.school.ui.feature.timetable.MyTimetableScreen
 import com.greenwood.school.ui.components.AppFooter
 import com.greenwood.school.ui.feature.library.LibraryScreen
 import com.greenwood.school.ui.feature.materials.StudyMaterialsScreen
+import com.greenwood.school.ui.feature.myclass.MyClassScreen
 import com.greenwood.school.ui.feature.payroll.PayrollScreen
 import com.greenwood.school.ui.feature.people.MyChildrenScreen
 import com.greenwood.school.ui.feature.people.StaffListScreen
@@ -81,6 +86,15 @@ fun AppNavHost(
     navController: NavHostController,
     isSignedIn: Boolean,
     currentUser: UserDto?,
+    /**
+     * Live grants from `GET /api/v1/me/access`, or null before the first fetch lands.
+     *
+     * Preferred over [currentUser]'s embedded permission list, which is a snapshot
+     * written to disk at login: a permission an administrator revokes, or a module
+     * they switch off, would otherwise not reach this phone until the next sign-in.
+     * [currentUser] is still the source for identity (studentId/teacherId).
+     */
+    access: MyAccessDto? = null,
 ) {
     // The footer is anchored here, outside the NavHost, so it survives every
     // navigation — auth screens and the signed-in shell alike — rather than each
@@ -97,8 +111,12 @@ fun AppNavHost(
 
             composable(Routes.MAIN_GRAPH) {
                 MainShell(
-                    role = Role.from(currentUser?.role),
-                    permissions = currentUser?.permissions.orEmpty().toSet(),
+                    // Role from the server's answer when it has arrived, falling back to
+                    // the cached one only so the shell has something to lay out with.
+                    role = Role.from(access?.role ?: currentUser?.role),
+                    permissions = access.permissionSet,
+                    moduleEnabled = { access.moduleIsEnabled(it) },
+                    hasHomeroom = access.isClassTeacherOfOwnSection,
                     ownStudentId = currentUser?.studentId,
                     ownTeacherId = currentUser?.teacherId,
                     onSignedOut = {
@@ -161,6 +179,8 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
 private fun MainShell(
     role: Role,
     permissions: Set<String>,
+    moduleEnabled: (String) -> Boolean,
+    hasHomeroom: Boolean,
     ownStudentId: Long?,
     ownTeacherId: Long?,
     onSignedOut: () -> Unit,
@@ -174,6 +194,20 @@ private fun MainShell(
     // The role half of WRITE_ROLES on TeacherController; each call site pairs it with
     // the specific permission it needs.
     val canWriteTeachers = role in Role.MANAGEMENT
+
+    /**
+     * Does this user hold [permission]?
+     *
+     * Strict — an empty grant set means the role holds nothing, not "unknown". The
+     * shell waits for `GET /me/access` before composing (see MainActivity), so by the
+     * time any of this runs the answer is real rather than a guess. SUPER_ADMIN is
+     * never gated by a grant, mirroring AppConstants.ADMIN_OVERRIDE.
+     *
+     * Display only: every endpoint re-checks the same grant, so hiding a control here
+     * is a usability decision and never the thing standing between a user and data.
+     */
+    fun holds(permission: String): Boolean =
+        role == Role.SUPER_ADMIN || permission in permissions
 
     /**
      * Guarded navigation. Navigating to a route with no registered composable throws,
@@ -227,6 +261,8 @@ private fun MainShell(
                             onNavigate = go,
                             onSignOut = if (hubRoute == Routes.MORE_HUB) onSignedOut else null,
                             permissions = permissions,
+                            moduleEnabled = moduleEnabled,
+                            hasHomeroom = hasHomeroom,
                         )
                     }
                 }
@@ -256,13 +292,11 @@ private fun MainShell(
                     StudentListScreen(
                         onOpenStudent = { nav.navigate(Routes.studentDetail(it)) },
                         onBack = nav::popBackStack,
-                        // WRITE_ROLES on StudentController — anyone else would be
-                        // rejected after filling in the form, so don't offer it.
-                        // STUDENT_CREATE is checked too so revoking the grant hides
-                        // the FAB without needing an app release.
-                        onAddStudent = if (role in Role.MANAGEMENT &&
-                            (permissions.isEmpty() || "STUDENT_CREATE" in permissions)
-                        ) {
+                        // Admissions are gated on STUDENT_CREATE alone - no teaching role
+                        // holds it, and revoking it from PRINCIPAL/VICE_PRINCIPAL makes
+                        // the button disappear without an app release. The role list this
+                        // replaced could not be reconfigured that way.
+                        onAddStudent = if (holds("STUDENT_CREATE")) {
                             { nav.navigate(Routes.studentForm()) }
                         } else {
                             null
@@ -277,11 +311,9 @@ private fun MainShell(
                     val studentId = entry.arguments?.getLong(Routes.ARG_STUDENT_ID) ?: 0L
                     StudentDetailScreen(
                         onBack = nav::popBackStack,
-                        // WRITE_ROLES on StudentController is management-only, the same
-                        // guard the add button uses.
-                        onEdit = if (role in Role.MANAGEMENT &&
-                            (permissions.isEmpty() || "STUDENT_UPDATE" in permissions)
-                        ) {
+                        // The whole-school edit. A class teacher edits their own students
+                        // through My Class instead, which is homeroom-scoped server-side.
+                        onEdit = if (holds("STUDENT_UPDATE") && role in Role.MANAGEMENT) {
                             { nav.navigate(Routes.studentForm(studentId)) }
                         } else {
                             null
@@ -326,9 +358,7 @@ private fun MainShell(
                             // anyone else would be rejected after filling in the form.
                             // TEACHER_CREATE is checked too, so revoking the grant hides
                             // the button without needing an app release.
-                            onAddTeacher = if (canWriteTeachers &&
-                                (permissions.isEmpty() || "TEACHER_CREATE" in permissions)
-                            ) {
+                            onAddTeacher = if (canWriteTeachers && holds("TEACHER_CREATE")) {
                                 { nav.navigate(Routes.teacherForm()) }
                             } else {
                                 null
@@ -344,9 +374,7 @@ private fun MainShell(
                     val teacherId = entry.arguments?.getLong(Routes.ARG_TEACHER_ID) ?: 0L
                     TeacherDetailScreen(
                         onBack = nav::popBackStack,
-                        onEdit = if (canWriteTeachers &&
-                            (permissions.isEmpty() || "TEACHER_UPDATE" in permissions)
-                        ) {
+                        onEdit = if (canWriteTeachers && holds("TEACHER_UPDATE")) {
                             { nav.navigate(Routes.teacherForm(teacherId)) }
                         } else {
                             null
@@ -378,6 +406,16 @@ private fun MainShell(
                 }
 
                 /* ---- Academics ------------------------------------------------- */
+
+                // The homeroom teacher's own section. Reachable only from the My Class
+                // menu entry, which the hub hides unless the server reports a homeroom
+                // assignment - the screen itself explains the empty case for a deep link.
+                composable(Routes.MY_CLASS) {
+                    MyClassScreen(
+                        onBack = nav::popBackStack,
+                        onOpenStudent = { nav.navigate(Routes.studentDetail(it)) },
+                    )
+                }
 
                 composable(Routes.CLASSES) {
                     ClassListScreen(

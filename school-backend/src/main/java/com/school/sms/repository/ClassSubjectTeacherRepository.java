@@ -17,6 +17,12 @@ public interface ClassSubjectTeacherRepository
     // class cannot be used to slip through.
     boolean existsByTeacherIdAndSchoolClassIdAndSectionId(Long teacherId, Long classId, Long sectionId);
 
+    // Timetable rule: period 1 belongs to the class teacher, and the subject sitting
+    // in it must be one they actually teach. Checked against the mapping rather than
+    // against the slot's own teacher id, so "the class teacher is timetabled for a
+    // subject nobody assigned them" is caught before it is saved.
+    boolean existsByTeacherIdAndSectionIdAndSubjectId(Long teacherId, Long sectionId, Long subjectId);
+
     /** Every subject-teacher mapping of one class, for the overview and gap check. */
     List<ClassSubjectTeacher> findAllBySchoolClassIdOrderBySectionIdAscSubjectIdAsc(Long classId);
 

@@ -41,8 +41,11 @@ export interface StudentPayload {
   classId: number;
   sectionId: number;
   academicYearId: number;
-  /** Omit to have the backend assign the next roll number in the class/section. */
-  rollNumber?: string;
+  /*
+   * No rollNumber. It is the student's position in their class, assigned by the
+   * server and unique per class, and the API no longer accepts it on create or
+   * update — so there is nothing to send.
+   */
   admissionDate: string;
   dateOfBirth: string;
   gender: Gender;

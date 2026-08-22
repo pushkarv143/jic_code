@@ -81,6 +81,9 @@ class StudentFormViewModelTest {
     )
 
     @Test
+    // Roll number is deliberately not prefilled: the field is gone from the form.
+    // It is the student's position in their class, assigned by the server and unique
+    // per class, so there is nothing for this screen to edit or send.
     fun `editing prefills from the record and resolves the class and section`() = runTest(dispatcher) {
         val vm = viewModel(11)
         advanceUntilIdle()
@@ -89,7 +92,9 @@ class StudentFormViewModelTest {
         assertTrue(state.isEditing)
         assertEquals("Ravi", state.firstName)
         assertEquals("Kumar", state.lastName)
-        assertEquals("12", state.rollNumber)
+        // No roll number assertion: the field is gone from the form. It is the
+        // student's position in their class, assigned by the server and unique per
+        // class, so there is nothing here to prefill, edit or send.
         assertEquals("MALE", state.gender)
         assertEquals(schoolClass, state.selectedClass)
         // The section list is fetched for the student's class and the current one

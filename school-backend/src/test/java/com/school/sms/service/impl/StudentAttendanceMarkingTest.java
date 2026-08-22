@@ -111,10 +111,16 @@ class StudentAttendanceMarkingTest {
         verify(studentAttendanceRepository).save(any(StudentAttendance.class));
     }
 
+    /**
+     * The register is the class teacher's, so marking is gated on the homeroom
+     * check rather than the wider "assigned to this section" one — a subject
+     * teacher may read this section's attendance and enter its marks without being
+     * able to mark it present.
+     */
     @Test
     void checksTheSectionBeforeTouchingAnyRow() {
         doThrow(new AccessDeniedException("not yours"))
-                .when(sectionAccessGuard).verifyCanAccessSection(CLASS_ID, SECTION_ID);
+                .when(sectionAccessGuard).verifyIsHomeroomOrManagement(CLASS_ID, SECTION_ID);
 
         assertThatThrownBy(() -> service.mark(request(100L)))
                 .isInstanceOf(AccessDeniedException.class);

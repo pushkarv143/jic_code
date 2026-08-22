@@ -98,6 +98,10 @@ export type Permission =
   | 'MARKS_ENTRY'
   | 'MARKS_VIEW'
   | 'ASSIGNMENT_VIEW'
+  // Homeroom-teacher module. Narrower than STUDENT_CREATE/STUDENT_UPDATE on
+  // purpose: these only reach the one section the holder is class teacher of.
+  | 'MY_CLASS_VIEW'
+  | 'MY_CLASS_ROSTER_MANAGE'
   | (string & {});
 
 export interface AuthResponse {
@@ -1377,4 +1381,58 @@ export interface GlobalSearchResponse {
   students: GlobalSearchResultItem[];
   teachers: GlobalSearchResultItem[];
   books: GlobalSearchResultItem[];
+}
+
+// =====================================================================
+// Authorization configuration
+//
+// Three separate things narrow what a user sees, and the UI needs to tell
+// them apart: the permissions their role grants, which modules the
+// organisation runs, and whether they personally hold a homeroom section.
+// See MyAccessDto on the backend for why the cached login response is not
+// enough on its own.
+// =====================================================================
+
+/** The section a user is class teacher of. Null on MyAccess for everyone else. */
+export interface Homeroom {
+  sectionId: number;
+  sectionName: string;
+  classId: number;
+  className: string;
+  academicYearId: number | null;
+  academicYear: string | null;
+  studentCount: number;
+}
+
+export interface MyAccess {
+  userId: number;
+  username: string;
+  role: Role;
+  /**
+   * Effective permissions — already filtered to remove anything belonging to a
+   * disabled module, so a name missing here means "do not offer this" whatever
+   * the reason.
+   */
+  permissions: Permission[];
+  /** Module keys currently switched on for this organisation. */
+  enabledModules: string[];
+  /** Null when the user is class teacher of no section — which includes most admins. */
+  homeroom: Homeroom | null;
+  /**
+   * True only when the user holds a homeroom assignment AND the MY_CLASS module
+   * is enabled. Precomputed by the backend so every screen agrees on the rule.
+   */
+  classTeacherOfOwnSection: boolean;
+}
+
+export interface OrgModule {
+  id: number;
+  moduleKey: string;
+  label: string;
+  description: string | null;
+  enabled: boolean;
+  /** Core modules cannot be switched off — the API rejects it. Render the toggle disabled. */
+  core: boolean;
+  sortOrder: number;
+  permissionCount: number;
 }

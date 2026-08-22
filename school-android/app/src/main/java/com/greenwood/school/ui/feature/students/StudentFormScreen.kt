@@ -180,14 +180,9 @@ fun StudentFormScreen(
                     required = true,
                     error = state.yearError,
                 )
-                Spacer(Modifier.height(10.dp))
-                AppTextField(
-                    value = state.rollNumber,
-                    onValueChange = { viewModel.update { copy(rollNumber = it, rollNumberError = null) } },
-                    label = "Roll number (leave blank to auto-assign)",
-                    required = false,
-                    error = state.rollNumberError,
-                )
+                // No roll-number field. It is the student's position in their class,
+                // assigned by the server and unique per class, so there is nothing to
+                // type - on create or on edit. The detail screen shows it read-only.
                 Spacer(Modifier.height(10.dp))
                 DateField(
                     label = "Admission date",
@@ -345,7 +340,6 @@ class StudentFormViewModel @Inject constructor(
                         lastName = student.lastName.orEmpty(),
                         email = student.email.orEmpty(),
                         phone = student.phone.orEmpty(),
-                        rollNumber = student.rollNumber.orEmpty(),
                         dateOfBirth = Formatters.parseDate(student.dateOfBirth),
                         admissionDate = Formatters.parseDate(student.admissionDate) ?: LocalDate.now(),
                         gender = student.gender ?: Constants.GENDERS.first(),
@@ -378,7 +372,6 @@ class StudentFormViewModel @Inject constructor(
             // No longer required: leaving it blank asks the backend for the next
             // number in the section's sequence, which is the safer default than
             // having someone invent one.
-            rollNumberError = null,
             dateOfBirthError = if (current.dateOfBirth == null) "Date of birth is required" else null,
             emailError = Validators.email(current.email, required = false),
             phoneError = Validators.phone(current.phone, required = false),
@@ -411,7 +404,6 @@ class StudentFormViewModel @Inject constructor(
             classId = current.selectedClass!!.id,
             sectionId = current.selectedSection!!.id,
             academicYearId = current.selectedYear!!.id,
-            rollNumber = current.rollNumber.trim().takeIf { it.isNotBlank() },
             admissionDate = Formatters.apiDate(current.admissionDate),
             dateOfBirth = Formatters.apiDate(current.dateOfBirth!!),
             gender = current.gender,
@@ -452,7 +444,6 @@ class StudentFormViewModel @Inject constructor(
                     it.copy(
                         isSaving = false,
                         message = UiMessage.error(result.error),
-                        rollNumberError = fields["rollNumber"] ?: it.rollNumberError,
                         emailError = fields["email"] ?: it.emailError,
                         phoneError = fields["phone"] ?: it.phoneError,
                     )
@@ -479,7 +470,6 @@ data class StudentFormUiState(
     val lastName: String = "",
     val email: String = "",
     val phone: String = "",
-    val rollNumber: String = "",
     val dateOfBirth: LocalDate? = null,
     val admissionDate: LocalDate = LocalDate.now(),
     val gender: String = Constants.GENDERS.first(),
@@ -497,7 +487,6 @@ data class StudentFormUiState(
     val lastNameError: String? = null,
     val emailError: String? = null,
     val phoneError: String? = null,
-    val rollNumberError: String? = null,
     val dateOfBirthError: String? = null,
     val pincodeError: String? = null,
     val classError: String? = null,
@@ -511,7 +500,7 @@ data class StudentFormUiState(
 ) {
     val hasErrors: Boolean
         get() = listOf(
-            firstNameError, lastNameError, emailError, phoneError, rollNumberError,
+            firstNameError, lastNameError, emailError, phoneError,
             dateOfBirthError, pincodeError, classError, sectionError, yearError,
             guardianNameError, guardianPhoneError,
         ).any { it != null }

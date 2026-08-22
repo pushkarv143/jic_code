@@ -65,6 +65,25 @@ public class StudentController {
     private static final String READ_ROLES =
             "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL','TEACHER','CLASS_TEACHER','RECEPTIONIST','ACCOUNTANT','STUDENT','PARENT')";
     private static final String WRITE_ROLES = "hasAnyRole('SUPER_ADMIN','PRINCIPAL','VICE_PRINCIPAL')";
+
+    /**
+     * Admitting a student — creating the record, the login, the admission number
+     * and the guardians.
+     *
+     * <p>Split out from {@link #WRITE_ROLES} and read from the STUDENT_CREATE grant
+     * rather than a role list, so who may admit is configurable on the Roles &amp;
+     * Permissions screen instead of fixed here. No teaching role holds it, which is
+     * what keeps a teacher out; to make admissions administrator-only, revoke it
+     * from PRINCIPAL and VICE_PRINCIPAL and the ADMIN_OVERRIDE below is all that
+     * remains.
+     *
+     * <p>Deliberately narrower than editing. A class teacher may keep their own
+     * students' records current through {@code /api/v1/my-class/students/{id}};
+     * enrolling a new child is a different act and belongs to the office.
+     */
+    private static final String ADMIT =
+            "hasAuthority('" + AppConstants.PERMISSION_AUTHORITY_PREFIX + "STUDENT_CREATE') or "
+                    + AppConstants.ADMIN_OVERRIDE;
     // Self-service: a student maintains their own contact details. PARENT is excluded
     // because a parent has no single "own" record — they use the by-id endpoints,
     // which the guard already narrows to their own children.
@@ -121,7 +140,7 @@ public class StudentController {
     }
 
     @PostMapping
-    @PreAuthorize(WRITE_ROLES)
+    @PreAuthorize(ADMIT)
     @Operation(summary = "Admit a new student (login account is optional; guardians are created in the same transaction)")
     public ResponseEntity<ApiResponse<StudentDto>> create(@Valid @RequestBody StudentCreateRequest request) {
         StudentDto created = studentService.create(request);

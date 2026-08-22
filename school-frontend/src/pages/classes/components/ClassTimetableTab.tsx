@@ -25,6 +25,10 @@ import EmptyState from '@/components/common/EmptyState';
 import timetableApi, { type TimetableSlotPayload } from '@/api/timetableApi';
 import classesApi from '@/api/classesApi';
 import type { ClassSubjectTeacher, Section, Subject, Teacher, TimetableDay, TimetableSlot } from '@/types';
+import { DEFAULT_PERIODS, WORKING_DAYS } from './timetableDays';
+
+/** Period 1 — the register period, which belongs to the section's class teacher. */
+const FIRST_PERIOD = 1;
 
 export interface ClassTimetableTabProps {
   classId: number;
@@ -33,19 +37,9 @@ export interface ClassTimetableTabProps {
   teachers: Teacher[];
 }
 
-const DAYS: TimetableDay[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-
-/** Sensible default bells; each row's times stay editable. */
-const DEFAULT_PERIODS = [
-  { startTime: '09:00:00', endTime: '09:40:00' },
-  { startTime: '09:40:00', endTime: '10:20:00' },
-  { startTime: '10:20:00', endTime: '11:00:00' },
-  { startTime: '11:20:00', endTime: '12:00:00' },
-  { startTime: '12:00:00', endTime: '12:40:00' },
-  { startTime: '13:20:00', endTime: '14:00:00' },
-  { startTime: '14:00:00', endTime: '14:40:00' },
-  { startTime: '14:40:00', endTime: '15:20:00' },
-];
+// Shared with TeacherMappingTab so the two editors cannot disagree about what a
+// week is or when the bells are.
+const DAYS = WORKING_DAYS;
 
 type EditableSlot = TimetableSlotPayload & { clashWarning?: string | null };
 
@@ -124,6 +118,37 @@ export function ClassTimetableTab({ classId, sections, subjects, teachers }: Cla
       slots.find((s) => s.dayOfWeek === day && s.periodNumber === period) ?? null,
     [slots],
   );
+
+  /*
+   * Period 1 belongs to the class teacher.
+   *
+   * The register is taken in the first period and only the class teacher takes it,
+   * so both halves of a P1 slot are constrained: the teacher is them, and the
+   * subject has to be one they are actually mapped to teach. The server enforces
+   * both; these helpers are what stop this grid offering a choice it will reject.
+   */
+  const classTeacherId = useMemo(
+    () => sections.find((s) => s.id === sectionId)?.classTeacherId ?? null,
+    [sections, sectionId],
+  );
+
+  const classTeacherSubjectIds = useMemo(
+    () =>
+      new Set(
+        mappings
+          .filter((m) => classTeacherId != null && m.teacherId === classTeacherId)
+          .map((m) => m.subjectId),
+      ),
+    [mappings, classTeacherId],
+  );
+
+  const isFirstPeriod = (period: number) => period === FIRST_PERIOD;
+
+  const subjectsSelectableAt = (period: number) =>
+    isFirstPeriod(period) ? subjects.filter((s) => classTeacherSubjectIds.has(s.id)) : subjects;
+
+  const teachersSelectableAt = (period: number) =>
+    isFirstPeriod(period) ? teachers.filter((t) => t.id === classTeacherId) : teachers;
 
   const updateSlot = (day: TimetableDay, period: number, patch: Partial<EditableSlot>) => {
     setDirty(true);
@@ -270,7 +295,14 @@ export function ClassTimetableTab({ classId, sections, subjects, teachers }: Cla
                                       : (mappings.find((m) => m.subjectId === subjectId)?.teacherId ?? null);
                                   updateSlot(day, period, {
                                     subjectId,
-                                    teacherId: slot?.teacherId ?? mappedTeacherId,
+                                    // Period 1 is the class teacher's, so it is set to
+                                    // them rather than defaulted-then-editable. The
+                                    // server refuses anyone else there, and offering a
+                                    // choice it will reject is how this screen let a
+                                    // P1 be pointed at the wrong teacher.
+                                    teacherId: isFirstPeriod(period)
+                                      ? classTeacherId
+                                      : (slot?.teacherId ?? mappedTeacherId),
                                   });
                                 }}
                                 SelectProps={{ displayEmpty: true }}
@@ -279,7 +311,13 @@ export function ClassTimetableTab({ classId, sections, subjects, teachers }: Cla
                                 <MenuItem value="">
                                   <em>Free</em>
                                 </MenuItem>
-                                {subjects.map((subject) => (
+                                {/*
+                                  At period 1 only the class teacher's own subjects are
+                                  offered: the register is taken then, they take it, and
+                                  the server rejects a P1 subject they are not assigned
+                                  to teach.
+                                */}
+                                {subjectsSelectableAt(period).map((subject) => (
                                   <MenuItem key={subject.id} value={subject.id}>
                                     {subject.subjectName}
                                   </MenuItem>
@@ -302,6 +340,10 @@ export function ClassTimetableTab({ classId, sections, subjects, teachers }: Cla
                                 size="small"
                                 fullWidth
                                 value={slot.teacherId ?? ''}
+                                // Locked at period 1: it belongs to the class teacher
+                                // and is set from them above. Left editable elsewhere,
+                                // where a cover lesson is legitimate.
+                                disabled={isFirstPeriod(period)}
                                 onChange={(e) =>
                                   updateSlot(day, period, {
                                     teacherId: e.target.value === '' ? null : Number(e.target.value),
@@ -313,7 +355,7 @@ export function ClassTimetableTab({ classId, sections, subjects, teachers }: Cla
                                 <MenuItem value="">
                                   <em>No teacher</em>
                                 </MenuItem>
-                                {teachers.map((teacher) => (
+                                {teachersSelectableAt(period).map((teacher) => (
                                   <MenuItem key={teacher.id} value={teacher.id}>
                                     {[teacher.firstName, teacher.lastName].filter(Boolean).join(' ')}
                                   </MenuItem>
