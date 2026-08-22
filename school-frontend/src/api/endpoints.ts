@@ -366,6 +366,18 @@ export const ENDPOINTS = {
     BASE: '/roles',
     PERMISSIONS: (id: number | string) => `/roles/${id}/permissions`,
     PERMISSION_CATALOGUE: '/roles/permission-catalogue',
+    // Which menus a role is assigned. Separate from PERMISSIONS because they
+    // answer different questions: a menu says what appears, a permission says
+    // what may be done. Assigning a menu whose permission the role lacks shows
+    // nothing — see the Menu entity on the backend.
+    MENUS: (id: number | string) => `/roles/${id}/menus`,
+  },
+
+  // The navigation menu, as data. CATALOGUE is every menu for the administration
+  // screen; the signed-in user's own filtered menu arrives inside ME.ACCESS.
+  MENUS: {
+    CATALOGUE: '/menus',
+    MINE: '/me/menus',
   },
 
   // What the signed-in user may actually do. Fetched on app start rather than

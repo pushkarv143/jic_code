@@ -64,12 +64,22 @@ android {
         // does. Every control is gated on the same grant the endpoint behind it
         // enforces, so nothing is offered that the API would refuse.
         //
+        // 1.8.0 takes the menu off the phone and puts it in the database. Until now
+        // the app carried its own copy of the navigation menu with each entry's
+        // roles hard-coded, duplicating the web client's - so deciding who saw a
+        // menu meant editing two files in two languages and releasing two apps.
+        // The menu is now the `menus` and `role_menus` tables, arrives inside
+        // GET /me/access already filtered, and the app supplies only the route and
+        // icon behind each menu key. An administrator changes who sees what from
+        // Settings > Roles & Permissions > Menus, and a signed-in phone picks it up
+        // on its next token refresh without an update.
+        //
         // Carries 1.5.0 before it (one section per class and My Timetable), 1.4.0 before
         // that (the class module on the phone), 1.3.0 before that (passcode sign-in and
         // recovery). A new versionCode is what lets the device recognise this as an
         // upgrade rather than refusing to install over the previous build.
-        versionCode = 8
-        versionName = "1.7.0"
+        versionCode = 9
+        versionName = "1.8.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true

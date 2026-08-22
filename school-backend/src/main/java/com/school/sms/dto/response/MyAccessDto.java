@@ -30,6 +30,11 @@ import java.util.Set;
  *       inferred from the absence of its permissions.</li>
  *   <li>{@code homeroom} — the section this caller is class teacher of, or null.
  *       Not derivable from a permission: it is a row in {@code sections}.</li>
+ *   <li>{@code menus} — the navigation tree this caller should be offered, read
+ *       from {@code menus} / {@code role_menus} and already filtered by the three
+ *       gates above. Included here rather than left to a second call because the
+ *       clients need it at exactly the same moment, and because a menu assembled
+ *       from a different snapshot than the grants can disagree with them.</li>
  * </ul>
  *
  * <p>Note that permissions are filtered by module but the role is not: a
@@ -63,6 +68,20 @@ public class MyAccessDto {
 
     /** The caller's homeroom section, or null when they are class teacher of none. */
     private HomeroomDto homeroom;
+
+    /**
+     * The caller's menu, as a tree of section headings and their entries.
+     *
+     * <p>Already filtered — every entry here is one this user should see, so a
+     * client renders the list as given and makes no decisions of its own. Headings
+     * with no surviving entry are omitted rather than returned empty.
+     *
+     * <p>Empty only for a role assigned nothing, which is a real configuration
+     * rather than an error. A client showing an empty sidebar for such a user is
+     * correct; there is no fallback to a hard-coded menu, because that fallback is
+     * exactly what this replaced.
+     */
+    private List<MenuDto> menus;
 
     /**
      * True when this caller may act as a class teacher on their own section —

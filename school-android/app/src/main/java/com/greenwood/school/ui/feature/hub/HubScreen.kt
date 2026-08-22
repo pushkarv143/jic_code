@@ -23,11 +23,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.greenwood.school.core.common.Role
 import com.greenwood.school.navigation.MenuEntry
 import com.greenwood.school.navigation.MenuSection
 import com.greenwood.school.navigation.Routes
-import com.greenwood.school.navigation.menuForRole
+import com.greenwood.school.data.remote.dto.MyAccessDto
+import com.greenwood.school.navigation.menuFromAccess
 import com.greenwood.school.ui.components.AppCard
 import com.greenwood.school.ui.components.EmptyView
 
@@ -35,33 +35,30 @@ import com.greenwood.school.ui.components.EmptyView
  * A hub is one bottom-bar tab rendered as a menu of destinations — the mobile
  * stand-in for a slice of the web sidebar.
  *
- * Which sections land in which tab is decided here rather than in the nav graph so
- * that adding a menu entry to `MENU_SECTIONS` automatically surfaces it in the
- * right tab without touching navigation code.
+ * Which sections land in which tab is decided here rather than in the nav graph, so
+ * a menu added to the `menus` table surfaces in the right tab with no code change
+ * at all — not even a release. The tab mapping is by section key, so renaming a
+ * heading does not move its contents.
  */
 @Composable
 fun HubScreen(
-    role: Role,
     tabRoute: String,
     onNavigate: (String) -> Unit,
     onSignOut: (() -> Unit)? = null,
     /**
-     * The signed-in role's effective grants, from `GET /api/v1/me/access`.
+     * What the server says this user may see, from `GET /api/v1/me/access`.
      *
-     * Not the login response's copy: that is a snapshot written to disk and goes
-     * stale the moment an administrator edits a role. Empty now means "this role
-     * holds nothing" rather than "unknown" — the caller waits for the fetch to
-     * settle before composing this screen.
+     * Carries the menu itself, already filtered by the role's assignment, the
+     * enabled modules, the homeroom and the permissions. Not the login response's
+     * copy: that is a snapshot written to disk and goes stale the moment an
+     * administrator changes anything. Null only before the first fetch settles, and
+     * the shell holds the splash until then.
      */
-    permissions: Set<String> = emptySet(),
-    /** Whether an org module is switched on. Unknown keys read as enabled. */
-    moduleEnabled: (String) -> Boolean = { true },
-    /** Whether this user is class teacher of a section — gates the My Class entry. */
-    hasHomeroom: Boolean = false,
+    access: MyAccessDto? = null,
     modifier: Modifier = Modifier,
 ) {
-    val sections = menuForRole(role, permissions, moduleEnabled, hasHomeroom)
-        .filter { it.title in sectionsFor(tabRoute) }
+    val sections = menuFromAccess(access)
+        .filter { it.key in sectionsFor(tabRoute) }
         // "Dashboard" is the Home tab itself; showing it again inside a hub is noise.
         .map { section -> section.copy(entries = section.entries.filterNot { it.route == Routes.DASHBOARD }) }
         .filter { it.entries.isNotEmpty() }
@@ -138,7 +135,14 @@ private fun MenuRow(entry: MenuEntry, onClick: () -> Unit) {
  * catch-all so nothing from the web nav can be lost by omission.
  */
 private fun sectionsFor(tabRoute: String): Set<String> = when (tabRoute) {
-    Routes.ACADEMICS_HUB -> setOf("Academics")
-    Routes.ADMIN_HUB -> setOf("Administration")
-    else -> setOf("Overview", "Communication", "Insights", "Account")
+    Routes.ACADEMICS_HUB -> setOf("SECTION_ACADEMICS")
+    Routes.ADMIN_HUB -> setOf("SECTION_ADMINISTRATION")
+    // "More" is the catch-all: anything not claimed by a named tab lands here, so a
+    // section added to the table appears rather than vanishing.
+    else -> setOf(
+        "SECTION_OVERVIEW",
+        "SECTION_COMMUNICATION",
+        "SECTION_INSIGHTS",
+        "SECTION_ACCOUNT",
+    )
 }

@@ -100,7 +100,7 @@ com.greenwood.school
 ├── domain
 │   └── repository   15 contracts the ViewModels depend on
 ├── di               AppModule, NetworkModule, RepositoryModule
-├── navigation       Routes, MENU_SECTIONS, AppNavHost
+├── navigation       Routes, MENU_CATALOGUE, AppNavHost
 └── ui
     ├── theme        Colour/type/shape ported from the web MUI theme
     ├── components   StateHost, StatCard, EntityRowCard, PagedLazyColumn, form fields…
@@ -227,10 +227,21 @@ Separate from authentication, and read from the server rather than inferred:
 ```
 sign in / restore session / silent token refresh
         ↓
-AccessStore  →  GET /me/access  →  { role, permissions, enabledModules, homeroom }
+AccessStore  →  GET /me/access  →  { role, permissions, enabledModules, homeroom, menus }
         ↓
-menus (menuForRole) + in-screen controls + MainActivity's splash gate
+menus (menuFromAccess) + in-screen controls + MainActivity's splash gate
 ```
+
+The **menu itself** comes from the server as of 1.8.0. It used to be a
+`MENU_SECTIONS` list here with each entry's roles hard-coded, duplicating the web
+client's nav config — so deciding who saw a menu meant editing two files in two
+languages and releasing two apps, and in practice nobody did. It now lives in the
+`menus` and `role_menus` tables, arrives inside `/me/access` already filtered by
+the role's assignment, the enabled modules, the homeroom and the permission behind
+each screen, and `MENU_CATALOGUE` supplies only the half a server cannot know:
+which Compose destination a menu key navigates to, and which icon to draw. A key
+this app has no screen for is skipped; a key it has but the server did not send
+never appears.
 
 `UserDto.permissions` from the login response is a snapshot written to disk, so it
 cannot see a grant an administrator changes mid-session. `AccessStore` re-reads
@@ -286,7 +297,7 @@ Retry button.
 | `RegisterPage` | `RegisterScreen` | `POST /auth/register` |
 | `ForgotPasswordPage` + `ResetPasswordPage` | `ForgotPasswordScreen` (two steps, one screen) | `POST /auth/forgot-password`, `/auth/reset-password` |
 | `DashboardPage` (8 role variants) | `DashboardScreen`, role-branched tile set | `/analytics/dashboard`, `/reports/*`, `/payroll/dashboard`, `/library/dashboard`, `/notices`, `/events`, `/attendance/students/{id}/summary`, `/student-fees` |
-| Sidebar (6 groups, 20 items) | Bottom bar (Home · Academics · Admin · More) + hub menus from the same `MENU_SECTIONS` list | — |
+| Sidebar (6 groups) | Bottom bar (Home · Academics · Admin · More) + hub menus, both from the server's `menus` tree | — |
 | `StudentListPage` (11-column DataGrid) | `StudentListScreen` — cards, debounced search, filter bottom sheet, infinite scroll | `GET /students` |
 | `StudentProfilePage` (4 tabs) | `StudentDetailScreen` — stacked sections, one request | `GET /students/{id}` |
 | `StudentFormPage` | `StudentFormScreen` — sectioned single column, guardian captured inline on create | `POST/PUT /students` |
@@ -462,9 +473,9 @@ and none of them blocks a mobile workflow:
 | Public marketing pages, chat | Brochure content. Chat is deliberately absent rather than pending: the web page is a client-side placeholder over seeded conversations — there is no chat controller, no table and no message ever sent — so porting it would ship a screen that looks like messaging and is not |
 
 Repository methods exist for **all** of the above, so adding any of them is UI work
-only. `navigation/Destinations.kt` holds the complete menu; `IMPLEMENTED_ROUTES`
-filters it to what the graph registers, and `MenuTest` fails the build if a menu
-entry ever points at an unregistered route.
+only. `navigation/Destinations.kt` maps each menu key to a route and an icon;
+`IMPLEMENTED_ROUTES` is what the graph registers, and `MenuTest` fails the build if
+a catalogue entry ever points at a route that is not wired up.
 
 ### The pattern to follow
 
@@ -478,7 +489,9 @@ entry ever points at an unregistered route.
 
 To add a screen: write the ViewModel and composable, register it in `AppNavHost`,
 add the route to `IMPLEMENTED_ROUTES`, and — if it belongs in the menu — add a
-`MenuEntry` with the same role set the web `navConfig.tsx` uses.
+`MENU_CATALOGUE` entry keyed on its `menus.menu_key`. Who *sees* it is not decided
+here at all: insert the `menus` row and assign it to roles from
+**Settings → Roles & Permissions → Menus** on the web app.
 
 ---
 

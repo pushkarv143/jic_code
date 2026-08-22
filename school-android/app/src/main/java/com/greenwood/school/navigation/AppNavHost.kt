@@ -119,6 +119,7 @@ fun AppNavHost(
                     hasHomeroom = access.isClassTeacherOfOwnSection,
                     ownStudentId = currentUser?.studentId,
                     ownTeacherId = currentUser?.teacherId,
+                    access = access,
                     onSignedOut = {
                         navController.navigate(Routes.AUTH_GRAPH) {
                             popUpTo(Routes.MAIN_GRAPH) { inclusive = true }
@@ -184,6 +185,15 @@ private fun MainShell(
     ownStudentId: Long?,
     ownTeacherId: Long?,
     onSignedOut: () -> Unit,
+    /**
+     * The whole access payload, for the hubs.
+     *
+     * They need the server's menu, not just the three derived values beside it:
+     * which entries a role is assigned is a table now, and cannot be reconstructed
+     * from grants and modules alone. The derived values stay because a dozen
+     * in-screen checks read them directly.
+     */
+    access: MyAccessDto? = null,
 ) {
     val nav = rememberNavController()
     val backStackEntry by nav.currentBackStackEntryAsState()
@@ -256,13 +266,10 @@ private fun MainShell(
                 listOf(Routes.ACADEMICS_HUB, Routes.ADMIN_HUB, Routes.MORE_HUB).forEach { hubRoute ->
                     composable(hubRoute) {
                         HubScreen(
-                            role = role,
                             tabRoute = hubRoute,
                             onNavigate = go,
                             onSignOut = if (hubRoute == Routes.MORE_HUB) onSignedOut else null,
-                            permissions = permissions,
-                            moduleEnabled = moduleEnabled,
-                            hasHomeroom = hasHomeroom,
+                            access = access,
                         )
                     }
                 }

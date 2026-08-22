@@ -28,7 +28,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material.icons.outlined.VideoCameraFront
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.greenwood.school.core.common.Role
+import com.greenwood.school.data.remote.dto.MyAccessDto
 
 /**
  * Every navigable destination, as a plain route string.
@@ -143,270 +143,129 @@ object Routes {
 }
 
 /**
- * A menu entry, mirroring `NavItem` in `school-frontend/src/layouts/navConfig.tsx`
- * — same labels, same icons, same role gating.
+ * What this app can *render* for one menu: its Compose route and its icon.
+ *
+ * <p>Not what it may *show* — that is the server's answer now. This used to carry
+ * `roles`, `permissions`, `module` and `requiresHomeroom` arrays duplicating the
+ * web client's nav config, so deciding who saw a menu meant editing two files in
+ * two languages and shipping two apps. The menu now lives in `menus` /
+ * `role_menus`, arrives inside `GET /me/access` already filtered, and all this app
+ * supplies is the half a server cannot know: where a key navigates to, and what it
+ * looks like.
+ *
+ * <p>[key] is the join. It matches `menus.menu_key` and is deliberately neither
+ * the label nor the path: a label gets renamed, and the path is the *web* route,
+ * which means nothing here.
  */
 data class MenuEntry(
+    /** Matches `menus.menu_key`. */
+    val key: String,
+    /** Fallback label, used only when rendering without a server menu. */
     val label: String,
     val route: String,
     val icon: ImageVector,
-    /** Empty = visible to every authenticated role, matching the web's optional `roles`. */
-    val roles: Set<Role> = emptySet(),
-    /**
-     * Permission names, any one of which reveals this entry — applied on top of
-     * [roles], mirroring `NavItem.permissions` on the web. Empty = no permission
-     * requirement.
-     */
-    val permissions: Set<String> = emptySet(),
-    /**
-     * The org module this entry belongs to, keyed as `permissions.module` /
-     * `org_modules.module_key` ('FEE', 'HOSTEL', 'MY_CLASS', ...).
-     *
-     * When an administrator switches the module off it disappears for every role at
-     * once — and so does the API behind it, because the backend strips that module's
-     * permissions when it builds the caller's authorities. Null for entries that
-     * belong to no module and should survive any configuration.
-     */
-    val module: String? = null,
-    /**
-     * Show only to a user who is actually class teacher of a section.
-     *
-     * Distinct from `roles = setOf(Role.CLASS_TEACHER)`, and that distinction is the
-     * point: the role is a label on the user row, the assignment is a row in
-     * `sections`. 44 users hold the role and 17 hold an assignment, so gating My
-     * Class on the role would advertise an empty screen to 27 people. The signal
-     * comes from the server, never inferred here.
-     */
-    val requiresHomeroom: Boolean = false,
-) {
-    fun isVisibleTo(role: Role): Boolean = roles.isEmpty() || role in roles
-
-    /**
-     * @param granted the signed-in role's effective permission names, from
-     *   `GET /api/v1/me/access`.
-     * @param moduleEnabled whether an org module is switched on. Unknown keys read
-     *   as enabled, matching the backend.
-     * @param hasHomeroom whether this user is class teacher of a section.
-     *
-     * The permission check is unconditional: an entry that declares [permissions] is
-     * hidden unless the user holds one. There is no "empty grant set means unknown,
-     * so show it anyway" escape — the shell waits for `/me/access` before drawing the
-     * menu, so by the time this runs an empty set genuinely means "this role holds
-     * nothing". Display only: the API enforces the same grants regardless.
-     */
-    fun isVisibleTo(
-        role: Role,
-        granted: Set<String>,
-        moduleEnabled: (String) -> Boolean = { true },
-        hasHomeroom: Boolean = false,
-    ): Boolean = when {
-        // Checked first because it overrides everything, for everyone including the
-        // administrator: a school that does not run a hostel wants no Hostel entry on
-        // anybody's menu. It is a statement about the organisation, not the user.
-        module != null && !moduleEnabled(module) -> false
-        requiresHomeroom && !hasHomeroom -> false
-        !isVisibleTo(role) -> false
-        // Never filter the administrator by permissions - see AppConstants.ADMIN_OVERRIDE.
-        role == Role.SUPER_ADMIN -> true
-        permissions.isEmpty() -> true
-        else -> permissions.any { it in granted }
-    }
-}
-
-data class MenuSection(val title: String, val entries: List<MenuEntry>)
-
-private val MANAGEMENT = Role.MANAGEMENT
-private val MANAGEMENT_AND_TEACHERS = Role.MANAGEMENT + Role.TEACHING
-
-/**
- * The complete menu, one-for-one with the web sidebar's six groups.
- *
- * On mobile it is surfaced three ways: the four most-used destinations become the
- * bottom bar, "Academics"/"Admin" hubs list their group, and everything else lives
- * under "More". Nothing from the web nav is dropped.
- */
-val MENU_SECTIONS: List<MenuSection> = listOf(
-    MenuSection(
-        title = "Overview",
-        entries = listOf(
-            MenuEntry("Dashboard", Routes.DASHBOARD, Icons.Outlined.SpaceDashboard),
-            MenuEntry("My Children", Routes.MY_CHILDREN, Icons.Outlined.FamilyRestroom, setOf(Role.PARENT)),
-        ),
-    ),
-    MenuSection(
-        title = "Academics",
-        entries = listOf(
-            MenuEntry(
-                "Students",
-                Routes.STUDENTS,
-                Icons.Outlined.School,
-                MANAGEMENT_AND_TEACHERS + Role.RECEPTIONIST + Role.STUDENT,
-                setOf("STUDENT_VIEW"),
-                module = "STUDENT",
-            ),
-            // Directory for management; the teacher's own record for a teacher —
-            // AppNavHost redirects, mirroring the web's TeachersIndexRoute.
-            MenuEntry(
-                "Teachers",
-                Routes.TEACHERS,
-                Icons.Outlined.Badge,
-                MANAGEMENT_AND_TEACHERS,
-                setOf("TEACHER_VIEW"),
-                module = "TEACHER",
-            ),
-            // "Sections" dropped from the label with the picker: the school runs one
-            // section per class, so subjects are what this screen is now about.
-            // The homeroom teacher's own section, above the whole-school directory:
-            // for a class teacher this is the screen they want - theirs, and editable.
-            // Gated on the assignment and the permission, not on the CLASS_TEACHER role.
-            MenuEntry(
-                label = "My Class",
-                route = Routes.MY_CLASS,
-                icon = Icons.Outlined.Class,
-                permissions = setOf("MY_CLASS_VIEW"),
-                module = "MY_CLASS",
-                requiresHomeroom = true,
-            ),
-            MenuEntry(
-                label = "Classes & Subjects",
-                route = Routes.CLASSES,
-                icon = Icons.Outlined.Class,
-                roles = MANAGEMENT_AND_TEACHERS,
-                module = "ACADEMIC",
-            ),
-            // Self-service only. Management reads a class's week inside the class
-            // screen, which is also the only place the server lets them.
-            MenuEntry(
-                "My Timetable",
-                Routes.MY_TIMETABLE,
-                Icons.Outlined.CalendarMonth,
-                Role.TEACHING + Role.SELF_SERVICE,
-            ),
-            MenuEntry(
-                "Attendance",
-                Routes.ATTENDANCE,
-                Icons.Outlined.EventAvailable,
-                MANAGEMENT_AND_TEACHERS + Role.SELF_SERVICE,
-                setOf("ATTENDANCE_VIEW"),
-                module = "ATTENDANCE",
-            ),
-            // No role filter — every role applies for leave, same as the web app.
-            MenuEntry("Leave", Routes.LEAVE, Icons.Outlined.EventBusy),
-            MenuEntry(
-                "Exams & Marks",
-                Routes.EXAMS,
-                Icons.Outlined.Assignment,
-                MANAGEMENT_AND_TEACHERS + Role.SELF_SERVICE,
-                module = "EXAM",
-            ),
-            MenuEntry(
-                "Assignments",
-                Routes.ASSIGNMENTS,
-                Icons.Outlined.FactCheck,
-                MANAGEMENT_AND_TEACHERS + Role.SELF_SERVICE,
-                module = "ASSIGNMENT",
-            ),
-            MenuEntry(
-                "Study Materials",
-                Routes.STUDY_MATERIALS,
-                Icons.Outlined.LibraryBooks,
-                MANAGEMENT_AND_TEACHERS + Role.SELF_SERVICE,
-                setOf("MATERIAL_VIEW"),
-                module = "MATERIAL",
-            ),
-            MenuEntry(
-                "Online Classes",
-                Routes.ONLINE_CLASSES,
-                Icons.Outlined.VideoCameraFront,
-                MANAGEMENT_AND_TEACHERS + Role.SELF_SERVICE,
-            ),
-        ),
-    ),
-    MenuSection(
-        title = "Administration",
-        entries = listOf(
-            MenuEntry("Staff", Routes.STAFF, Icons.Outlined.Groups, MANAGEMENT, module = "STAFF"),
-            MenuEntry(
-                "Fees",
-                Routes.FEES,
-                Icons.Outlined.Paid,
-                MANAGEMENT + Role.ACCOUNTANT + Role.SELF_SERVICE,
-                module = "FEE",
-            ),
-            // The web app nests these under the Fees route as tabs; on mobile they are
-            // separate destinations so the Fees screen stays a single-purpose ledger.
-            MenuEntry("Fee Setup", Routes.FEE_SETUP, Icons.Outlined.Paid, MANAGEMENT + Role.ACCOUNTANT),
-            MenuEntry("Scholarships", Routes.SCHOLARSHIPS, Icons.Outlined.Paid, MANAGEMENT + Role.ACCOUNTANT),
-            MenuEntry("Payroll", Routes.PAYROLL, Icons.Outlined.RequestQuote, MANAGEMENT + Role.ACCOUNTANT, module = "PAYROLL"),
-            MenuEntry("Library", Routes.LIBRARY, Icons.Outlined.MenuBook, MANAGEMENT + Role.LIBRARIAN, module = "LIBRARY"),
-            MenuEntry(
-                "Transport",
-                Routes.TRANSPORT,
-                Icons.Outlined.DirectionsBus,
-                MANAGEMENT + Role.RECEPTIONIST + Role.SELF_SERVICE,
-                module = "TRANSPORT",
-            ),
-            MenuEntry(
-                "Hostel",
-                Routes.HOSTEL,
-                Icons.Outlined.Apartment,
-                MANAGEMENT + Role.RECEPTIONIST + Role.SELF_SERVICE,
-                module = "HOSTEL",
-            ),
-            MenuEntry(
-                "Admission Enquiries",
-                Routes.ADMISSIONS,
-                Icons.Outlined.HowToReg,
-                setOf(Role.SUPER_ADMIN, Role.PRINCIPAL, Role.RECEPTIONIST),
-                module = "ADMISSION",
-            ),
-        ),
-    ),
-    MenuSection(
-        title = "Communication",
-        entries = listOf(
-            MenuEntry("Notice Board", Routes.NOTICES, Icons.Outlined.Campaign, module = "NOTICE"),
-            MenuEntry("Calendar", Routes.CALENDAR, Icons.Outlined.CalendarMonth),
-            MenuEntry("Notifications", Routes.NOTIFICATIONS, Icons.Outlined.Notifications, module = "COMMUNICATION"),
-        ),
-    ),
-    MenuSection(
-        title = "Insights",
-        entries = listOf(
-            MenuEntry("Reports", Routes.REPORTS, Icons.Outlined.BarChart, MANAGEMENT + Role.ACCOUNTANT, module = "REPORTS"),
-        ),
-    ),
-    MenuSection(
-        title = "Account",
-        entries = listOf(
-            MenuEntry("My Profile", Routes.PROFILE, Icons.Outlined.Person),
-            MenuEntry(
-                "Users",
-                Routes.USERS,
-                Icons.Outlined.ManageAccounts,
-                setOf(Role.SUPER_ADMIN, Role.PRINCIPAL),
-                module = "USER",
-            ),
-            MenuEntry(
-                "Settings",
-                Routes.SETTINGS,
-                Icons.Outlined.Settings,
-                setOf(Role.SUPER_ADMIN, Role.PRINCIPAL),
-                module = "SETTINGS",
-            ),
-        ),
-    ),
 )
 
 /**
- * Destinations that have a composable registered in [AppNavHost].
+ * A group of menu entries under one heading.
  *
- * [MENU_SECTIONS] above is the complete web-parity menu and is the specification;
- * this set is what is wired up so far. Menus are filtered through it so a tap can
- * never land on a route the graph doesn't know — navigating to an unregistered
- * route throws at runtime. Add the screen, add its route here, and it appears.
+ * [key] matches `menus.menu_key` on the heading row ('SECTION_ACADEMICS', ...) and
+ * is what decides which bottom-bar tab this section lands in. Not the [title]: that
+ * is the server's label now, and routing a tab by a string an administrator can
+ * rename would break the hubs the first time someone edited it.
+ */
+data class MenuSection(val key: String, val title: String, val entries: List<MenuEntry>)
+
+/**
+ * Every menu this app can navigate to, by `menus.menu_key`.
  *
- * Remaining work is tracked in `school-android/README.md` > "Implementation status".
+ * <p>A key the server sends that is absent here is skipped: the phone does not
+ * implement every screen the web app has, and this map is now what says so —
+ * the job `IMPLEMENTED_ROUTES` used to do for the menu. A key present here but
+ * never sent simply never renders, which is what an unassigned menu means.
+ */
+val MENU_CATALOGUE: Map<String, MenuEntry> = listOf(
+    MenuEntry("DASHBOARD", "Dashboard", Routes.DASHBOARD, Icons.Outlined.SpaceDashboard),
+    MenuEntry("MY_CHILDREN", "My Children", Routes.MY_CHILDREN, Icons.Outlined.FamilyRestroom),
+    MenuEntry("STUDENTS", "Students", Routes.STUDENTS, Icons.Outlined.School),
+    MenuEntry("TEACHERS", "Teachers", Routes.TEACHERS, Icons.Outlined.Badge),
+    MenuEntry("MY_CLASS", "My Class", Routes.MY_CLASS, Icons.Outlined.Class),
+    MenuEntry("CLASSES", "Classes & Subjects", Routes.CLASSES, Icons.Outlined.Class),
+    MenuEntry("MY_TIMETABLE", "My Timetable", Routes.MY_TIMETABLE, Icons.Outlined.CalendarMonth),
+    MenuEntry("ATTENDANCE", "Attendance", Routes.ATTENDANCE, Icons.Outlined.EventAvailable),
+    MenuEntry("LEAVE", "Leave", Routes.LEAVE, Icons.Outlined.EventBusy),
+    MenuEntry("EXAMS", "Exams & Marks", Routes.EXAMS, Icons.Outlined.Assignment),
+    MenuEntry("ASSIGNMENTS", "Assignments", Routes.ASSIGNMENTS, Icons.Outlined.FactCheck),
+    MenuEntry("STUDY_MATERIALS", "Study Materials", Routes.STUDY_MATERIALS, Icons.Outlined.LibraryBooks),
+    MenuEntry("ONLINE_CLASSES", "Online Classes", Routes.ONLINE_CLASSES, Icons.Outlined.VideoCameraFront),
+    MenuEntry("STAFF", "Staff", Routes.STAFF, Icons.Outlined.Groups),
+    MenuEntry("FEES", "Fees", Routes.FEES, Icons.Outlined.Paid),
+    MenuEntry("FEE_SETUP", "Fee Setup", Routes.FEE_SETUP, Icons.Outlined.Paid),
+    MenuEntry("SCHOLARSHIPS", "Scholarships", Routes.SCHOLARSHIPS, Icons.Outlined.Paid),
+    MenuEntry("PAYROLL", "Payroll", Routes.PAYROLL, Icons.Outlined.RequestQuote),
+    MenuEntry("LIBRARY", "Library", Routes.LIBRARY, Icons.Outlined.MenuBook),
+    MenuEntry("TRANSPORT", "Transport", Routes.TRANSPORT, Icons.Outlined.DirectionsBus),
+    MenuEntry("HOSTEL", "Hostel", Routes.HOSTEL, Icons.Outlined.Apartment),
+    MenuEntry("ADMISSION", "Admission Enquiries", Routes.ADMISSIONS, Icons.Outlined.HowToReg),
+    MenuEntry("NOTICES", "Notice Board", Routes.NOTICES, Icons.Outlined.Campaign),
+    MenuEntry("CALENDAR", "Calendar", Routes.CALENDAR, Icons.Outlined.CalendarMonth),
+    MenuEntry("NOTIFICATIONS", "Notifications", Routes.NOTIFICATIONS, Icons.Outlined.Notifications),
+    MenuEntry("REPORTS", "Reports", Routes.REPORTS, Icons.Outlined.BarChart),
+    MenuEntry("PROFILE", "My Profile", Routes.PROFILE, Icons.Outlined.Person),
+    MenuEntry("USERS", "Users", Routes.USERS, Icons.Outlined.ManageAccounts),
+    MenuEntry("SETTINGS", "Settings", Routes.SETTINGS, Icons.Outlined.Settings),
+    // CHAT is absent on purpose. The web page is a placeholder over seeded
+    // conversations with no controller behind it, and the menu row is seeded
+    // disabled — so even if it were sent, there is nothing here to navigate to.
+).associateBy { it.key }
+
+/**
+ * The menu, as the server resolved it for this user.
+ *
+ * <p>The server has already applied every gate — the role's assignment, whether
+ * the module is switched on, whether the user holds a homeroom section, and the
+ * permission behind the screen. Nothing is re-decided here. What this does is
+ * translate: server label and order, local route and icon.
+ *
+ * <p>Two things are dropped, both silently and both correctly. A section left with
+ * no renderable entry goes with them, because a heading over an empty list reads as
+ * a failure to load. And an entry whose key this app has no screen for is skipped —
+ * the phone does not implement everything the web app does, and offering a menu
+ * that navigates nowhere is worse than omitting it.
+ *
+ * <p>Returns empty when [access] is null, which is the window before the first
+ * fetch lands, and empty for a role assigned nothing. Neither falls back to a
+ * built-in menu: that fallback is what this replaced. The shell holds the splash
+ * until access settles, so the empty window is not drawn.
+ */
+fun menuFromAccess(access: MyAccessDto?): List<MenuSection> =
+    access?.menus.orEmpty()
+        .map { section ->
+            MenuSection(
+                key = section.menuKey,
+                title = section.label,
+                entries = section.children.mapNotNull { node ->
+                    MENU_CATALOGUE[node.menuKey]?.copy(label = node.label)
+                },
+            )
+        }
+        .filter { it.entries.isNotEmpty() }
+
+
+/**
+ * Every route the navigation graph actually registers.
+ *
+ * <p>AppNavHost guards each navigate() with this, because navigating to a route
+ * the graph does not know throws at runtime. It is the belt to two braces: a menu
+ * entry can only exist for a key in [MENU_CATALOGUE], and every entry there points
+ * at a route below — but a deep link or a stale saved state can still ask for one
+ * that is not wired up.
+ *
+ * <p>It no longer filters the menu. That filtering is [MENU_CATALOGUE]: a key the
+ * server sends with no local screen has nowhere to go, so it never becomes an
+ * entry in the first place.
+ *
+ * <p>Remaining work is tracked in `school-android/README.md` > "Implementation status".
  */
 val IMPLEMENTED_ROUTES: Set<String> = setOf(
     Routes.DASHBOARD,
@@ -448,35 +307,6 @@ val IMPLEMENTED_ROUTES: Set<String> = setOf(
     Routes.SETTINGS,
     Routes.SEARCH,
 )
-
-fun menuForRole(
-    role: Role,
-    granted: Set<String> = emptySet(),
-    moduleEnabled: (String) -> Boolean = { true },
-    hasHomeroom: Boolean = false,
-): List<MenuSection> = MENU_SECTIONS
-    .map { section ->
-        section.copy(
-            entries = section.entries.filter {
-                it.isVisibleTo(role, granted, moduleEnabled, hasHomeroom) && it.route in IMPLEMENTED_ROUTES
-            },
-        )
-    }
-    .filter { it.entries.isNotEmpty() }
-
-/** The full, unfiltered menu — used by the README generator and by tests. */
-fun fullMenuForRole(
-    role: Role,
-    granted: Set<String> = emptySet(),
-    moduleEnabled: (String) -> Boolean = { true },
-    hasHomeroom: Boolean = false,
-): List<MenuSection> = MENU_SECTIONS
-    .map { section ->
-        section.copy(
-            entries = section.entries.filter { it.isVisibleTo(role, granted, moduleEnabled, hasHomeroom) },
-        )
-    }
-    .filter { it.entries.isNotEmpty() }
 
 /** The four bottom-bar tabs. Fixed for every role; the hubs adapt their contents. */
 data class BottomTab(val route: String, val label: String, val icon: ImageVector)

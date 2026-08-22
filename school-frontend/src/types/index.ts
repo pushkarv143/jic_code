@@ -1404,6 +1404,36 @@ export interface Homeroom {
   studentCount: number;
 }
 
+/**
+ * One navigation entry, as the server resolved it for this user.
+ *
+ * The menu lives in the `menus` table and is assigned per role through
+ * `role_menus`, so adding an entry or changing who sees it is a row rather than
+ * a release. What arrives here is already filtered — every entry is one this user
+ * should see — so the client renders it and decides nothing.
+ */
+export interface MenuEntry {
+  id: number;
+  /** Stable identifier, e.g. 'STUDENTS'. Match on this, never on the label. */
+  menuKey: string;
+  label: string;
+  /** Null for a section heading, which groups rather than navigates. */
+  path: string | null;
+  /** Icon *name*, resolved by layouts/menuIcons.tsx. */
+  icon: string | null;
+  i18nKey: string | null;
+  sortOrder: number;
+  enabled: boolean;
+  /** Entries under a heading. Empty for a destination. */
+  children: MenuEntry[];
+  /** The gates the server already applied; kept so a screen can explain an absence. */
+  moduleKey: string | null;
+  requiredPermission: string | null;
+  requiresHomeroom: boolean;
+  /** Catalogue responses only — how many roles hold this menu. */
+  assignedRoleCount?: number;
+}
+
 export interface MyAccess {
   userId: number;
   username: string;
@@ -1418,6 +1448,12 @@ export interface MyAccess {
   enabledModules: string[];
   /** Null when the user is class teacher of no section — which includes most admins. */
   homeroom: Homeroom | null;
+  /**
+   * This user's menu, as sections with their entries — already filtered by module,
+   * homeroom and permission. Empty for a role assigned nothing, which is a real
+   * configuration: there is deliberately no fallback to a hard-coded menu.
+   */
+  menus: MenuEntry[];
   /**
    * True only when the user holds a homeroom assignment AND the MY_CLASS module
    * is enabled. Precomputed by the backend so every screen agrees on the rule.

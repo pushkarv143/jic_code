@@ -22,10 +22,10 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useSnackbar } from 'notistack';
 import PageHeader from '@/components/common/PageHeader';
 import PageLoader from '@/components/common/PageLoader';
-import accessApi, { rolesApi, type PermissionRow } from '@/api/accessApi';
+import accessApi, { menusApi, rolesApi, type PermissionRow } from '@/api/accessApi';
 import { useAccess } from '@/access/AccessProvider';
 import { formatRoleLabel } from '@/utils/format';
-import type { OrgModule, Permission } from '@/types';
+import type { MenuEntry, OrgModule, Permission } from '@/types';
 
 interface RoleRow {
   id: number;
@@ -53,7 +53,7 @@ const PROTECTED_ROLE = 'SUPER_ADMIN';
  *
  * <p>Both were previously only changeable by editing seed SQL and redeploying:
  * `RoleController` had no write endpoint at all and the menu was hardcoded role
- * arrays in `navConfig.tsx`.
+ * `roles` arrays that used to sit in the clients' own nav config.
  */
 export function RolesPermissionsPage() {
   const { enqueueSnackbar } = useSnackbar();
@@ -68,18 +68,24 @@ export function RolesPermissionsPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [granted, setGranted] = useState<Set<Permission>>(new Set());
   const [modules, setModules] = useState<OrgModule[]>([]);
+  /** The menu catalogue, as sections with their entries. */
+  const [menuTree, setMenuTree] = useState<MenuEntry[]>([]);
+  /** Menu ids assigned to the selected role. */
+  const [assignedMenus, setAssignedMenus] = useState<Set<number>>(new Set());
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [roleList, permissionCatalogue, moduleList] = await Promise.all([
+      const [roleList, permissionCatalogue, moduleList, menus] = await Promise.all([
         rolesApi.list(),
         rolesApi.permissionCatalogue(),
         accessApi.getModules(),
+        menusApi.catalogue(),
       ]);
       setRoles(roleList);
       setCatalogue(permissionCatalogue);
       setModules(moduleList);
+      setMenuTree(menus);
       // Open on the first editable role rather than SUPER_ADMIN, whose board is
       // read-only and would look broken as a first impression.
       const firstEditable = roleList.find((role) => role.name !== PROTECTED_ROLE) ?? roleList[0];
@@ -95,17 +101,20 @@ export function RolesPermissionsPage() {
     void loadAll();
   }, [loadAll]);
 
-  // Reload the selected role's grants whenever the selection changes.
+  // Reload the selected role's grants and menus whenever the selection changes.
+  // Both together: they are edited on two tabs of one screen, and fetching them
+  // separately let one tab show a stale board after the other saved.
   useEffect(() => {
     if (selectedRoleId == null) return;
     let cancelled = false;
     (async () => {
-      try {
-        const rows = await rolesApi.permissionsFor(selectedRoleId);
-        if (!cancelled) setGranted(new Set(rows.map((row) => row.name)));
-      } catch {
-        if (!cancelled) setGranted(new Set());
-      }
+      const [rows, menuIds] = await Promise.all([
+        rolesApi.permissionsFor(selectedRoleId).catch(() => []),
+        menusApi.assignedTo(selectedRoleId).catch(() => []),
+      ]);
+      if (cancelled) return;
+      setGranted(new Set(rows.map((row) => row.name)));
+      setAssignedMenus(new Set(menuIds));
     })();
     return () => {
       cancelled = true;
@@ -174,6 +183,55 @@ export function RolesPermissionsPage() {
     }
   }
 
+  /**
+   * Saves the selected role's menu assignment.
+   *
+   * SUPER_ADMIN is editable here, unlike its permissions: an administrator may
+   * legitimately want a shorter menu without giving up any authority, and the
+   * assignment cannot lock anyone out — Settings can always be reassigned from
+   * another admin account, and the API refuses none of it.
+   */
+  async function saveMenus() {
+    if (selectedRoleId == null) return;
+    setSaving(true);
+    try {
+      const saved = await menusApi.replaceFor(selectedRoleId, [...assignedMenus]);
+      setAssignedMenus(new Set(saved));
+      enqueueSnackbar(`${formatRoleLabel(selectedRole?.name ?? '')} menus saved.`, {
+        variant: 'success',
+      });
+      // The signed-in user may have just changed their own role's menu, so the
+      // sidebar has to catch up without a re-login.
+      await refresh();
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Could not save the menus.';
+      enqueueSnackbar(message, { variant: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleMenu(menu: MenuEntry, on: boolean) {
+    setAssignedMenus((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(menu.id);
+      else next.delete(menu.id);
+      return next;
+    });
+  }
+
+  function toggleMenuSection(section: MenuEntry, on: boolean) {
+    setAssignedMenus((prev) => {
+      const next = new Set(prev);
+      // The heading goes with its children: a heading with nothing under it is
+      // never rendered anyway, and leaving it assigned would be invisible state.
+      [section, ...section.children].forEach((menu) => (on ? next.add(menu.id) : next.delete(menu.id)));
+      return next;
+    });
+  }
+
   async function toggleModule(module: OrgModule, enabled: boolean) {
     setSaving(true);
     try {
@@ -206,6 +264,7 @@ export function RolesPermissionsPage() {
 
       <Tabs value={tab} onChange={(_e, next) => setTab(next)} sx={{ mb: 2 }}>
         <Tab label="Role permissions" />
+        <Tab label={`Menus (${assignedMenus.size} assigned)`} />
         <Tab label={`Modules (${modules.filter((m) => m.enabled).length}/${modules.length} on)`} />
       </Tabs>
 
@@ -327,6 +386,128 @@ export function RolesPermissionsPage() {
       )}
 
       {tab === 1 && (
+        <Grid container spacing={2.5}>
+          <Grid item xs={12} md={3}>
+            <Card>
+              <CardContent sx={{ p: 0 }}>
+                <List dense disablePadding>
+                  {roles.map((role) => (
+                    <ListItemButton
+                      key={role.id}
+                      selected={role.id === selectedRoleId}
+                      onClick={() => setSelectedRoleId(role.id)}
+                    >
+                      <ListItemText primary={formatRoleLabel(role.name)} />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={9}>
+            <Card>
+              <CardContent>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                  alignItems={{ sm: 'center' }}
+                  justifyContent="space-between"
+                  sx={{ mb: 2 }}
+                >
+                  <Box>
+                    <Typography variant="h6">
+                      {selectedRole ? formatRoleLabel(selectedRole.name) : 'Select a role'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {assignedMenus.size} menu{assignedMenus.size === 1 ? '' : 's'} assigned
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    onClick={() => void saveMenus()}
+                    disabled={saving || selectedRoleId == null}
+                  >
+                    {saving ? 'Saving…' : 'Save menus'}
+                  </Button>
+                </Stack>
+
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  A menu decides what <strong>appears</strong>, never what may be done. An entry still
+                  needs its module switched on and its permission granted — so assigning one to a role
+                  that lacks the permission behind it shows nothing at all. The permission each entry
+                  needs is noted beside it.
+                </Alert>
+
+                {menuTree.map((section) => {
+                  const childIds = section.children.map((child) => child.id);
+                  const assignedCount = childIds.filter((id) => assignedMenus.has(id)).length;
+                  return (
+                    <Box key={section.id} sx={{ mb: 2.5 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={assignedCount === childIds.length && childIds.length > 0}
+                            indeterminate={assignedCount > 0 && assignedCount < childIds.length}
+                            onChange={(e) => toggleMenuSection(section, e.target.checked)}
+                          />
+                        }
+                        label={
+                          <Typography variant="subtitle2">
+                            {section.label}{' '}
+                            <Typography component="span" variant="caption" color="text.secondary">
+                              ({assignedCount}/{childIds.length})
+                            </Typography>
+                          </Typography>
+                        }
+                      />
+                      <Box sx={{ pl: 4, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {section.children.map((menu) => (
+                          <FormControlLabel
+                            key={menu.id}
+                            sx={{ width: { xs: '100%', sm: '48%', lg: '31%' }, mr: 0 }}
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={assignedMenus.has(menu.id)}
+                                onChange={(e) => toggleMenu(menu, e.target.checked)}
+                              />
+                            }
+                            label={
+                              <Box>
+                                <Typography variant="body2" component="span">
+                                  {menu.label}
+                                </Typography>
+                                {!menu.enabled && (
+                                  <Typography variant="caption" color="warning.main" display="block">
+                                    switched off for everyone
+                                  </Typography>
+                                )}
+                                {menu.requiredPermission && (
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    needs {menu.requiredPermission}
+                                  </Typography>
+                                )}
+                                {menu.requiresHomeroom && (
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    only for a teacher holding a class
+                                  </Typography>
+                                )}
+                              </Box>
+                            }
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {tab === 2 && (
         <Card>
           <CardContent>
             <Alert severity="warning" sx={{ mb: 2 }}>

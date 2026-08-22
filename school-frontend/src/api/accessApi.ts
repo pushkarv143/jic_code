@@ -1,6 +1,6 @@
 import axiosInstance from './axiosInstance';
 import { ENDPOINTS } from './endpoints';
-import type { ApiResponse, MyAccess, OrgModule, Permission } from '@/types';
+import type { ApiResponse, MenuEntry, MyAccess, OrgModule, Permission } from '@/types';
 
 /**
  * The authorization-configuration surface: what the caller may do, and — for an
@@ -30,6 +30,38 @@ export const accessApi = {
    */
   async updateModules(modules: Record<string, boolean>): Promise<OrgModule[]> {
     const { data } = await axiosInstance.put<ApiResponse<OrgModule[]>>(ENDPOINTS.ORG.MODULES, { modules });
+    return data.data;
+  },
+};
+
+/**
+ * The navigation menu, and who is assigned what.
+ *
+ * A user's own menu is not here: it arrives inside `GET /me/access` so the menu
+ * and the grants it was filtered against always come from one snapshot. These are
+ * the administration calls.
+ */
+export const menusApi = {
+  /** Every menu, unfiltered, as sections with their entries. */
+  async catalogue(): Promise<MenuEntry[]> {
+    const { data } = await axiosInstance.get<ApiResponse<MenuEntry[]>>(ENDPOINTS.MENUS.CATALOGUE);
+    return data.data;
+  },
+
+  async assignedTo(roleId: number): Promise<number[]> {
+    const { data } = await axiosInstance.get<ApiResponse<number[]>>(ENDPOINTS.ROLES.MENUS(roleId));
+    return data.data;
+  },
+
+  /**
+   * Replaces a role's menu assignment with exactly `menuIds`.
+   *
+   * Absolute, not a delta: anything left out is unassigned. An empty array is
+   * valid and means this role sees no menu — a real configuration for a role that
+   * exists only to hold an account.
+   */
+  async replaceFor(roleId: number, menuIds: number[]): Promise<number[]> {
+    const { data } = await axiosInstance.put<ApiResponse<number[]>>(ENDPOINTS.ROLES.MENUS(roleId), { menuIds });
     return data.data;
   },
 };

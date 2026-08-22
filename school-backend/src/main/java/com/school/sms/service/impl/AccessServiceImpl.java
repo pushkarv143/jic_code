@@ -1,6 +1,7 @@
 package com.school.sms.service.impl;
 
 import com.school.sms.dto.response.HomeroomDto;
+import com.school.sms.dto.response.MenuDto;
 import com.school.sms.dto.response.MyAccessDto;
 import com.school.sms.dto.response.OrgModuleDto;
 import com.school.sms.entity.OrgModule;
@@ -18,6 +19,7 @@ import com.school.sms.security.HomeroomGuard;
 import com.school.sms.security.SecurityUtils;
 import com.school.sms.security.UserPrincipal;
 import com.school.sms.service.AccessService;
+import com.school.sms.service.MenuService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -48,6 +50,7 @@ public class AccessServiceImpl implements AccessService {
     private final OrgModuleRepository orgModuleRepository;
     private final StudentRepository studentRepository;
     private final HomeroomGuard homeroomGuard;
+    private final MenuService menuService;
 
     @Override
     @Transactional(readOnly = true)
@@ -83,6 +86,23 @@ public class AccessServiceImpl implements AccessService {
         // permitted. Either one alone is not enough.
         boolean classTeacherOfOwnSection = homeroom != null && !disabledModules.contains("MY_CLASS");
 
+        // Built from the values resolved above rather than re-read, so the menu and
+        // the grants it was filtered against always come from the same snapshot. A
+        // menu that disagrees with the permissions returned beside it is the one
+        // failure mode this endpoint exists to prevent.
+        //
+        // Note the homeroom argument: the menu gate asks only whether the caller
+        // holds a section, while classTeacherOfOwnSection also requires the MY_CLASS
+        // module. Passing the latter would double-apply the module check, which is
+        // harmless today and wrong the moment a second homeroom-gated menu is added
+        // in another module.
+        List<MenuDto> menus = menuService.getMenusFor(
+                role.getId(),
+                role.getName(),
+                effective,
+                Set.copyOf(enabledModules),
+                homeroom != null);
+
         return MyAccessDto.builder()
                 .userId(principal.getId())
                 .username(principal.getUsername())
@@ -91,6 +111,7 @@ public class AccessServiceImpl implements AccessService {
                 .enabledModules(enabledModules)
                 .homeroom(homeroom)
                 .classTeacherOfOwnSection(classTeacherOfOwnSection)
+                .menus(menus)
                 .build();
     }
 

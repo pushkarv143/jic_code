@@ -196,4 +196,15 @@ Write-Host "  API     http://localhost:8080/api/v1" -ForegroundColor DarkGray
 Write-Host "  Swagger http://localhost:8080/swagger-ui.html" -ForegroundColor DarkGray
 Write-Host ""
 
-& "$PSScriptRoot\mvnw.cmd" spring-boot:run "-Dspring-boot.run.arguments=$springArgs"
+# Run from the script's own directory. mvnw.cmd locates .mvn/wrapper/
+# maven-wrapper.properties relative to the *current* directory, not to its own
+# path, so invoking it by absolute path from anywhere else fails with
+# "could not find or load main class ...MavenWrapperMain" or a missing
+# maven-wrapper.properties - on a checkout where both files are present.
+Push-Location $PSScriptRoot
+try {
+    & "$PSScriptRoot\mvnw.cmd" spring-boot:run "-Dspring-boot.run.arguments=$springArgs"
+}
+finally {
+    Pop-Location
+}

@@ -29,7 +29,8 @@ import type { LeaveApplication, Notice } from '@/types';
 
 /**
  * Minimal, honest dashboard for SECURITY_GUARD. This role has almost no
- * module access (see navConfig.tsx) — just Leave, the Notice Board, the
+ * module access (see the `role_menus` seed in 19_menu_registry.sql) — just
+ * Leave, the Notice Board, the
  * Calendar and Notifications — so the dashboard sticks to real data behind
  * those, plus shortcuts to pages this role can genuinely reach. No shift
  * roster or visitor-log module exists yet, so that's called out honestly

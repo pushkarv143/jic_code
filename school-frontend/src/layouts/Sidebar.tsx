@@ -11,7 +11,7 @@ import Tooltip from '@mui/material/Tooltip';
 import SchoolIcon from '@mui/icons-material/School';
 import { useTranslation } from '@/i18n/LanguageProvider';
 import { useAccess } from '@/access/AccessProvider';
-import { getNavForAccess } from './navConfig';
+import { MenuIcon } from './menuIcons';
 
 export const SIDEBAR_WIDTH = 264;
 export const SIDEBAR_WIDTH_COLLAPSED = 76;
@@ -24,10 +24,17 @@ interface SidebarContentProps {
 function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  // Live access rather than the login-cached grants: a permission an administrator
-  // revokes, or a module they switch off, has to reach an open session's menu.
-  const { role, permissions, moduleEnabled, isClassTeacherOfOwnSection } = useAccess();
-  const groups = getNavForAccess({ role, permissions, moduleEnabled, isClassTeacherOfOwnSection });
+  // The menu comes from the server, already filtered — see MenuEntry. It used to be
+  // built here from a NAV_GROUPS constant with each entry's roles hard-coded in
+  // the client, which made "who sees what" a code change in two apps. It is now
+  // `menus` +
+  // `role_menus`, and this component renders what it is handed.
+  //
+  // Live access rather than the login-cached copy: a menu an administrator assigns,
+  // a permission they revoke or a module they switch off has to reach an open
+  // session. AccessProvider re-reads /me/access on every such event.
+  const { access } = useAccess();
+  const groups = access?.menus ?? [];
   const t = useTranslation();
 
   return (
@@ -63,7 +70,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
       <Divider sx={{ borderColor: 'rgba(230,233,242,0.12)' }} />
       <Box sx={{ flexGrow: 1, overflowY: 'auto', py: 1 }}>
         {groups.map((group) => (
-          <Box key={group.title} sx={{ mb: 1 }}>
+          <Box key={group.menuKey} sx={{ mb: 1 }}>
             {!collapsed && (
               <Typography
                 variant="overline"
@@ -77,19 +84,24 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
                   letterSpacing: '0.08em',
                 }}
               >
-                {group.title}
+                {group.i18nKey ? t(group.i18nKey) : group.label}
               </Typography>
             )}
             <List disablePadding>
-              {group.items.map((item) => {
-                const selected = location.pathname.startsWith(item.path);
+              {group.children.map((item) => {
+                // A heading carries no path and is never drawn as a row. A child
+                // without one is a misconfigured row, so it is skipped rather than
+                // navigating to undefined.
+                const path = item.path;
+                if (!path) return null;
+                const selected = location.pathname.startsWith(path);
                 const label = item.i18nKey ? t(item.i18nKey) : item.label;
                 const button = (
                   <ListItemButton
-                    key={item.path}
+                    key={path}
                     selected={selected}
                     onClick={() => {
-                      navigate(item.path);
+                      navigate(path);
                       onNavigate?.();
                     }}
                     sx={{
@@ -114,7 +126,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
                         justifyContent: 'center',
                       }}
                     >
-                      {item.icon}
+                      <MenuIcon name={item.icon} />
                     </ListItemIcon>
                     {!collapsed && (
                       <ListItemText
@@ -125,7 +137,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
                   </ListItemButton>
                 );
                 return collapsed ? (
-                  <Tooltip key={item.path} title={label} placement="right">
+                  <Tooltip key={path} title={label} placement="right">
                     {button}
                   </Tooltip>
                 ) : (
