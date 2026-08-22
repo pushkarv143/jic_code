@@ -53,6 +53,7 @@ class MainViewModel @Inject constructor(
                 _state.value = _state.value.copy(
                     isSignedIn = session != null,
                     user = session?.user,
+                    mustChangePassword = session?.mustChangePassword == true,
                 )
                 // Drives the live grants: signing in (or restoring a session on a warm
                 // start) fetches them, signing out drops them so they are not left for
@@ -101,6 +102,15 @@ data class MainUiState(
     val isRestoringSession: Boolean = true,
     val isSignedIn: Boolean = false,
     val user: UserDto? = null,
+    /**
+     * True while this session is on a password the school generated.
+     *
+     * Drives which screen the graph opens: the change-password screen rather than
+     * the dashboard. Not a security boundary — the API refuses every other endpoint
+     * regardless — just the difference between a usable screen and a dashboard where
+     * nothing loads.
+     */
+    val mustChangePassword: Boolean = false,
     /**
      * False until `GET /api/v1/me/access` has answered at least once.
      *

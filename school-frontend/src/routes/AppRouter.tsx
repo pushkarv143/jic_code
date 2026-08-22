@@ -18,9 +18,9 @@ import AcademicsPage from '@/pages/public/AcademicsPage';
 import FacultyPage from '@/pages/public/FacultyPage';
 
 import LoginPage from '@/pages/auth/LoginPage';
-import RegisterPage from '@/pages/auth/RegisterPage';
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
 import OtpLoginPage from '@/pages/auth/OtpLoginPage';
+import FirstLoginPasswordPage from '@/pages/auth/FirstLoginPasswordPage';
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage';
 
 import DashboardPage from '@/pages/dashboard/DashboardPage';
@@ -162,7 +162,10 @@ const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { path: '/login', element: <LoginPage /> },
-      { path: '/register', element: <RegisterPage /> },
+      // Outside the authenticated shell on purpose: the session that reaches this
+      // page cannot load a dashboard, because PasswordChangeRequiredFilter refuses
+      // every endpoint the shell would call.
+      { path: '/first-login', element: <FirstLoginPasswordPage /> },
       { path: '/otp-login', element: <OtpLoginPage /> },
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },

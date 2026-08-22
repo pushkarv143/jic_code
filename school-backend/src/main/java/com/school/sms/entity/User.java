@@ -37,6 +37,22 @@ public class User extends BaseEntity {
     @Column(name = "password", nullable = false)
     private String password;
 
+    /**
+     * True while this account is still on the password the system generated for it.
+     *
+     * <p>Set when the school provisions an account and cleared the moment the owner
+     * chooses their own. While it is set, {@code PasswordChangeRequiredFilter}
+     * refuses every request except changing the password and signing out — so a
+     * generated password can be used for exactly one thing: replacing itself.
+     *
+     * <p>Note what is <em>not</em> stored: the generated password. It is emailed
+     * once and kept only as a bcrypt hash like any other, so a lost one is reset
+     * through forgot-password rather than looked up.
+     */
+    @Column(name = "must_change_password", nullable = false)
+    @Builder.Default
+    private boolean mustChangePassword = false;
+
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 

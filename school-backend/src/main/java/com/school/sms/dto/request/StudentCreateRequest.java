@@ -4,6 +4,7 @@ import com.school.sms.util.ValidationPatterns;
 import com.school.sms.entity.Gender;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
@@ -23,17 +24,23 @@ import java.util.List;
 public class StudentCreateRequest {
 
     // ---- optional login account fields (student login is optional per schema contract) ----
-    @Size(min = 3, max = 100, message = "Username must be between 3 and 100 characters")
-    private String username;
-
+    /*
+     * No username and no password.
+     *
+     * Both are generated server-side when the student is admitted and emailed to
+     * the address below — the username as first name plus the initial of the last
+     * name, the password as a random one the student must replace at first sign-in.
+     * Accepting either from a client would put the school back in the business of
+     * inventing credentials, and would let a caller set a password the account's
+     * owner does not know.
+     *
+     * The email is therefore required in practice, and the service says so: it is
+     * where the credentials go, and an account nobody can be told about is worse
+     * than a refused admission.
+     */
     @Email(message = "Email must be valid")
+    @NotBlank(message = "Email is required — the student's credentials are sent to it")
     private String email;
-
-    @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]).{8,}$",
-            message = "Password must be at least 8 characters and contain uppercase, lowercase, digit and special character"
-    )
-    private String password;
 
     @Size(max = 100, message = "First name must not exceed 100 characters")
     private String firstName;

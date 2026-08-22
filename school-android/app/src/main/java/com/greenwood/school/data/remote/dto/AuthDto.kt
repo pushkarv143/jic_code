@@ -58,6 +58,15 @@ data class JwtAuthResponseDto(
     val tokenType: String = "Bearer",
     val expiresIn: Long = 0,
     val user: UserDto,
+    /**
+     * True when this account is still on the password the school generated for it.
+     *
+     * <p>Tokens are issued anyway — changing a password needs authenticating like
+     * anything else — but every other endpoint answers 403 until it is replaced.
+     * Defaulted to false so an older server that does not send the field is read as
+     * "nothing to do", which is what it means.
+     */
+    val mustChangePassword: Boolean = false,
 )
 
 @Serializable
@@ -65,18 +74,6 @@ data class LoginRequestDto(val username: String, val password: String)
 
 @Serializable
 data class RefreshTokenRequestDto(val refreshToken: String)
-
-@Serializable
-data class RegisterRequestDto(
-    val firstName: String,
-    val lastName: String,
-    val email: String,
-    val phone: String,
-    val username: String,
-    val password: String,
-    /** The backend only accepts self-registration for STUDENT or PARENT. */
-    val role: String,
-)
 
 @Serializable
 data class ForgotPasswordRequestDto(val email: String)

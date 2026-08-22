@@ -48,7 +48,6 @@ class AuthInterceptor @Inject constructor(
          */
         private val PUBLIC_PATHS = listOf(
             "/auth/login",
-            "/auth/register",
             "/auth/refresh-token",
             "/auth/forgot-password",
             "/auth/reset-password",

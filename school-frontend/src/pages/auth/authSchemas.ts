@@ -20,34 +20,26 @@ export const loginSchema = yup.object({
 });
 export type LoginFormValues = yup.InferType<typeof loginSchema>;
 
-export const registerSchema = yup.object({
-  firstName: yup.string().required('First name is required').max(50),
-  lastName: yup.string().required('Last name is required').max(50),
-  email: yup.string().email('Enter a valid email').required('Email is required'),
-  phone: yup
-    .string()
-    .required('Phone number is required')
-    .matches(/^[0-9]{10}$/, 'Enter a valid 10-digit phone number'),
-  username: yup
-    .string()
-    .required('Username is required')
-    .min(4, 'Must be at least 4 characters')
-    .matches(/^[a-zA-Z0-9._]+$/, 'Only letters, numbers, dots and underscores allowed'),
-  role: yup
-    .mixed<'STUDENT' | 'PARENT'>()
-    .oneOf(['STUDENT', 'PARENT'])
-    .required('Please select who you are registering as'),
-  password: passwordComplexity,
+/*
+ * registerSchema is gone with the self-registration form. Accounts are created by
+ * the school, which generates the username and a first-time password and emails
+ * them — see StudentServiceImpl and CredentialGenerator on the backend.
+ */
+
+/**
+ * The forced password change a school-provisioned account completes at first
+ * sign-in. `passwordComplexity` is the same rule the API enforces on the new
+ * password, so the client and the server agree on what "strong enough" means.
+ */
+export const changePasswordSchema = yup.object({
+  currentPassword: yup.string().required('Enter the password from your email'),
+  newPassword: passwordComplexity,
   confirmPassword: yup
     .string()
-    .required('Please confirm your password')
-    .oneOf([yup.ref('password')], 'Passwords must match'),
-  acceptTerms: yup
-    .boolean()
-    .oneOf([true], 'You must accept the terms and conditions')
-    .required(),
+    .required('Please confirm your new password')
+    .oneOf([yup.ref('newPassword')], 'Passwords must match'),
 });
-export type RegisterFormValues = yup.InferType<typeof registerSchema>;
+export type ChangePasswordFormValues = yup.InferType<typeof changePasswordSchema>;
 
 export const forgotPasswordSchema = yup.object({
   email: yup.string().email('Enter a valid email').required('Email is required'),

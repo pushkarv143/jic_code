@@ -32,8 +32,8 @@ import com.greenwood.school.data.remote.dto.permissionSet
 import com.greenwood.school.ui.feature.attendance.AttendanceScreen
 import com.greenwood.school.ui.feature.auth.ForgotPasswordScreen
 import com.greenwood.school.ui.feature.auth.LoginScreen
+import com.greenwood.school.ui.feature.auth.FirstLoginPasswordScreen
 import com.greenwood.school.ui.feature.auth.OtpLoginScreen
-import com.greenwood.school.ui.feature.auth.RegisterScreen
 import com.greenwood.school.ui.feature.classes.ClassDetailScreen
 import com.greenwood.school.ui.feature.classes.ClassListScreen
 import com.greenwood.school.ui.feature.classroom.AssignmentDetailScreen
@@ -95,6 +95,14 @@ fun AppNavHost(
      * [currentUser] is still the source for identity (studentId/teacherId).
      */
     access: MyAccessDto? = null,
+    /**
+     * True while this session is on a school-generated password.
+     *
+     * Sends the graph to the change-password screen instead of the signed-in shell.
+     * The server enforces the same thing on every endpoint, so this decides which
+     * screen opens rather than whether the rule holds.
+     */
+    mustChangePassword: Boolean = false,
 ) {
     // The footer is anchored here, outside the NavHost, so it survives every
     // navigation — auth screens and the signed-in shell alike — rather than each
@@ -104,10 +112,16 @@ fun AppNavHost(
     Column(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
-            startDestination = if (isSignedIn) Routes.MAIN_GRAPH else Routes.AUTH_GRAPH,
+            startDestination = when {
+                // Checked before MAIN_GRAPH: relaunching the app on an unfinished
+                // account must not reopen a dashboard whose every request is refused.
+                isSignedIn && mustChangePassword -> Routes.FIRST_LOGIN_PASSWORD
+                isSignedIn -> Routes.MAIN_GRAPH
+                else -> Routes.AUTH_GRAPH
+            },
             modifier = Modifier.weight(1f),
         ) {
-            authGraph(navController)
+            authGraph(navController, mustChangePassword)
 
             composable(Routes.MAIN_GRAPH) {
                 MainShell(
@@ -133,18 +147,35 @@ fun AppNavHost(
     }
 }
 
-private fun NavGraphBuilder.authGraph(navController: NavHostController) {
+private fun NavGraphBuilder.authGraph(
+    navController: NavHostController,
+    /**
+     * True while the signed-in session is on a school-generated password.
+     *
+     * Passed in rather than read here because the graph builder has no state of its
+     * own: it decides where a successful sign-in lands, and for a provisioned
+     * account that is the change-password screen.
+     */
+    mustChangePassword: Boolean,
+) {
     navigation(startDestination = Routes.LOGIN, route = Routes.AUTH_GRAPH) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onSignedIn = {
-                    navController.navigate(Routes.MAIN_GRAPH) {
+                    // A school-provisioned account on its first sign-in goes to the
+                    // change-password screen instead. Read from the session, which
+                    // SessionManager has just written from the login response.
+                    val next = if (mustChangePassword) {
+                        Routes.FIRST_LOGIN_PASSWORD
+                    } else {
+                        Routes.MAIN_GRAPH
+                    }
+                    navController.navigate(next) {
                         // Clear the auth graph so Back from the dashboard exits the app
                         // rather than returning to Login.
                         popUpTo(Routes.AUTH_GRAPH) { inclusive = true }
                     }
                 },
-                onNavigateToRegister = { navController.navigate(Routes.REGISTER) },
                 onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
                 onNavigateToOtpLogin = { navController.navigate(Routes.OTP_LOGIN) },
             )
@@ -161,11 +192,20 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
                 onBack = navController::popBackStack,
             )
         }
-        composable(Routes.REGISTER) {
-            RegisterScreen(onBack = navController::popBackStack)
-        }
         composable(Routes.FORGOT_PASSWORD) {
             ForgotPasswordScreen(onBack = navController::popBackStack)
+        }
+        composable(Routes.FIRST_LOGIN_PASSWORD) {
+            FirstLoginPasswordScreen(
+                onPasswordChanged = {
+                    // Back to sign-in, not the dashboard: changing the password
+                    // revoked every refresh token, so this session is already over.
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.AUTH_GRAPH) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
     }
 }

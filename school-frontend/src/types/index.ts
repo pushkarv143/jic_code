@@ -113,6 +113,16 @@ export interface AuthResponse {
   refreshToken: string;
   tokenType: string;
   user: User;
+  /**
+   * True when this account is still on the password the school generated for it and
+   * must replace it before anything else works.
+   *
+   * <p>Tokens are issued regardless — the change-password endpoint needs
+   * authenticating like any other — but every other endpoint answers 403 until the
+   * password is changed. On the response so the client can route straight to the
+   * change-password screen instead of discovering it from a failed request.
+   */
+  mustChangePassword?: boolean;
 }
 
 /** Generic API envelope used by most non-paginated endpoints. */

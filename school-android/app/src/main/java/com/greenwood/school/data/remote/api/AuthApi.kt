@@ -10,7 +10,6 @@ import com.greenwood.school.data.remote.dto.OtpVerifyResponseDto
 import com.greenwood.school.data.remote.dto.RefreshTokenRequestDto
 import com.greenwood.school.data.remote.dto.SendOtpRequestDto
 import com.greenwood.school.data.remote.dto.VerifyOtpRequestDto
-import com.greenwood.school.data.remote.dto.RegisterRequestDto
 import com.greenwood.school.data.remote.dto.ResetPasswordRequestDto
 import com.greenwood.school.data.remote.dto.UserDto
 import retrofit2.http.Body
@@ -35,9 +34,6 @@ interface AuthApi {
     suspend fun logout(@Body request: RefreshTokenRequestDto): ApiEnvelope<Unit>
 
     /** Self-registration is limited to STUDENT/PARENT and lands in a pending state. */
-    @POST("auth/register")
-    suspend fun register(@Body request: RegisterRequestDto): ApiEnvelope<Unit>
-
     @POST("auth/forgot-password")
     suspend fun forgotPassword(@Body request: ForgotPasswordRequestDto): ApiEnvelope<Unit>
 

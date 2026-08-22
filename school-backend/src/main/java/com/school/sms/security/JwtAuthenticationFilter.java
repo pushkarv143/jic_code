@@ -40,7 +40,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * drift apart — that drift is what broke those two endpoints.
      */
     public static final List<String> PUBLIC_AUTH_PATHS = List.of(
-            "/api/v1/auth/register",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh-token",
             "/api/v1/auth/logout",

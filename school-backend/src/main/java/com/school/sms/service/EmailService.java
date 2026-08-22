@@ -17,6 +17,21 @@ public interface EmailService {
     void sendWelcomeEmail(String to, String name, String username);
 
     /**
+     * The username and first-time password for an account the school just created.
+     *
+     * <p>Separate from {@link #sendWelcomeEmail}, which greets an account whose
+     * owner already knows their password. This one carries a secret, so it says
+     * plainly that the password is temporary and must be changed at first sign-in —
+     * a credentials email that reads like a welcome invites the reader to file it
+     * and keep using what it contains.
+     *
+     * <p>The password is passed in, used once and never persisted in clear: it
+     * exists as a bcrypt hash on the account and in this message, and nowhere else.
+     * A lost one is replaced through forgot-password, not looked up.
+     */
+    void sendAccountCredentialsEmail(String to, String name, String username, String temporaryPassword);
+
+    /**
      * Generic subject/body email used by the notifications module
      * (POST /api/v1/notifications/send with type=EMAIL) — reuses the same
      * JavaMailSender plumbing as the password-reset/welcome templates instead

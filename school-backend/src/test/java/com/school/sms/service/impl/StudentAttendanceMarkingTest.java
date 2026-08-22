@@ -182,7 +182,7 @@ class StudentAttendanceMarkingTest {
                         new com.school.sms.security.UserPrincipal(
                                 7L, "teacher", "teacher@school.edu", "hash", true,
                                 "TEACHER", java.util.Set.of(),
-                                List.of(new SimpleGrantedAuthority("ROLE_TEACHER"))),
+                                List.of(new SimpleGrantedAuthority("ROLE_TEACHER")), false),
                         null,
                         List.of(new SimpleGrantedAuthority("ROLE_TEACHER"))));
     }

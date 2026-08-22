@@ -42,7 +42,7 @@ object Routes {
     /* Auth graph */
     const val AUTH_GRAPH = "auth"
     const val LOGIN = "login"
-    const val REGISTER = "register"
+    const val FIRST_LOGIN_PASSWORD = "first-login-password"
     const val FORGOT_PASSWORD = "forgot-password"
     const val OTP_LOGIN = "otp-login"
     const val RESET_PASSWORD = "reset-password"

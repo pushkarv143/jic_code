@@ -50,9 +50,43 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     @Async("taskExecutor")
+    public void sendAccountCredentialsEmail(String to, String name, String username,
+                                            String temporaryPassword) {
+        String subject = "Your Greenwood School account";
+        String body = buildGenericHtml(subject,
+                "Hello " + (name == null || name.isBlank() ? "there" : name) + ","
+                        + "<br><br>An account has been created for you at Greenwood School."
+                        + "<br><br><strong>Username:</strong> " + escape(username)
+                        + "<br><strong>Temporary password:</strong> " + escape(temporaryPassword)
+                        + "<br><br>You will be asked to choose your own password the first time you "
+                        + "sign in. The temporary password above stops working at that point, and it "
+                        + "cannot be used for anything else in the meantime."
+                        + "<br><br>If you did not expect this email, please contact the school office.");
+        send(to, subject, body);
+    }
+
+    @Override
+    @Async("taskExecutor")
     public void sendGenericNotification(String to, String subject, String message) {
         String body = buildGenericHtml(subject, message);
         send(to, subject, body);
+    }
+
+    /**
+     * Minimal HTML escaping for values interpolated into an email body.
+     *
+     * <p>A generated password contains symbols, and one of them being {@code &} or
+     * {@code <} would otherwise arrive mangled or swallow the rest of the line — the
+     * reader would be told a password that is not the one on their account.
+     */
+    private String escape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     private void send(String to, String subject, String htmlBody) {

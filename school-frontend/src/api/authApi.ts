@@ -7,16 +7,6 @@ export interface LoginPayload {
   password: string;
 }
 
-export interface RegisterPayload {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  username: string;
-  password: string;
-  role: 'STUDENT' | 'PARENT';
-}
-
 export interface ForgotPasswordPayload {
   email: string;
 }
@@ -67,14 +57,6 @@ export const authApi = {
       payload,
     );
     return data.data;
-  },
-
-  register: async (payload: RegisterPayload): Promise<ApiResponse<null>> => {
-    const { data } = await axiosInstance.post<ApiResponse<null>>(
-      ENDPOINTS.AUTH.REGISTER,
-      payload,
-    );
-    return data;
   },
 
   refreshToken: async (refreshToken: string): Promise<AuthResponse> => {

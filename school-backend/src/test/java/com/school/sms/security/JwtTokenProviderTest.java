@@ -29,7 +29,7 @@ class JwtTokenProviderTest {
     void generatesAndValidatesAccessToken() {
         UserPrincipal principal = new UserPrincipal(1L, "admin", "admin@school.edu", "hash", true,
                 "SUPER_ADMIN", Set.of(),
-                List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
+                List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")), false);
 
         String token = jwtTokenProvider.generateAccessToken(principal);
 
@@ -42,7 +42,7 @@ class JwtTokenProviderTest {
     void rejectsTamperedToken() {
         UserPrincipal principal = new UserPrincipal(1L, "admin", "admin@school.edu", "hash", true,
                 "SUPER_ADMIN", Set.of(),
-                List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
+                List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")), false);
 
         String token = jwtTokenProvider.generateAccessToken(principal);
         String tampered = token.substring(0, token.length() - 2) + "xx";

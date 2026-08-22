@@ -86,12 +86,25 @@ android {
         // shell until it expires. Who is a class teacher is now shown on the
         // teacher list, where the role used to answer it.
         //
+        // 1.10.0 removes self-registration. "Create an account" is gone from the
+        // sign-in screen: the school admits a student through its own form, which
+        // generates a username (first name plus the initial of the last name) and a
+        // random first-time password, and emails both. An account that could exist
+        // before the admission did was an account nobody had asked for.
+        //
+        // A provisioned account opens the new Choose-your-password screen instead of
+        // the dashboard, and cannot reach anything else until it has one of its own —
+        // the server refuses every other endpoint, so an older build would simply
+        // show a dashboard where nothing loaded. Changing the password revokes every
+        // token, so the flow ends back at sign-in. The state survives the app being
+        // killed mid-reset.
+        //
         // Carries 1.5.0 before it (one section per class and My Timetable), 1.4.0 before
         // that (the class module on the phone), 1.3.0 before that (passcode sign-in and
         // recovery). A new versionCode is what lets the device recognise this as an
         // upgrade rather than refusing to install over the previous build.
-        versionCode = 10
-        versionName = "1.9.0"
+        versionCode = 11
+        versionName = "1.10.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true

@@ -24,6 +24,17 @@ export interface AuthState {
    * backwards if the client clock moves.
    */
   sessionEpoch: number;
+  /**
+   * True when this session signed in with a password the school generated and has
+   * not replaced it yet.
+   *
+   * <p>Deliberately not persisted to localStorage. It comes from the login
+   * response, and reloading the tab re-reads nothing — so a stale `true` cannot
+   * strand a user on the change-password screen after they have already changed it,
+   * and a stale `false` cannot let them past, because the API refuses every other
+   * endpoint until the flag is cleared server-side.
+   */
+  mustChangePassword: boolean;
 }
 
 function loadUser(): User | null {
@@ -44,6 +55,7 @@ const initialState: AuthState = {
   // fetches once on its own. Restoring a previous epoch would only risk it
   // matching the value the provider already acted on.
   sessionEpoch: 0,
+  mustChangePassword: false,
 };
 
 const authSlice = createSlice({
@@ -51,11 +63,15 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setCredentials: (state, action: PayloadAction<AuthResponse>) => {
-      const { accessToken, refreshToken, user } = action.payload;
+      const { accessToken, refreshToken, user, mustChangePassword } = action.payload;
       state.user = user;
       state.accessToken = accessToken;
       state.refreshToken = refreshToken;
       state.isAuthenticated = true;
+      // Straight from the login response, so the router can send this session to
+      // the change-password screen without first provoking a 403 from the API and
+      // flashing the dashboard on the way.
+      state.mustChangePassword = Boolean(mustChangePassword);
       // Login: make AccessProvider fetch the caller's real grants rather than
       // trusting the permission list embedded in this response.
       state.sessionEpoch += 1;

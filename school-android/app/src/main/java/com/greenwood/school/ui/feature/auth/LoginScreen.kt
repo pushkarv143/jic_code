@@ -50,7 +50,6 @@ import com.greenwood.school.ui.components.PasswordField
 @Composable
 fun LoginScreen(
     onSignedIn: () -> Unit,
-    onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: () -> Unit,
     /** Passwordless sign-in — a code emailed to the address on the account. */
     onNavigateToOtpLogin: () -> Unit = {},
@@ -155,9 +154,16 @@ fun LoginScreen(
 
                 Spacer(Modifier.height(8.dp))
 
-                TextButton(onClick = onNavigateToRegister, enabled = !state.isSubmitting) {
-                    Text(stringResource(R.string.create_account))
-                }
+                // No "create an account" here any more. The school admits students
+                // through its own form, which generates a username and a first-time
+                // password and emails them, so there is nothing for a student to
+                // sign up for — and an account that could exist before the admission
+                // did was one nobody had asked for.
+                Text(
+                    text = stringResource(R.string.accounts_created_by_school),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
             }
         }
     }

@@ -60,6 +60,7 @@ class SessionManager @Inject constructor(
             refreshToken = auth.refreshToken,
             tokenType = auth.tokenType.ifBlank { "Bearer" },
             user = auth.user,
+            mustChangePassword = auth.mustChangePassword,
         )
         _session.value = newSession
         dataStore.edit { prefs ->
@@ -67,6 +68,9 @@ class SessionManager @Inject constructor(
             prefs[KEY_REFRESH] = crypto.encrypt(newSession.refreshToken)
             prefs[KEY_TOKEN_TYPE] = newSession.tokenType
             prefs[KEY_USER] = json.encodeToString(UserDto.serializer(), newSession.user)
+            // Persisted so killing the app on the change-password screen does not
+            // reopen it on a dashboard whose every request would come back 403.
+            prefs[KEY_MUST_CHANGE_PASSWORD] = newSession.mustChangePassword
         }
     }
 
@@ -112,10 +116,13 @@ class SessionManager @Inject constructor(
             refreshToken = refresh,
             tokenType = prefs[KEY_TOKEN_TYPE] ?: "Bearer",
             user = user,
+            mustChangePassword = prefs[KEY_MUST_CHANGE_PASSWORD] ?: false,
         )
     }
 
     private companion object {
+        val KEY_MUST_CHANGE_PASSWORD =
+            androidx.datastore.preferences.core.booleanPreferencesKey("must_change_password")
         val KEY_ACCESS = stringPreferencesKey("access_token")
         val KEY_REFRESH = stringPreferencesKey("refresh_token")
         val KEY_TOKEN_TYPE = stringPreferencesKey("token_type")
@@ -128,6 +135,12 @@ data class UserSession(
     val refreshToken: String,
     val tokenType: String,
     val user: UserDto,
+    /**
+     * True while this account is on a school-generated password. The nav graph sends
+     * such a session to the change-password screen instead of the dashboard; the API
+     * refuses everything else regardless, so this only decides which screen opens.
+     */
+    val mustChangePassword: Boolean = false,
 ) {
     val role: Role get() = Role.from(user.role)
 

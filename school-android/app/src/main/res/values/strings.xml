@@ -15,7 +15,12 @@
     <string name="username">Username</string>
     <string name="password">Password</string>
     <string name="forgot_password">Forgot password?</string>
-    <string name="create_account">Create an account</string>
+    <!--
+      Replaced the "Create an account" button. Accounts are created by the school,
+      which generates the username and a first-time password and emails them, so
+      there is nothing here for a student to sign up for.
+    -->
+    <string name="accounts_created_by_school">Accounts are created by the school. If you have not received your username and password, contact the school office.</string>
     <string name="welcome_back">Welcome back</string>
     <string name="sign_in_subtitle">Sign in to continue to the school portal</string>
 

@@ -4,6 +4,7 @@ import com.school.sms.security.CustomUserDetailsService;
 import com.school.sms.security.JwtAccessDeniedHandler;
 import com.school.sms.security.JwtAuthenticationEntryPoint;
 import com.school.sms.security.JwtAuthenticationFilter;
+import com.school.sms.security.PasswordChangeRequiredFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,6 +33,7 @@ public class SecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final PasswordChangeRequiredFilter passwordChangeRequiredFilter;
     private final PasswordEncoder passwordEncoder;
     private final CorsConfigurationSource corsConfigurationSource;
 
@@ -49,7 +51,13 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // After authentication, because it needs to know who is calling: an
+                // account still on a system-generated password may do exactly one
+                // thing, and that is replace it. Placed here rather than checked in
+                // each controller so no endpoint can be forgotten — the one that
+                // would be forgotten is the one an unfinished account must not reach.
+                .addFilterAfter(passwordChangeRequiredFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

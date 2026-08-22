@@ -46,6 +46,7 @@ import com.school.sms.service.EmailService;
 import com.school.sms.service.FileStorageService;
 import com.school.sms.service.StudentService;
 import com.school.sms.util.AppConstants;
+import com.school.sms.util.CredentialGenerator;
 import com.school.sms.util.specification.SearchOperation;
 import com.school.sms.util.specification.SpecificationBuilder;
 import lombok.RequiredArgsConstructor;
@@ -82,6 +83,7 @@ public class StudentServiceImpl implements StudentService {
     private final FileStorageService fileStorageService;
     private final AuditLogService auditLogService;
     private final StudentAccessGuard studentAccessGuard;
+    private final CredentialGenerator credentialGenerator;
     private final StudentMapper studentMapper;
     private final GuardianMapper guardianMapper;
     private final MedicalDetailsMapper medicalDetailsMapper;
@@ -151,37 +153,56 @@ public class StudentServiceImpl implements StudentService {
             throw new DuplicateResourceException("Student", "admissionNumber", admissionNumber);
         }
 
-        User user = null;
-        boolean creatingLogin = StringUtils.hasText(request.getUsername()) || StringUtils.hasText(request.getPassword());
-        if (creatingLogin) {
-            if (!StringUtils.hasText(request.getUsername()) || !StringUtils.hasText(request.getPassword())
-                    || !StringUtils.hasText(request.getEmail())) {
-                throw new BadRequestException("Username, email and password are all required to create a student login");
-            }
-            if (userRepository.existsByUsername(request.getUsername())) {
-                throw new DuplicateResourceException("User", "username", request.getUsername());
-            }
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new DuplicateResourceException("User", "email", request.getEmail());
-            }
-
-            Role studentRole = roleRepository.findByName(AppConstants.ROLE_STUDENT)
-                    .orElseThrow(() -> new ResourceNotFoundException("Role", "name", AppConstants.ROLE_STUDENT));
-
-            user = User.builder()
-                    .username(request.getUsername())
-                    .email(request.getEmail())
-                    .password(passwordEncoder.encode(request.getPassword()))
-                    .firstName(StringUtils.hasText(request.getFirstName()) ? request.getFirstName() : request.getUsername())
-                    .lastName(request.getLastName())
-                    .phone(request.getPhone())
-                    .gender(request.getGender())
-                    .role(studentRole)
-                    .active(true)
-                    .emailVerified(false)
-                    .build();
-            user = userRepository.save(user);
+        // The account is provisioned by the school, always, as part of admitting the
+        // student. Self-registration is gone, and the admin form no longer carries a
+        // username or password field: both are generated here and emailed.
+        //
+        // An email address is what makes that possible, so it is the one thing still
+        // required. Admitting without one used to mean "no login"; it now means the
+        // credentials have nowhere to go, which is worth refusing rather than
+        // silently creating an account nobody can be told about.
+        if (!StringUtils.hasText(request.getEmail())) {
+            throw new BadRequestException(
+                    "An email address is required: the student's username and first-time password are sent to it");
         }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("User", "email", request.getEmail());
+        }
+
+        Role studentRole = roleRepository.findByName(AppConstants.ROLE_STUDENT)
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "name", AppConstants.ROLE_STUDENT));
+
+        String username = credentialGenerator.usernameFor(
+                request.getFirstName(), request.getLastName(), admissionNumber,
+                userRepository::existsByUsername);
+        String temporaryPassword = credentialGenerator.temporaryPassword();
+
+        User user = User.builder()
+                .username(username)
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(temporaryPassword))
+                // The account can do exactly one thing until its owner chooses a
+                // password: replace it. See PasswordChangeRequiredFilter.
+                .mustChangePassword(true)
+                .firstName(StringUtils.hasText(request.getFirstName()) ? request.getFirstName() : username)
+                .lastName(request.getLastName())
+                .phone(request.getPhone())
+                .gender(request.getGender())
+                .role(studentRole)
+                .active(true)
+                .emailVerified(false)
+                .build();
+        user = userRepository.save(user);
+
+        // Sent after the account exists and asynchronously, so a mail server that is
+        // down delays the credentials rather than failing the admission. The password
+        // is passed in and not stored: from here it lives only as a bcrypt hash and in
+        // this one message.
+        emailService.sendAccountCredentialsEmail(
+                user.getEmail(),
+                StringUtils.hasText(user.getFirstName()) ? user.getFirstName() : username,
+                username,
+                temporaryPassword);
 
         Student student = Student.builder()
                 .user(user)

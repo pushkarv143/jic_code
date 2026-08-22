@@ -50,6 +50,14 @@ export function LoginPage() {
     try {
       const response = await authApi.login({ username: values.username, password: values.password });
       dispatch(setCredentials(response));
+      if (response.mustChangePassword) {
+        // A school-provisioned account on its first sign-in. Sent here rather than
+        // to the dashboard because the API refuses everything else until the
+        // password is replaced — routing to the dashboard would load a shell whose
+        // every request came back 403.
+        navigate('/first-login', { replace: true });
+        return;
+      }
       enqueueSnackbar(`Welcome back, ${response.user.firstName}!`, { variant: 'success' });
       navigate(redirectTo, { replace: true });
     } catch (err: any) {
@@ -132,15 +140,23 @@ export function LoginPage() {
         </Button>
       </Box>
 
-      <Divider sx={{ my: 3 }}>
-        <Typography variant="caption" color="text.secondary">
-          New here?
-        </Typography>
-      </Divider>
+      {/*
+        No "Create a Student / Parent Account" here any more.
 
-      <Button component={RouterLink} to="/register" variant="outlined" fullWidth>
-        Create a Student / Parent Account
-      </Button>
+        The school knows who its students are — it admits them through the Add
+        Student form, which now generates a username and a first-time password and
+        emails them. An account that could exist before the admission did was an
+        account nobody had asked for, waiting on an approval queue to catch it.
+
+        A student who has not received their credentials needs the office, not a
+        sign-up form, so this says so instead of offering one.
+      */}
+      <Divider sx={{ my: 3 }} />
+
+      <Typography variant="caption" color="text.secondary" display="block" textAlign="center">
+        Accounts are created by the school. If you have not received your username and
+        password, contact the school office.
+      </Typography>
     </Box>
   );
 }

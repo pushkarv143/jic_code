@@ -15,7 +15,6 @@ import com.greenwood.school.data.remote.dto.OtpVerifyResponseDto
 import com.greenwood.school.data.remote.dto.RefreshTokenRequestDto
 import com.greenwood.school.data.remote.dto.SendOtpRequestDto
 import com.greenwood.school.data.remote.dto.VerifyOtpRequestDto
-import com.greenwood.school.data.remote.dto.RegisterRequestDto
 import com.greenwood.school.data.remote.dto.ResetPasswordRequestDto
 import com.greenwood.school.data.remote.dto.UserDto
 import com.greenwood.school.domain.repository.AuthRepository
@@ -57,28 +56,6 @@ class AuthRepositoryImpl @Inject constructor(
         // Always clear locally: a failed revoke must not strand the user signed in.
         sessionManager.clear()
         return result
-    }
-
-    override suspend fun register(
-        firstName: String,
-        lastName: String,
-        email: String,
-        phone: String,
-        username: String,
-        password: String,
-        role: String,
-    ): ApiResult<Unit> = ack {
-        api.register(
-            RegisterRequestDto(
-                firstName = firstName.trim(),
-                lastName = lastName.trim(),
-                email = email.trim(),
-                phone = phone.trim(),
-                username = username.trim(),
-                password = password,
-                role = role,
-            ),
-        )
     }
 
     override suspend fun forgotPassword(email: String): ApiResult<Unit> =

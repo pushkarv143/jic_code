@@ -99,6 +99,7 @@ class MainActivity : ComponentActivity() {
                             isSignedIn = state.isSignedIn,
                             currentUser = state.user,
                             access = state.access,
+                            mustChangePassword = state.mustChangePassword,
                         )
                     }
                 }

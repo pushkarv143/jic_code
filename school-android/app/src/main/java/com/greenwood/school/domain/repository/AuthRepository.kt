@@ -25,16 +25,6 @@ interface AuthRepository {
      */
     suspend fun logout(): ApiResult<Unit>
 
-    suspend fun register(
-        firstName: String,
-        lastName: String,
-        email: String,
-        phone: String,
-        username: String,
-        password: String,
-        role: String,
-    ): ApiResult<Unit>
-
     suspend fun forgotPassword(email: String): ApiResult<Unit>
 
     suspend fun resetPassword(token: String, newPassword: String): ApiResult<Unit>

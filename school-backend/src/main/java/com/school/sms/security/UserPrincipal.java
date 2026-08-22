@@ -40,9 +40,22 @@ public class UserPrincipal implements UserDetails {
     private final Set<String> permissions;
     private final Collection<? extends GrantedAuthority> authorities;
 
+    /**
+     * True while this account is still on a system-generated password.
+     *
+     * <p>Carried on the principal rather than looked up per request, because
+     * {@code JwtAuthenticationFilter} already rebuilds the principal from the
+     * database on every request — so this is as current as a fresh query would be,
+     * for no extra query. That freshness is the point: the flag clears mid-session
+     * when the owner chooses a password, and a value baked into the token would
+     * keep the gate closed until the token expired.
+     */
+    private final boolean mustChangePassword;
+
     public UserPrincipal(Long id, String username, String email, String password,
                           boolean active, String roleName, Set<String> permissions,
-                          Collection<? extends GrantedAuthority> authorities) {
+                          Collection<? extends GrantedAuthority> authorities,
+                          boolean mustChangePassword) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -51,6 +64,12 @@ public class UserPrincipal implements UserDetails {
         this.roleName = roleName;
         this.permissions = permissions;
         this.authorities = authorities;
+        this.mustChangePassword = mustChangePassword;
+    }
+
+    /** See the field: true while the account is on a system-generated password. */
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
     }
 
     /**
@@ -80,7 +99,8 @@ public class UserPrincipal implements UserDetails {
                 user.isActive(),
                 roleName,
                 perms,
-                List.copyOf(authorities)
+                List.copyOf(authorities),
+                user.isMustChangePassword()
         );
     }
 

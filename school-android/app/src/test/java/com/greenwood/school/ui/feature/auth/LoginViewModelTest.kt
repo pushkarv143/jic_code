@@ -140,16 +140,6 @@ private class FakeAuthRepository : AuthRepository {
         return ApiResult.Success(Unit)
     }
 
-    override suspend fun register(
-        firstName: String,
-        lastName: String,
-        email: String,
-        phone: String,
-        username: String,
-        password: String,
-        role: String,
-    ): ApiResult<Unit> = ApiResult.Success(Unit)
-
     override suspend fun forgotPassword(email: String): ApiResult<Unit> = ApiResult.Success(Unit)
 
     override suspend fun resetPassword(token: String, newPassword: String): ApiResult<Unit> =
