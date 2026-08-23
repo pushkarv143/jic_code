@@ -106,12 +106,27 @@ android {
         // session on the account. Behind a confirmation, because the student's
         // current password stops working the moment it is tapped.
         //
+        // 1.12.0 fixes a first-login dead end. A student whose account was created
+        // by the school could sign in and then reach nothing: the flag saying "this
+        // password must be changed" was threaded into the navigation graph, which is
+        // built once, so it was captured before anyone had signed in and was always
+        // false. They landed on the dashboard, where the API refuses every request
+        // until the password is changed, and the app looked broken rather than asking
+        // for a new one. It now comes from the sign-in itself, on both the password
+        // and the passcode path.
+        //
+        // The passcode path mattered more than it looked: a one-time code is how
+        // somebody gets in when the credentials email never arrived, so it is the
+        // likeliest way to reach an account that still owes a password change - and
+        // that person has never seen the emailed password. The old password is
+        // therefore optional on the change-password screen now.
+        //
         // Carries 1.5.0 before it (one section per class and My Timetable), 1.4.0 before
         // that (the class module on the phone), 1.3.0 before that (passcode sign-in and
         // recovery). A new versionCode is what lets the device recognise this as an
         // upgrade rather than refusing to install over the previous build.
-        versionCode = 12
-        versionName = "1.11.0"
+        versionCode = 13
+        versionName = "1.12.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true

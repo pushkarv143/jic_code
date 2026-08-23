@@ -9,6 +9,11 @@ import com.greenwood.school.data.remote.dto.UserDto
 import com.greenwood.school.domain.repository.AuthRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import io.mockk.every
+import io.mockk.mockk
+import com.greenwood.school.core.session.SessionManager
+import com.greenwood.school.core.session.UserSession
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -30,15 +35,66 @@ class LoginViewModelTest {
     private lateinit var repository: FakeAuthRepository
     private lateinit var viewModel: LoginViewModel
 
+    /**
+     * The session the repository is pretending to have just saved.
+     *
+     * The view model reads the must-change-password flag off this after a
+     * successful login, so a test can put a provisioned account in it and assert
+     * that the flag reaches the state.
+     */
+    private val session = MutableStateFlow<UserSession?>(null)
+
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeAuthRepository()
-        viewModel = LoginViewModel(repository)
+        val sessionManager = mockk<SessionManager>(relaxed = true)
+        every { sessionManager.session } returns session
+        viewModel = LoginViewModel(repository, sessionManager)
     }
+
+    private fun signedInSession(mustChangePassword: Boolean) = UserSession(
+        accessToken = "access",
+        refreshToken = "refresh",
+        tokenType = "Bearer",
+        user = UserDto(1, "pushkarv", role = "STUDENT"),
+        mustChangePassword = mustChangePassword,
+    )
 
     @After
     fun tearDown() = Dispatchers.resetMain()
+
+    @Test
+    fun `a school-provisioned account reports that it must change its password`() =
+        runTest(dispatcher) {
+            // The flag used to be threaded into the nav graph, which is built once —
+            // so it was captured before anyone signed in and was permanently false.
+            // A provisioned student went to the dashboard, where the API refuses
+            // every request, and the app looked broken instead of asking for a new
+            // password. It now comes from the login itself.
+            session.value = signedInSession(mustChangePassword = true)
+            viewModel.onUsernameChange("pushkarv")
+            viewModel.onPasswordChange("Temp#1234")
+
+            viewModel.submit()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.isSignedIn)
+            assertTrue(viewModel.state.value.mustChangePassword)
+        }
+
+    @Test
+    fun `an ordinary account does not`() = runTest(dispatcher) {
+        session.value = signedInSession(mustChangePassword = false)
+        viewModel.onUsernameChange("admin")
+        viewModel.onPasswordChange("Admin@123")
+
+        viewModel.submit()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isSignedIn)
+        assertFalse(viewModel.state.value.mustChangePassword)
+    }
 
     @Test
     fun `blank fields are rejected without calling the API`() = runTest(dispatcher) {

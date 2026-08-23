@@ -49,7 +49,12 @@ import com.greenwood.school.ui.components.PasswordField
  */
 @Composable
 fun LoginScreen(
-    onSignedIn: () -> Unit,
+    /**
+     * Called once the credentials are accepted. The flag says whether the account is
+     * still on a school-generated password, which decides whether the dashboard or
+     * the change-password screen comes next.
+     */
+    onSignedIn: (mustChangePassword: Boolean) -> Unit,
     onNavigateToForgotPassword: () -> Unit,
     /** Passwordless sign-in — a code emailed to the address on the account. */
     onNavigateToOtpLogin: () -> Unit = {},
@@ -58,7 +63,7 @@ fun LoginScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.isSignedIn) {
-        if (state.isSignedIn) onSignedIn()
+        if (state.isSignedIn) onSignedIn(state.mustChangePassword)
     }
 
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {

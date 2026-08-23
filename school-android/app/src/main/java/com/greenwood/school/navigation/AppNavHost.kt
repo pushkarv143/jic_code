@@ -121,7 +121,7 @@ fun AppNavHost(
             },
             modifier = Modifier.weight(1f),
         ) {
-            authGraph(navController, mustChangePassword)
+            authGraph(navController)
 
             composable(Routes.MAIN_GRAPH) {
                 MainShell(
@@ -147,24 +147,15 @@ fun AppNavHost(
     }
 }
 
-private fun NavGraphBuilder.authGraph(
-    navController: NavHostController,
-    /**
-     * True while the signed-in session is on a school-generated password.
-     *
-     * Passed in rather than read here because the graph builder has no state of its
-     * own: it decides where a successful sign-in lands, and for a provisioned
-     * account that is the change-password screen.
-     */
-    mustChangePassword: Boolean,
-) {
+private fun NavGraphBuilder.authGraph(navController: NavHostController) {
     navigation(startDestination = Routes.LOGIN, route = Routes.AUTH_GRAPH) {
         composable(Routes.LOGIN) {
             LoginScreen(
-                onSignedIn = {
-                    // A school-provisioned account on its first sign-in goes to the
-                    // change-password screen instead. Read from the session, which
-                    // SessionManager has just written from the login response.
+                onSignedIn = { mustChangePassword ->
+                    // Reported by the login itself rather than read from anything the
+                    // graph captured: this builder runs once, so a value threaded in
+                    // here would be whatever it was before anyone signed in — which is
+                    // exactly the bug this replaced.
                     val next = if (mustChangePassword) {
                         Routes.FIRST_LOGIN_PASSWORD
                     } else {
@@ -182,10 +173,19 @@ private fun NavGraphBuilder.authGraph(
         }
         composable(Routes.OTP_LOGIN) {
             OtpLoginScreen(
-                onSignedIn = {
-                    navController.navigate(Routes.MAIN_GRAPH) {
-                        // Same as the password path: clear the auth graph so Back
-                        // from the dashboard exits rather than returning to sign-in.
+                onSignedIn = { mustChangePassword ->
+                    // Same routing as the password path, and for a sharper reason: a
+                    // one-time code is how somebody gets in when the credentials email
+                    // never arrived, so this is the likeliest way to reach an account
+                    // that still owes a password change.
+                    val next = if (mustChangePassword) {
+                        Routes.FIRST_LOGIN_PASSWORD
+                    } else {
+                        Routes.MAIN_GRAPH
+                    }
+                    navController.navigate(next) {
+                        // Clear the auth graph so Back from the dashboard exits rather
+                        // than returning to sign-in.
                         popUpTo(Routes.AUTH_GRAPH) { inclusive = true }
                     }
                 },

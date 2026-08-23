@@ -56,7 +56,10 @@ export function FirstLoginPasswordPage() {
   const onSubmit = async (values: ChangePasswordFormValues) => {
     try {
       await authApi.changePassword({
-        currentPassword: values.currentPassword,
+        // Sent as an empty string rather than omitted: the API treats a blank
+        // one as "not supplied", which it accepts while the account is still on a
+        // generated password.
+        currentPassword: values.currentPassword ?? '',
         newPassword: values.newPassword,
         confirmPassword: values.confirmPassword,
       });
@@ -100,7 +103,7 @@ export function FirstLoginPasswordPage() {
 
       <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
         <TextField
-          label="Password from your email"
+          label="Password from your email (optional)"
           type="password"
           fullWidth
           margin="normal"
@@ -108,7 +111,10 @@ export function FirstLoginPasswordPage() {
           autoFocus
           {...register('currentPassword')}
           error={!!errors.currentPassword}
-          helperText={errors.currentPassword?.message}
+          helperText={
+            errors.currentPassword?.message ??
+            'Leave this empty if you signed in with a code and never received the emailed password.'
+          }
         />
         <TextField
           label="New password"

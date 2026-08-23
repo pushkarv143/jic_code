@@ -39,6 +39,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
@@ -183,8 +184,23 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new UnauthorizedException("Current password is incorrect");
+        // Three cases, and the middle one is the point:
+        //
+        //   supplied                  -> verify it, whoever is asking
+        //   omitted, forced reset     -> allowed; they may never have seen it
+        //   omitted, voluntary change -> refused
+        //
+        // A forced reset without the old password is safe here because the caller
+        // holds a valid token for this account already: they authenticated with the
+        // generated password or with a one-time code, and either way the account is
+        // theirs. What they cannot do is anything else, until this succeeds.
+        boolean supplied = StringUtils.hasText(request.getCurrentPassword());
+        if (supplied) {
+            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+                throw new UnauthorizedException("Current password is incorrect");
+            }
+        } else if (!user.isMustChangePassword()) {
+            throw new BadRequestException("Current password is required");
         }
 
         if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {

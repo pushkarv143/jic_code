@@ -16,6 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val sessionManager: com.greenwood.school.core.session.SessionManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginUiState())
@@ -47,9 +48,19 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = authRepository.login(current.username, current.password)) {
                 is ApiResult.Success ->
-                    // Navigation is driven by the session flow in MainViewModel, so there
-                    // is nothing to do here but stop the spinner.
-                    _state.update { it.copy(isSubmitting = false, isSignedIn = true) }
+                    // Read straight off the session the repository has just saved from
+                    // the login response, so it cannot be stale: save() completed before
+                    // login() returned. Threading this through the nav graph instead was
+                    // the bug — the graph is built once, so the value was captured before
+                    // anyone had signed in and was always false.
+                    _state.update {
+                        it.copy(
+                            isSubmitting = false,
+                            isSignedIn = true,
+                            mustChangePassword =
+                                sessionManager.session.value?.mustChangePassword == true,
+                        )
+                    }
 
                 is ApiResult.Failure -> _state.update {
                     it.copy(isSubmitting = false, formError = result.error)
@@ -68,6 +79,12 @@ data class LoginUiState(
     val passwordError: String? = null,
     val isSubmitting: Boolean = false,
     val isSignedIn: Boolean = false,
+    /**
+     * True when the account that just signed in is still on a password the school
+     * generated, so the next screen is the change-password one rather than the
+     * dashboard. Taken from the login response, not from anything longer-lived.
+     */
+    val mustChangePassword: Boolean = false,
     /**
      * Kept as an [AppError] rather than a string so the screen can treat a 403
      * "your account is not active" differently from a network failure.

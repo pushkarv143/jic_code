@@ -8,6 +8,10 @@ import com.greenwood.school.data.remote.dto.OtpSendResponseDto
 import com.greenwood.school.data.remote.dto.OtpVerifyResponseDto
 import com.greenwood.school.data.remote.dto.UserDto
 import com.greenwood.school.domain.repository.AuthRepository
+import io.mockk.every
+import kotlinx.coroutines.flow.MutableStateFlow
+import com.greenwood.school.core.session.SessionManager
+import com.greenwood.school.core.session.UserSession
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -46,7 +50,12 @@ class OtpLoginViewModelTest {
         Dispatchers.setMain(dispatcher)
         auth = mockk(relaxed = true)
         coEvery { auth.requestOtp(any(), any()) } returns ApiResult.Success(OtpSendResponseDto())
-        vm = OtpLoginViewModel(auth)
+        // session is stubbed with a real flow rather than left relaxed: mockk cannot
+        // synthesise a typed StateFlow, and the view model reads .value off it.
+        val sessions = MutableStateFlow<UserSession?>(null)
+        val sessionManager = mockk<SessionManager>(relaxed = true)
+        every { sessionManager.session } returns sessions
+        vm = OtpLoginViewModel(auth, sessionManager)
     }
 
     @After

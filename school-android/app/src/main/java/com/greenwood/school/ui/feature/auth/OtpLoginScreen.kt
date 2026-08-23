@@ -56,7 +56,8 @@ import javax.inject.Inject
  */
 @Composable
 fun OtpLoginScreen(
-    onSignedIn: () -> Unit,
+    /** The flag decides whether the dashboard or the change-password screen follows. */
+    onSignedIn: (mustChangePassword: Boolean) -> Unit,
     onBack: () -> Unit,
     viewModel: OtpLoginViewModel = hiltViewModel(),
 ) {
@@ -71,7 +72,7 @@ fun OtpLoginScreen(
     }
 
     LaunchedEffect(state.isSignedIn) {
-        if (state.isSignedIn) onSignedIn()
+        if (state.isSignedIn) onSignedIn(state.mustChangePassword)
     }
 
     LaunchedEffect(state.resendInSeconds) {
@@ -168,6 +169,7 @@ fun OtpLoginScreen(
 @HiltViewModel
 class OtpLoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val sessionManager: com.greenwood.school.core.session.SessionManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OtpLoginUiState())
@@ -235,8 +237,17 @@ class OtpLoginViewModel @Inject constructor(
             _state.update {
                 when (result) {
                     // The repository has already stored the session by this point, so
-                    // there is nothing to carry — only somewhere to go.
-                    is ApiResult.Success -> it.copy(isSubmitting = false, isSignedIn = true)
+                    // the flag can be read straight off it. Signing in with a code is
+                    // exactly how someone reaches a provisioned account whose
+                    // credentials email failed — they have never seen the temporary
+                    // password — so this path needs the change-password screen every
+                    // bit as much as the password one does.
+                    is ApiResult.Success -> it.copy(
+                        isSubmitting = false,
+                        isSignedIn = true,
+                        mustChangePassword =
+                            sessionManager.session.value?.mustChangePassword == true,
+                    )
 
                     is ApiResult.Failure -> it.copy(
                         isSubmitting = false,
@@ -267,5 +278,7 @@ data class OtpLoginUiState(
     val resendInSeconds: Int = 0,
     val isSubmitting: Boolean = false,
     val isSignedIn: Boolean = false,
+    /** True when the account that just signed in still owes a password change. */
+    val mustChangePassword: Boolean = false,
     val message: String? = null,
 )

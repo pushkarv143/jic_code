@@ -32,7 +32,13 @@ export type LoginFormValues = yup.InferType<typeof loginSchema>;
  * password, so the client and the server agree on what "strong enough" means.
  */
 export const changePasswordSchema = yup.object({
-  currentPassword: yup.string().required('Enter the password from your email'),
+  /*
+   * Optional, and deliberately so. Someone who signed in with a one-time code has
+   * never seen the emailed password — that is why they used a code — and the API
+   * accepts it omitted while the account is still on a generated one. Requiring it
+   * made this form impossible to complete for exactly the person it exists for.
+   */
+  currentPassword: yup.string().optional(),
   newPassword: passwordComplexity,
   confirmPassword: yup
     .string()

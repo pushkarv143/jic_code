@@ -77,11 +77,17 @@ fun FirstLoginPasswordScreen(
         OutlinedTextField(
             value = state.currentPassword,
             onValueChange = viewModel::onCurrentPassword,
-            label = { Text("Password from your email") },
+            label = { Text("Password from your email (optional)") },
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
             isError = state.currentPasswordError != null,
-            supportingText = state.currentPasswordError?.let { { Text(it) } },
+            supportingText = {
+                Text(
+                    state.currentPasswordError
+                        ?: "Leave this empty if you signed in with a code and never " +
+                        "received the emailed password.",
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -151,14 +157,17 @@ class FirstLoginPasswordViewModel @Inject constructor(
 
         // The same rule the API enforces, checked here so a typo costs no round trip.
         // Not a substitute for the server check — the server is the one that counts.
-        val currentError = "Enter the password from your email"
-            .takeIf { current.currentPassword.isBlank() }
+        // No error for an empty current password: the server accepts it omitted while
+        // the account is still on a generated one, which is the whole point — a code
+        // sign-in never saw that password.
+        val currentError: String? = null
         val newError = when {
             current.newPassword.isBlank() -> "Choose a new password"
             !POLICY.matches(current.newPassword) ->
                 "At least 8 characters, with an uppercase letter, a lowercase letter, " +
                     "a number and a symbol"
-            current.newPassword == current.currentPassword ->
+            current.currentPassword.isNotBlank() &&
+                current.newPassword == current.currentPassword ->
                 "Choose a password different from the one you were sent"
             else -> null
         }
