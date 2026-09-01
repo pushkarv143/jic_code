@@ -1,0 +1,36 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SchoolManagementApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
+    <module name="school-backend" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.school.sms.SchoolManagementApplication" />
+    <option name="ACTIVE_PROFILES" value="dev" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/school-backend" />
+    <!--
+      The password is passed as a Spring property, not an environment variable.
+
+      application.yml reads ${DB_PASSWORD:root}, and a ':' default fires when
+      the property is absent. The local root account has an empty password, and
+      an env var that is empty or unset both leave the placeholder falling back
+      to the literal "root" - the connection then dies with "Access denied for
+      user 'root'@'localhost' (using password: YES)" against an account that
+      has no password at all. Overriding the property directly sidesteps the
+      placeholder: an empty value after '=' binds as an empty string.
+
+      If you have set a root password on your own install, put it after the '='.
+    -->
+    <option name="PROGRAM_PARAMETERS" value="--spring.datasource.password=" />
+    <envs>
+      <!--
+        The local MySQL is on 3333, not 3306 (C:\ProgramData\MySQL\my.ini).
+        allowPublicKeyRetrieval=true is required by MySQL 8's default
+        caching_sha2_password auth over an unencrypted connection.
+      -->
+      <env name="DB_URL" value="jdbc:mysql://127.0.0.1:3333/school_management_system?useSSL=false&amp;allowPublicKeyRetrieval=true&amp;serverTimezone=UTC" />
+      <env name="DB_USERNAME" value="root" />
+    </envs>
+    <method v="2">
+      <option name="Make" enabled="true" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Start Local MySQL" run_configuration_type="ShConfigurationType" />
+    </method>
+  </configuration>
+</component>
