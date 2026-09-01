@@ -1,11 +1,28 @@
 package com.greenwood.school.ui.feature.timetable
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.MeetingRoom
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -17,8 +34,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.greenwood.school.ui.theme.BrandAmber
+import com.greenwood.school.ui.theme.BrandIndigo
+import com.greenwood.school.ui.theme.BrandIndigoLight
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -102,12 +131,212 @@ fun MyTimetableScreen(
                         }
                     }
                     if (tab == 0) {
-                        ClassTimetableTab(state.slots)
+                        TodayAndWeekTab(slots = state.slots, isTeacher = state.isTeacher)
                     } else {
                         MySubjectsTab(state.mappings, state.slots, state.isTeacher)
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * "My week" tab — shows a "Today's Classes" premium card at the top,
+ * then the full week grid below. CRED-level: surfaces what's happening NOW first.
+ */
+@Composable
+private fun TodayAndWeekTab(slots: List<TimetableSlotDto>, isTeacher: Boolean) {
+    val todayName = LocalDate.now().dayOfWeek.name // e.g. "MONDAY"
+    val todaySlots = slots
+        .filter { it.dayOfWeek == todayName }
+        .sortedBy { it.periodNumber }
+
+    LazyColumn(
+        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (todaySlots.isNotEmpty()) {
+            item(key = "today-header") {
+                TodaySectionHeader()
+            }
+            items(todaySlots.size, key = { "today-${todaySlots[it].id}" }) { index ->
+                TodayPeriodRow(slot = todaySlots[index])
+            }
+            item(key = "week-divider") {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f).height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                    Text(
+                        "  Full week  ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Box(Modifier.weight(1f).height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+        }
+    }
+    // Full week tab rendered below the today section via the existing ClassTimetableTab
+    ClassTimetableTab(slots)
+}
+
+@Composable
+private fun TodaySectionHeader() {
+    val today = LocalDate.now()
+    val formatter = DateTimeFormatter.ofPattern("EEEE, d MMM")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.horizontalGradient(colors = listOf(BrandIndigo, BrandIndigoLight))
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Today's Classes",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Text(
+                today.format(formatter),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.7f),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(BrandAmber.copy(alpha = 0.2f))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+        ) {
+            Text(
+                "LIVE",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = BrandAmber,
+            )
+        }
+    }
+}
+
+private enum class PeriodStatus { DONE, NOW, UPCOMING }
+
+private fun slotStatus(slot: TimetableSlotDto): PeriodStatus {
+    val now = LocalTime.now()
+    val fmt = DateTimeFormatter.ofPattern("HH:mm:ss")
+    val start = runCatching { LocalTime.parse(slot.startTime ?: "00:00:00", fmt) }.getOrNull() ?: return PeriodStatus.UPCOMING
+    val end = runCatching { LocalTime.parse(slot.endTime ?: "23:59:59", fmt) }.getOrNull() ?: return PeriodStatus.UPCOMING
+    return when {
+        now.isAfter(end) -> PeriodStatus.DONE
+        now.isAfter(start) && now.isBefore(end) -> PeriodStatus.NOW
+        else -> PeriodStatus.UPCOMING
+    }
+}
+
+@Composable
+private fun TodayPeriodRow(slot: TimetableSlotDto) {
+    val status = slotStatus(slot)
+    val subjectOrLabel = slot.subjectName ?: slot.label ?: "Period ${slot.periodNumber}"
+
+    val statusColor = when (status) {
+        PeriodStatus.NOW -> MaterialTheme.colorScheme.tertiary.let {
+            androidx.compose.ui.graphics.Color(0xFF2E7D32) // green
+        }
+        PeriodStatus.DONE -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+        PeriodStatus.UPCOMING -> MaterialTheme.colorScheme.primary
+    }
+
+    val bgColor = when (status) {
+        PeriodStatus.NOW -> statusColor.copy(alpha = 0.08f)
+        PeriodStatus.DONE -> Color.Transparent
+        PeriodStatus.UPCOMING -> statusColor.copy(alpha = 0.04f)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Status icon
+        Icon(
+            imageVector = when (status) {
+                PeriodStatus.NOW -> Icons.Outlined.PlayCircle
+                PeriodStatus.DONE -> Icons.Outlined.CheckCircle
+                PeriodStatus.UPCOMING -> Icons.Outlined.RadioButtonUnchecked
+            },
+            contentDescription = null,
+            tint = statusColor,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+
+        // Period details
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    subjectOrLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (status == PeriodStatus.NOW) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (status == PeriodStatus.DONE)
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    else
+                        MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                if (status == PeriodStatus.NOW) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(statusColor.copy(alpha = 0.12f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                    ) {
+                        Text("NOW", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = statusColor)
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.AccessTime, contentDescription = null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(3.dp))
+                Text(
+                    "${slot.startTime?.take(5) ?: ""} – ${slot.endTime?.take(5) ?: ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (slot.roomNumber != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Outlined.MeetingRoom, contentDescription = null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(3.dp))
+                    Text(slot.roomNumber, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
+        // Period number badge
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(statusColor.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "P${slot.periodNumber}",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = statusColor,
+            )
         }
     }
 }

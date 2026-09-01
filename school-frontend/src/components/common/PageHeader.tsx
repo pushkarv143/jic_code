@@ -18,7 +18,6 @@ export interface PageHeaderProps {
   action?: ReactNode;
 }
 
-/** Consistent title + breadcrumb + action-button-slot header used atop every app page. */
 export function PageHeader({ title, subtitle, breadcrumbs, action }: PageHeaderProps) {
   return (
     <Box
@@ -28,14 +27,14 @@ export function PageHeader({ title, subtitle, breadcrumbs, action }: PageHeaderP
         alignItems: { xs: 'flex-start', sm: 'center' },
         justifyContent: 'space-between',
         gap: 2,
-        mb: 3,
+        mb: 3.5,
       }}
     >
       <Box>
         {breadcrumbs && breadcrumbs.length > 0 && (
           <Breadcrumbs
-            separator={<NavigateNextIcon fontSize="small" />}
-            sx={{ mb: 0.5, fontSize: '0.8rem' }}
+            separator={<NavigateNextIcon sx={{ fontSize: 14, opacity: 0.5 }} />}
+            sx={{ mb: 0.75, '& .MuiBreadcrumbs-ol': { flexWrap: 'nowrap' } }}
           >
             {breadcrumbs.map((crumb, idx) =>
               crumb.to && idx !== breadcrumbs.length - 1 ? (
@@ -44,29 +43,33 @@ export function PageHeader({ title, subtitle, breadcrumbs, action }: PageHeaderP
                   component={RouterLink}
                   to={crumb.to}
                   underline="hover"
-                  color="inherit"
-                  fontSize="inherit"
+                  color="text.secondary"
+                  sx={{ fontSize: '0.78rem', fontWeight: 500, '&:hover': { color: 'primary.main' } }}
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <Typography key={crumb.label} color="text.primary" fontSize="inherit">
+                <Typography key={crumb.label} color="text.primary" sx={{ fontSize: '0.78rem', fontWeight: 600 }}>
                   {crumb.label}
                 </Typography>
               ),
             )}
           </Breadcrumbs>
         )}
-        <Typography variant="h4" component="h1">
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
           {title}
         </Typography>
         {subtitle && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
             {subtitle}
           </Typography>
         )}
       </Box>
-      {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
+      {action && (
+        <Box sx={{ flexShrink: 0, display: 'flex', gap: 1 }}>
+          {action}
+        </Box>
+      )}
     </Box>
   );
 }

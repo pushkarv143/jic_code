@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
 import Alert from '@mui/material/Alert';
@@ -15,6 +15,7 @@ import AppFooter from '@/components/common/AppFooter';
 export function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
   const { settled, error, access, refresh } = useAccess();
 
   const width = collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH;
@@ -95,7 +96,7 @@ export function DashboardLayout() {
         }}
       >
         <Toolbar />
-        <Box sx={{ p: { xs: 2, sm: 3 }, flexGrow: 1 }}>
+        <Box key={location.pathname} className="page-enter" sx={{ p: { xs: 2, sm: 3 }, flexGrow: 1 }}>
           <Outlet />
         </Box>
         <AppFooter />

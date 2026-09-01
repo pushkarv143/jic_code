@@ -1,11 +1,19 @@
 package com.greenwood.school.ui.feature.search
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Search
@@ -14,7 +22,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -67,14 +78,15 @@ fun SearchScreen(
             SearchField(
                 value = state.query,
                 onValueChange = viewModel::onQueryChange,
-                placeholder = "Students, teachers or books",
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                placeholder = "Students, teachers, books…",
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             )
 
             when {
                 state.query.length < MIN_QUERY_LENGTH -> EmptyView(
-                    title = "Start typing",
-                    message = "Enter at least $MIN_QUERY_LENGTH characters to search.",
+                    title = "Search anything",
+                    message = "Find students, teachers or books — enter at least $MIN_QUERY_LENGTH characters.",
                     icon = Icons.Outlined.Search,
                 )
 
@@ -129,12 +141,27 @@ private fun LazyListScope.section(
 ) {
     if (rows.isEmpty()) return
     item(key = "header-$title") {
-        Text(
-            title.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 4.dp, top = 8.dp),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 4.dp, end = 4.dp, top = 16.dp, bottom = 6.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                title,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
     items(rows.size, key = { "$title-${rows[it].id}" }) { index -> row(rows[index]) }
 }

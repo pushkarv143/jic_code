@@ -1,5 +1,6 @@
 package com.greenwood.school.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Inbox
@@ -18,21 +20,27 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.greenwood.school.core.network.AppError
 import com.greenwood.school.core.network.isRetryable
 import com.greenwood.school.ui.common.UiState
+import com.greenwood.school.ui.theme.BrandAmber
+import com.greenwood.school.ui.theme.BrandIndigo
 
 /**
  * Renders the loading / empty / error branches so each screen only has to describe
@@ -60,6 +68,9 @@ fun <T> StateHost(
     }
 }
 
+/**
+ * Branded full-screen loader: school icon badge + amber LinearProgress.
+ */
 @Composable
 fun FullScreenLoader(label: String? = null, modifier: Modifier = Modifier) {
     Column(
@@ -67,10 +78,43 @@ fun FullScreenLoader(label: String? = null, modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        CircularProgressIndicator()
+        // Branded icon badge
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(BrandIndigo, BrandIndigo.copy(alpha = 0.7f))
+                    )
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Inbox,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(32.dp),
+            )
+        }
+        Spacer(Modifier.height(20.dp))
+        LinearProgressIndicator(
+            modifier = Modifier
+                .width(140.dp)
+                .height(4.dp)
+                .clip(RoundedCornerShape(100.dp)),
+            color = BrandAmber,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            strokeCap = StrokeCap.Round,
+        )
         if (label != null) {
-            Spacer(Modifier.height(16.dp))
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+            )
         }
     }
 }
@@ -87,16 +131,14 @@ fun EmptyView(
         icon = icon,
         title = title,
         message = message,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        tint = MaterialTheme.colorScheme.primary,
         modifier = modifier,
         action = action,
     )
 }
 
 /**
- * Error presentation is driven entirely by the [AppError] case: a network problem
- * gets a different icon, wording and affordance than a 403, and only genuinely
- * retryable failures offer a Retry button.
+ * Error presentation driven entirely by the [AppError] case.
  */
 @Composable
 fun ErrorView(error: AppError, onRetry: (() -> Unit)?, modifier: Modifier = Modifier) {
@@ -106,7 +148,6 @@ fun ErrorView(error: AppError, onRetry: (() -> Unit)?, modifier: Modifier = Modi
         is AppError.NotFound -> Icons.Outlined.SearchOff
         else -> Icons.Outlined.WarningAmber
     }
-
     val title = when (error) {
         is AppError.Network -> "You're offline"
         is AppError.Timeout -> "That took too long"
@@ -115,19 +156,18 @@ fun ErrorView(error: AppError, onRetry: (() -> Unit)?, modifier: Modifier = Modi
         is AppError.NotFound -> "Not found"
         else -> "Something went wrong"
     }
+    val tint = if (error is AppError.Forbidden)
+        MaterialTheme.colorScheme.onSurfaceVariant
+    else
+        MaterialTheme.colorScheme.error
 
     IllustratedMessage(
         icon = icon,
         title = title,
         message = error.userMessage,
-        tint = if (error is AppError.Forbidden) {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        } else {
-            MaterialTheme.colorScheme.error
-        },
+        tint = tint,
         modifier = modifier,
         action = {
-            // A 403 will keep being a 403 — offering Retry there is a dead end.
             if (onRetry != null && error.isRetryable) {
                 Button(onClick = onRetry) { Text("Retry") }
             } else if (onRetry != null && error !is AppError.Forbidden) {
@@ -142,7 +182,7 @@ private fun IllustratedMessage(
     icon: ImageVector,
     title: String,
     message: String?,
-    tint: androidx.compose.ui.graphics.Color,
+    tint: Color,
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
 ) {
@@ -151,15 +191,29 @@ private fun IllustratedMessage(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(56.dp))
-        Spacer(Modifier.height(16.dp))
+        // Gradient icon container
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(tint.copy(alpha = 0.15f), tint.copy(alpha = 0.05f))
+                    )
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(36.dp))
+        }
+        Spacer(Modifier.height(20.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
         if (!message.isNullOrBlank()) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
@@ -168,39 +222,13 @@ private fun IllustratedMessage(
             )
         }
         if (action != null) {
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
             action()
         }
     }
 }
 
-/**
- * Persistent strip shown above content while the device has no connectivity.
- * Unlike [ErrorView] this never replaces content — stale data beats a blank screen.
- */
-@Composable
-fun OfflineBanner(visible: Boolean, modifier: Modifier = Modifier) {
-    if (!visible) return
-    Surface(
-        color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Outlined.CloudOff, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "You're offline — showing the last loaded data.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-    }
-}
-
-/** Footer for an infinite list: spinner, or a retry row when the append failed. */
+/** Footer for an infinite list: slim progress bar, or a retry row when the append failed. */
 @Composable
 fun LoadMoreFooter(
     isLoading: Boolean,
@@ -213,7 +241,15 @@ fun LoadMoreFooter(
             modifier = modifier.fillMaxWidth().padding(16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .width(80.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(100.dp)),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = StrokeCap.Round,
+            )
         }
 
         error != null -> Column(

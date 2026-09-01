@@ -1,8 +1,10 @@
 package com.greenwood.school.ui.feature.auth
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,15 +16,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,9 +37,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,22 +51,15 @@ import com.greenwood.school.R
 import com.greenwood.school.core.network.AppError
 import com.greenwood.school.ui.components.AppTextField
 import com.greenwood.school.ui.components.PasswordField
+import com.greenwood.school.ui.theme.BrandAmber
+import com.greenwood.school.ui.theme.BrandIndigo
+import com.greenwood.school.ui.theme.BrandIndigoDark
+import com.greenwood.school.ui.theme.BrandIndigoLight
 
-/**
- * Sign-in, mirroring `school-frontend/src/pages/auth/LoginPage.tsx`: same brand
- * mark, same wording, same two fields, same links out to registration and password
- * recovery.
- */
 @Composable
 fun LoginScreen(
-    /**
-     * Called once the credentials are accepted. The flag says whether the account is
-     * still on a school-generated password, which decides whether the dashboard or
-     * the change-password screen comes next.
-     */
     onSignedIn: (mustChangePassword: Boolean) -> Unit,
     onNavigateToForgotPassword: () -> Unit,
-    /** Passwordless sign-in — a code emailed to the address on the account. */
     onNavigateToOtpLogin: () -> Unit = {},
     viewModel: LoginViewModel = hiltViewModel(),
 ) {
@@ -66,7 +69,49 @@ fun LoginScreen(
         if (state.isSignedIn) onSignedIn(state.mustChangePassword)
     }
 
-    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        BrandIndigoDark,
+                        BrandIndigo,
+                        BrandIndigoLight.copy(alpha = 0.85f),
+                    )
+                )
+            )
+    ) {
+        // Decorative blobs
+        Box(
+            modifier = Modifier
+                .size(320.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            BrandAmber.copy(alpha = 0.12f),
+                            Color.Transparent,
+                        )
+                    )
+                )
+                .align(Alignment.TopEnd)
+        )
+        Box(
+            modifier = Modifier
+                .size(220.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            BrandIndigoLight.copy(alpha = 0.3f),
+                            Color.Transparent,
+                        )
+                    )
+                )
+                .align(Alignment.BottomStart)
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -74,7 +119,7 @@ fun LoginScreen(
                 .navigationBarsPadding()
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 20.dp, vertical = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -82,127 +127,165 @@ fun LoginScreen(
                 modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_school_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(72.dp),
-                )
-                Spacer(Modifier.height(16.dp))
+                // Logo badge
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color.White.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.School,
+                        contentDescription = null,
+                        tint = BrandAmber,
+                        modifier = Modifier.size(40.dp),
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
                 Text(
                     text = stringResource(R.string.school_name),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    color = Color.White,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.sign_in_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color.White.copy(alpha = 0.65f),
                     textAlign = TextAlign.Center,
                 )
 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(32.dp))
 
-                AppTextField(
-                    value = state.username,
-                    onValueChange = viewModel::onUsernameChange,
-                    label = stringResource(R.string.username),
-                    error = state.usernameError,
-                    enabled = !state.isSubmitting,
-                    leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
-                    modifier = Modifier.testTag(TAG_USERNAME),
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                PasswordField(
-                    value = state.password,
-                    onValueChange = viewModel::onPasswordChange,
-                    label = stringResource(R.string.password),
-                    error = state.passwordError,
-                    required = false,
-                    modifier = Modifier.testTag(TAG_PASSWORD),
-                )
-
-                if (state.formError != null) {
-                    Spacer(Modifier.height(12.dp))
-                    LoginErrorBanner(state.formError!!)
-                }
-
-                Spacer(Modifier.height(20.dp))
-
-                Button(
-                    onClick = viewModel::submit,
-                    enabled = !state.isSubmitting,
-                    modifier = Modifier.fillMaxWidth().height(50.dp).testTag(TAG_SUBMIT),
+                // Form card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 ) {
-                    if (state.isSubmitting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
+                        Text(
+                            text = "Welcome back",
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
-                    } else {
-                        Text(stringResource(R.string.sign_in))
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Sign in to continue",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(24.dp))
+
+                        AppTextField(
+                            value = state.username,
+                            onValueChange = viewModel::onUsernameChange,
+                            label = stringResource(R.string.username),
+                            error = state.usernameError,
+                            enabled = !state.isSubmitting,
+                            leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                            modifier = Modifier.testTag(TAG_USERNAME),
+                        )
+
+                        Spacer(Modifier.height(14.dp))
+
+                        PasswordField(
+                            value = state.password,
+                            onValueChange = viewModel::onPasswordChange,
+                            label = stringResource(R.string.password),
+                            error = state.passwordError,
+                            required = false,
+                            modifier = Modifier.testTag(TAG_PASSWORD),
+                        )
+
+                        if (state.formError != null) {
+                            Spacer(Modifier.height(14.dp))
+                            LoginErrorBanner(state.formError!!)
+                        }
+
+                        Spacer(Modifier.height(24.dp))
+
+                        Button(
+                            onClick = viewModel::submit,
+                            enabled = !state.isSubmitting,
+                            modifier = Modifier.fillMaxWidth().height(52.dp).testTag(TAG_SUBMIT),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = BrandIndigo,
+                            ),
+                        ) {
+                            if (state.isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White,
+                                )
+                            } else {
+                                Text(
+                                    stringResource(R.string.sign_in),
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                )
+                            }
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(16.dp))
 
-                TextButton(onClick = onNavigateToOtpLogin, enabled = !state.isSubmitting) {
-                    Text(stringResource(R.string.sign_in_with_code))
-                }
-
-                TextButton(onClick = onNavigateToForgotPassword, enabled = !state.isSubmitting) {
-                    Text(stringResource(R.string.forgot_password))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = onNavigateToOtpLogin, enabled = !state.isSubmitting) {
+                        Text(
+                            stringResource(R.string.sign_in_with_code),
+                            color = Color.White.copy(alpha = 0.85f),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                    TextButton(onClick = onNavigateToForgotPassword, enabled = !state.isSubmitting) {
+                        Text(
+                            stringResource(R.string.forgot_password),
+                            color = BrandAmber,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(8.dp))
 
-                // No "create an account" here any more. The school admits students
-                // through its own form, which generates a username and a first-time
-                // password and emails them, so there is nothing for a student to
-                // sign up for — and an account that could exist before the admission
-                // did was one nobody had asked for.
                 Text(
                     text = stringResource(R.string.accounts_created_by_school),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.4f),
+                    textAlign = TextAlign.Center,
                 )
             }
         }
-    }
+    } 
 }
 
-/**
- * The backend distinguishes "wrong password" (401) from "account disabled/locked/
- * expired" (403) and writes the exact sentence to show. Rendering the server's own
- * message keeps Android and web identical; only the icon tone differs by severity.
- */
 @Composable
 private fun LoginErrorBanner(error: AppError) {
     val isAccountIssue = error is AppError.Forbidden
-    Surface(
-        color = if (isAccountIssue) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.errorContainer
-        },
-        contentColor = if (isAccountIssue) {
-            MaterialTheme.colorScheme.onSecondaryContainer
-        } else {
-            MaterialTheme.colorScheme.onErrorContainer
-        },
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth(),
+    val bgColor = if (isAccountIssue) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer
+    val fgColor = if (isAccountIssue) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
+            .padding(12.dp)
     ) {
-        androidx.compose.foundation.layout.Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Lock, contentDescription = null, tint = fgColor, modifier = Modifier.size(18.dp))
             Spacer(Modifier.size(10.dp))
-            Text(error.userMessage, style = MaterialTheme.typography.bodySmall)
+            Text(error.userMessage, style = MaterialTheme.typography.bodySmall, color = fgColor)
         }
     }
 }

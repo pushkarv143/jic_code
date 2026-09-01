@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 * {
   box-sizing: border-box;
 }
@@ -13,18 +15,75 @@ body,
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
 }
 
+/* ---- Brand text selection ---- */
+::selection {
+  background-color: rgba(43, 58, 143, 0.18);
+}
+
+/* ---- Focus visible ring (accessibility + polish) ---- */
+:focus-visible {
+  outline: 2px solid #2b3a8f;
+  outline-offset: 2px;
+}
+
+/* ---- Scrollbar ---- */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
-
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(127, 127, 127, 0.4);
-  border-radius: 4px;
+  background-color: rgba(127, 127, 127, 0.28);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(127, 127, 127, 0.55);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(127, 127, 127, 0.6);
+/* ---- Page fade-in on route mount ---- */
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: pageFadeIn 0.22s ease both;
+}
+
+/* ---- Shimmer skeleton animation ---- */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg,
+    rgba(127,127,127,0.08) 25%,
+    rgba(127,127,127,0.18) 37%,
+    rgba(127,127,127,0.08) 63%
+  );
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+/* ---- Subtle pulse for loading indicators ---- */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ---- Floating gradient blobs (used in AuthLayout) ---- */
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(20px, -30px) scale(1.05); }
+  66%       { transform: translate(-15px, 20px) scale(0.97); }
+}
+.blob-float {
+  animation: blobFloat 12s ease-in-out infinite;
+}
+.blob-float-delayed {
+  animation: blobFloat 16s ease-in-out infinite reverse;
 }

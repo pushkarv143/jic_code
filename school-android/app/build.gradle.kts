@@ -121,12 +121,45 @@ android {
         // that person has never seen the emailed password. The old password is
         // therefore optional on the change-password screen now.
         //
+        // 1.13.0 is a design pass rather than a feature. The app was already Material
+        // 3, but three things were missing underneath it and every screen paid for
+        // them: there was no spacing scale, so padding was 5, 6, 10, 12 or 14dp
+        // depending on who wrote the screen and nothing lined up between cards; the
+        // type scale stopped at headlineLarge, so anything that wanted to be bigger
+        // invented its own fontSize; and the M3 surface-container roles were never
+        // assigned, so Compose fell back to its purple-tinted defaults and every
+        // elevated surface came out subtly off-brand.
+        //
+        // ui/theme now carries the tokens — an 8dp grid, an elevation ladder, the full
+        // display-to-label type scale, and the surface tones tinted toward the indigo
+        // brand hue. Cards read 16dp corners and a hairline outline from it, which is
+        // what stops a 1dp card looking like a flat box on the light background.
+        // Because the shared cards are where every list and detail screen gets its
+        // chrome, all of them inherit the change without being touched.
+        //
+        // First load shows a shimmer skeleton shaped like the content that is coming
+        // instead of a centred spinner, so the screen no longer jumps when data lands.
+        // The dashboard was rebuilt on the tokens: its greeting sits in a large app bar
+        // that collapses as you scroll, the role is a chip rather than grey caption
+        // text, events are led by a calendar-tile date, and a tapped card lifts and
+        // scales slightly — a ripple alone is mostly hidden behind a tile's own
+        // content. Bottom-bar icons fill in on selection, since the pill indicator is
+        // the first thing to disappear on a dimmed screen or for a user with low
+        // vision.
+        //
+        // Dynamic colour (Material You) is wired up but off. This ships alongside a web
+        // client users move between in the same session, and recolouring the phone to
+        // match its wallpaper would leave the indigo/amber identity surviving only on
+        // devices whose wallpaper happens to be blue. SchoolTheme takes a flag for it,
+        // and the hero and shimmer colours follow the resolved scheme either way, so
+        // turning it on later is one argument rather than an audit.
+        //
         // Carries 1.5.0 before it (one section per class and My Timetable), 1.4.0 before
         // that (the class module on the phone), 1.3.0 before that (passcode sign-in and
         // recovery). A new versionCode is what lets the device recognise this as an
         // upgrade rather than refusing to install over the previous build.
-        versionCode = 13
-        versionName = "1.12.0"
+        versionCode = 14
+        versionName = "1.13.0"
 
         testInstrumentationRunner = "com.greenwood.school.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true

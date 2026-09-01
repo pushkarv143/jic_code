@@ -1,6 +1,10 @@
 package com.greenwood.school.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Apartment
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SpaceDashboard
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.Assignment
@@ -308,12 +312,29 @@ val IMPLEMENTED_ROUTES: Set<String> = setOf(
     Routes.SEARCH,
 )
 
-/** The four bottom-bar tabs. Fixed for every role; the hubs adapt their contents. */
-data class BottomTab(val route: String, val label: String, val icon: ImageVector)
+/**
+ * The four bottom-bar tabs. Fixed for every role; the hubs adapt their contents.
+ *
+ * [selectedIcon] is the filled counterpart of [icon]. Material 3 navigation bars
+ * switch outlined to filled on selection — with the pill indicator alone, the
+ * active tab is distinguishable only by a background tint, which is the first
+ * thing to disappear for a user with low vision or a dimmed screen.
+ */
+data class BottomTab(
+    val route: String,
+    val label: String,
+    val icon: ImageVector,
+    val selectedIcon: ImageVector,
+)
 
 val BOTTOM_TABS = listOf(
-    BottomTab(Routes.DASHBOARD, "Home", Icons.Outlined.SpaceDashboard),
-    BottomTab(Routes.ACADEMICS_HUB, "Academics", Icons.Outlined.School),
-    BottomTab(Routes.ADMIN_HUB, "Admin", Icons.Outlined.AccountBalanceWallet),
-    BottomTab(Routes.MORE_HUB, "More", Icons.Outlined.Apartment),
+    BottomTab(Routes.DASHBOARD, "Home", Icons.Outlined.SpaceDashboard, Icons.Filled.SpaceDashboard),
+    BottomTab(Routes.ACADEMICS_HUB, "Academics", Icons.Outlined.School, Icons.Filled.School),
+    BottomTab(
+        Routes.ADMIN_HUB,
+        "Admin",
+        Icons.Outlined.AccountBalanceWallet,
+        Icons.Filled.AccountBalanceWallet,
+    ),
+    BottomTab(Routes.MORE_HUB, "More", Icons.Outlined.Apartment, Icons.Filled.Apartment),
 )

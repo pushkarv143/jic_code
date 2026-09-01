@@ -21,6 +21,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
+import { alpha } from '@mui/material/styles';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import MoreVertOutlinedIcon from '@mui/icons-material/MoreVertOutlined';
@@ -160,90 +161,168 @@ export function StudentProfilePage() {
 
   return (
     <Box>
+      {/* Breadcrumbs row */}
       <PageHeader
-        title={displayName}
-        subtitle={`Admission No. ${student.admissionNumber}`}
+        title=""
         breadcrumbs={[
           { label: 'Dashboard', to: '/app/dashboard' },
           { label: 'Students', to: '/app/students' },
           { label: displayName },
         ]}
-        action={
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              startIcon={downloadingIdCard ? <CircularProgress size={16} color="inherit" /> : <CreditCardOutlinedIcon />}
-              onClick={handleDownloadIdCard}
-              disabled={downloadingIdCard}
-            >
-              Download ID Card
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<EditOutlinedIcon />}
-              onClick={() => navigate(`/app/students/${studentId}/edit`)}
-            >
-              Edit
-            </Button>
-            <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)}>
-              <MoreVertOutlinedIcon />
-            </IconButton>
-            <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
-              <MenuItem
-                onClick={() => {
-                  setMenuAnchor(null);
-                  setTransferOpen(true);
-                }}
-              >
-                Transfer Student
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  setMenuAnchor(null);
-                  setAlumniOpen(true);
-                }}
-              >
-                Mark as Alumni
-              </MenuItem>
-              <Divider />
-              <MenuItem
-                onClick={() => {
-                  setMenuAnchor(null);
-                  setDeleteOpen(true);
-                }}
-                sx={{ color: 'error.main' }}
-              >
-                <DeleteOutlineOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-                Delete
-              </MenuItem>
-            </Menu>
-          </Stack>
-        }
       />
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs="auto">
-              <Avatar src={student.photoUrl ?? undefined} sx={{ width: 84, height: 84, fontSize: 28 }}>
+      {/* Hero banner card */}
+      <Card
+        sx={{
+          mb: 3,
+          background: (theme) =>
+            `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 60%, #3f51b5 100%)`,
+          color: '#fff',
+          borderRadius: 4,
+          overflow: 'visible',
+          position: 'relative',
+        }}
+      >
+        {/* Dot-grid texture */}
+        <Box sx={{
+          position: 'absolute', inset: 0, borderRadius: 4, overflow: 'hidden', pointerEvents: 'none',
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+        }} />
+        <CardContent sx={{ p: { xs: 2.5, sm: 3.5 }, position: 'relative', zIndex: 1 }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={{ xs: 2, sm: 3 }}
+            alignItems={{ xs: 'center', sm: 'flex-start' }}
+          >
+            {/* Avatar with ring */}
+            <Box sx={{ position: 'relative', flexShrink: 0 }}>
+              <Avatar
+                src={student.photoUrl ? `${import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '')}${student.photoUrl}` : undefined}
+                sx={{
+                  width: 88,
+                  height: 88,
+                  fontSize: '2rem',
+                  fontWeight: 800,
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: '#fff',
+                  border: '3px solid rgba(255,255,255,0.5)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                }}
+              >
                 {initials}
               </Avatar>
-            </Grid>
-            <Grid item xs>
-              <Typography variant="h6" fontWeight={700}>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 2,
+                  right: 2,
+                  width: 16,
+                  height: 16,
+                  borderRadius: '50%',
+                  bgcolor: student.status === 'ACTIVE' ? '#4caf50' : '#9e9e9e',
+                  border: '2px solid #fff',
+                }}
+              />
+            </Box>
+
+            {/* Identity */}
+            <Box sx={{ flex: 1, textAlign: { xs: 'center', sm: 'left' } }}>
+              <Typography variant="h5" fontWeight={800} sx={{ color: '#fff', lineHeight: 1.2, mb: 0.5 }}>
                 {displayName}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {student.className ?? `Class #${student.classId}`}
-                {student.sectionName ? ` - ${student.sectionName}` : ''} · Roll No. {student.rollNumber}
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mb: 1.5 }}>
+                Admission No. {student.admissionNumber}
               </Typography>
-              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent={{ xs: 'center', sm: 'flex-start' }}>
                 <StatusChip status={student.status} />
+                {student.className && (
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', px: 1.25, py: 0.25, borderRadius: 50, bgcolor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                    <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#fff' }}>
+                      {student.className}{student.sectionName ? ` – ${student.sectionName}` : ''}
+                    </Typography>
+                  </Box>
+                )}
               </Stack>
-            </Grid>
-          </Grid>
+            </Box>
+
+            {/* Actions */}
+            <Stack direction={{ xs: 'row', sm: 'column', lg: 'row' }} spacing={1} flexShrink={0}>
+              <Button
+                variant="contained"
+                startIcon={downloadingIdCard ? <CircularProgress size={16} color="inherit" /> : <CreditCardOutlinedIcon />}
+                onClick={handleDownloadIdCard}
+                disabled={downloadingIdCard}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  backdropFilter: 'blur(8px)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
+                  boxShadow: 'none',
+                  background: 'rgba(255,255,255,0.15)',
+                  fontSize: '0.8rem',
+                }}
+              >
+                ID Card
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<EditOutlinedIcon />}
+                onClick={() => navigate(`/app/students/${studentId}/edit`)}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  backdropFilter: 'blur(8px)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
+                  boxShadow: 'none',
+                  background: 'rgba(255,255,255,0.15)',
+                  fontSize: '0.8rem',
+                }}
+              >
+                Edit
+              </Button>
+              <IconButton
+                onClick={(e) => setMenuAnchor(e.currentTarget)}
+                sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } }}
+              >
+                <MoreVertOutlinedIcon />
+              </IconButton>
+            </Stack>
+          </Stack>
         </CardContent>
       </Card>
+
+      <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null);
+            setTransferOpen(true);
+          }}
+        >
+          Transfer Student
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null);
+            setAlumniOpen(true);
+          }}
+        >
+          Mark as Alumni
+        </MenuItem>
+        <Divider />
+        <MenuItem
+          onClick={() => {
+            setMenuAnchor(null);
+            setDeleteOpen(true);
+          }}
+          sx={{ color: 'error.main' }}
+        >
+          <DeleteOutlineOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+          Delete
+        </MenuItem>
+      </Menu>
 
       <Card>
         <Tabs

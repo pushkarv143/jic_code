@@ -87,3 +87,55 @@ object StatusPalette {
         else -> neutral
     }
 }
+
+/* ------------------------------------------------------------------------- */
+/* Material 3 surface-container tones.                                        */
+/*                                                                            */
+/* M3 stopped conveying depth with shadows and started doing it with tonal    */
+/* fills: a card is "higher" than the background because it is a lighter tint */
+/* of the same hue, not because it casts a shadow. The old scheme left these  */
+/* roles unset, so Compose fell back to purple-tinted defaults and every      */
+/* nominally-elevated surface came out subtly off-brand.                      */
+/*                                                                            */
+/* Each tone is the neutral surface nudged toward (light) or away from (dark) */
+/* the indigo brand hue, so stacked surfaces stay in the same colour family.  */
+/* ------------------------------------------------------------------------- */
+
+/* Light — background F4F6FB, paper FFFFFF */
+val SurfaceDimLight = Color(0xFFDDE1EC)
+val SurfaceBrightLight = Color(0xFFFFFFFF)
+val SurfaceContainerLowestLight = Color(0xFFFFFFFF)
+val SurfaceContainerLowLight = Color(0xFFFAFBFE)
+val SurfaceContainerLight = Color(0xFFF4F6FB)
+val SurfaceContainerHighLight = Color(0xFFEDF0F7)
+val SurfaceContainerHighestLight = Color(0xFFE6EAF3)
+
+/* Dark — background 0F1420, paper 161D2E */
+val SurfaceDimDark = Color(0xFF0B0F1C)
+val SurfaceBrightDark = Color(0xFF2A3348)
+val SurfaceContainerLowestDark = Color(0xFF080C16)
+val SurfaceContainerLowDark = Color(0xFF131A28)
+val SurfaceContainerDark = Color(0xFF161D2E)
+val SurfaceContainerHighDark = Color(0xFF1E2637)
+val SurfaceContainerHighestDark = Color(0xFF283142)
+
+/** Scrim behind modal surfaces. M3 wants this explicit rather than a raw black alpha. */
+val ScrimBlack = Color(0xFF000000)
+
+/**
+ * The dashboard header gradient. Two stops of the brand indigo rather than a
+ * third colour, so the hero reads as "more of the brand" instead of decoration.
+ */
+val HeroGradientStartLight = BrandIndigo
+val HeroGradientEndLight = Color(0xFF3F51B5)
+val HeroGradientStartDark = Color(0xFF1C2763)
+val HeroGradientEndDark = Color(0xFF262F6E)
+
+/**
+ * Shimmer stops for skeleton placeholders. Deliberately low-contrast — a skeleton
+ * that shimmers too brightly reads as content and the eye keeps trying to parse it.
+ */
+val ShimmerBaseLight = Color(0xFFE6EAF3)
+val ShimmerHighlightLight = Color(0xFFF6F8FC)
+val ShimmerBaseDark = Color(0xFF1E2637)
+val ShimmerHighlightDark = Color(0xFF2C3547)

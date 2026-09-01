@@ -24,6 +24,7 @@ import EmptyState from '@/components/common/EmptyState';
 import UpcomingEventsCard from './widgets/UpcomingEventsCard';
 import RecentActivitiesCard from './widgets/RecentActivitiesCard';
 import NotificationsCard from './widgets/NotificationsCard';
+import TodayScheduleCard from './widgets/TodayScheduleCard';
 import classesApi from '@/api/classesApi';
 import assignmentsApi from '@/api/assignmentsApi';
 import attendanceApi from '@/api/attendanceApi';
@@ -152,6 +153,13 @@ export function TeacherDashboard() {
 
   return (
     <Box>
+      {/* ── TODAY'S SCHEDULE — the most actionable thing for a teacher ── */}
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12}>
+          <TodayScheduleCard />
+        </Grid>
+      </Grid>
+
       <Grid container spacing={2.5}>
         <Grid item xs={12} sm={6} lg={3}>
           <StatCard icon={<ClassOutlinedIcon />} label="Classes & Subjects Assigned" value={mappings.length} color="primary" />

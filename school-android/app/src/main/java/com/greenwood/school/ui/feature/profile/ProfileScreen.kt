@@ -53,6 +53,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import com.greenwood.school.ui.theme.BrandAmber
+import com.greenwood.school.ui.theme.BrandIndigo
+import com.greenwood.school.ui.theme.BrandIndigoDark
+import com.greenwood.school.ui.theme.BrandIndigoLight
 
 /**
  * "My Profile" — the read-only account card plus the two actions the web app's
@@ -97,23 +110,60 @@ fun ProfileScreen(
         ) {
             val user = state.user
 
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            // Gradient hero banner
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(BrandIndigoDark, BrandIndigo, BrandIndigoLight.copy(alpha = 0.85f))
+                        )
+                    )
+                    .padding(vertical = 28.dp, horizontal = 20.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Avatar(
-                    initials = user?.initials ?: "?",
-                    imageUrl = user?.profileImage,
-                    size = 80.dp,
-                )
-                Spacer(Modifier.height(10.dp))
-                Text(user?.fullName.orEmpty(), style = MaterialTheme.typography.titleLarge)
-                Text(
-                    Role.from(user?.role).label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Avatar with white ring
+                    Box(
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Avatar(
+                            initials = user?.initials ?: "?",
+                            imageUrl = user?.profileImage,
+                            size = 80.dp,
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        user?.fullName.orEmpty(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    // Role pill
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.White.copy(alpha = 0.15f))
+                            .padding(horizontal = 14.dp, vertical = 5.dp),
+                    ) {
+                        Text(
+                            Role.from(user?.role).label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandAmber,
+                        )
+                    }
+                }
             }
+
+            Spacer(Modifier.height(4.dp))
 
             SectionCard(title = "Account") {
                 DetailRow("Username", user?.username)

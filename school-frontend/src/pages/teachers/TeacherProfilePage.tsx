@@ -100,51 +100,129 @@ export function TeacherProfilePage() {
 
   return (
     <Box>
+      {/* Breadcrumbs only PageHeader */}
       <PageHeader
-        title={`${firstName} ${lastName}`.trim()}
-        subtitle={`Employee ID ${teacher.employeeId}`}
+        title=""
         breadcrumbs={[
           { label: 'Dashboard', to: '/app/dashboard' },
           { label: 'Teachers', to: '/app/teachers' },
           { label: `${firstName} ${lastName}`.trim() },
         ]}
-        action={
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              startIcon={downloadingIdCard ? <CircularProgress size={16} color="inherit" /> : <CreditCardOutlinedIcon />}
-              onClick={handleDownloadIdCard}
-              disabled={downloadingIdCard}
-            >
-              Download ID Card
-            </Button>
-            <Button variant="outlined" startIcon={<EditOutlinedIcon />} onClick={() => navigate(`/app/teachers/${teacherId}/edit`)}>
-              Edit
-            </Button>
-          </Stack>
-        }
       />
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs="auto">
-              <Avatar sx={{ width: 84, height: 84, fontSize: 28 }}>{initials}</Avatar>
-            </Grid>
-            <Grid item xs>
-              <Typography variant="h6" fontWeight={700}>
+      {/* CRED-level gradient hero card — teal/emerald to distinguish from student indigo */}
+      <Card
+        sx={{
+          mb: 3,
+          background: 'linear-gradient(135deg, #004d40 0%, #00695c 55%, #00897b 100%)',
+          color: '#fff',
+          borderRadius: 4,
+          overflow: 'visible',
+          position: 'relative',
+        }}
+      >
+        {/* Dot-grid texture overlay */}
+        <Box sx={{
+          position: 'absolute', inset: 0, borderRadius: 4, overflow: 'hidden', pointerEvents: 'none',
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+        }} />
+        <CardContent sx={{ p: { xs: 2.5, sm: 3.5 }, position: 'relative', zIndex: 1 }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={{ xs: 2, sm: 3 }}
+            alignItems={{ xs: 'center', sm: 'flex-start' }}
+          >
+            {/* Avatar with status ring */}
+            <Box sx={{ position: 'relative', flexShrink: 0 }}>
+              <Avatar
+                sx={{
+                  width: 88,
+                  height: 88,
+                  fontSize: '2rem',
+                  fontWeight: 800,
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: '#fff',
+                  border: '3px solid rgba(255,255,255,0.5)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                }}
+              >
+                {initials}
+              </Avatar>
+              <Box sx={{
+                position: 'absolute', bottom: 2, right: 2, width: 16, height: 16,
+                borderRadius: '50%', border: '2px solid #fff',
+                bgcolor: teacher.status === 'ACTIVE' ? '#4caf50' : '#9e9e9e',
+              }} />
+            </Box>
+
+            {/* Identity */}
+            <Box sx={{ flex: 1, textAlign: { xs: 'center', sm: 'left' } }}>
+              <Typography variant="h5" fontWeight={800} sx={{ color: '#fff', lineHeight: 1.2, mb: 0.5 }}>
                 {firstName} {lastName}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {teacher.designationName ?? `Designation #${teacher.designationId}`} ·{' '}
-                {teacher.departmentName ?? `Department #${teacher.departmentId}`}
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mb: 1.5 }}>
+                Employee ID: {teacher.employeeId}
               </Typography>
-              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent={{ xs: 'center', sm: 'flex-start' }}>
                 <StatusChip status={teacher.status} />
-                <Chip label={teacher.employmentType.replace('_', ' ')} size="small" variant="outlined" />
+                {teacher.designationName && (
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', px: 1.25, py: 0.25, borderRadius: 50, bgcolor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                    <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#fff' }}>
+                      {teacher.designationName}
+                    </Typography>
+                  </Box>
+                )}
+                {teacher.departmentName && (
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', px: 1.25, py: 0.25, borderRadius: 50, bgcolor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                    <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>
+                      {teacher.departmentName}
+                    </Typography>
+                  </Box>
+                )}
+                {teacher.employmentType && (
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', px: 1.25, py: 0.25, borderRadius: 50, bgcolor: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                    <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>
+                      {teacher.employmentType.replace('_', ' ')}
+                    </Typography>
+                  </Box>
+                )}
               </Stack>
-            </Grid>
-          </Grid>
+            </Box>
+
+            {/* Action buttons */}
+            <Stack direction={{ xs: 'row', sm: 'column', lg: 'row' }} spacing={1} flexShrink={0}>
+              <Button
+                variant="contained"
+                startIcon={downloadingIdCard ? <CircularProgress size={16} color="inherit" /> : <CreditCardOutlinedIcon />}
+                onClick={handleDownloadIdCard}
+                disabled={downloadingIdCard}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.15)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  backdropFilter: 'blur(8px)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
+                  boxShadow: 'none', background: 'rgba(255,255,255,0.15)', fontSize: '0.8rem',
+                }}
+              >
+                ID Card
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<EditOutlinedIcon />}
+                onClick={() => navigate(`/app/teachers/${teacherId}/edit`)}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.15)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  backdropFilter: 'blur(8px)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
+                  boxShadow: 'none', background: 'rgba(255,255,255,0.15)', fontSize: '0.8rem',
+                }}
+              >
+                Edit
+              </Button>
+            </Stack>
+          </Stack>
         </CardContent>
       </Card>
 

@@ -27,6 +27,7 @@ import PieChartCard from '@/components/charts/PieChartCard';
 import UpcomingEventsCard from './widgets/UpcomingEventsCard';
 import RecentActivitiesCard from './widgets/RecentActivitiesCard';
 import NotificationsCard from './widgets/NotificationsCard';
+import TodayScheduleCard from './widgets/TodayScheduleCard';
 import parentApi from '@/api/parentApi';
 import studentsApi from '@/api/studentsApi';
 import attendanceApi from '@/api/attendanceApi';
@@ -283,6 +284,14 @@ export function StudentParentDashboard() {
               </Box>
             </Stack>
           )}
+
+          {/* ── TODAY'S TIMETABLE — most useful thing for a student/parent ── */}
+          <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+            <Grid item xs={12}>
+              <TodayScheduleCard studentId={selectedStudentId ?? undefined} />
+            </Grid>
+          </Grid>
+
           <Grid container spacing={2.5}>
             <Grid item xs={12} sm={6} lg={3}>
               <StatCard

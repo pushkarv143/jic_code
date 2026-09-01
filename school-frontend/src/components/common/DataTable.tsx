@@ -69,20 +69,41 @@ function ExportableToolbar({
   toolbarExtra?: ReactNode;
 }) {
   return (
-    <GridToolbarContainer sx={{ px: 1.5, py: 1, gap: 1 }}>
+    <GridToolbarContainer
+      sx={{
+        px: 2,
+        py: 1.25,
+        gap: 1,
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        flexWrap: 'wrap',
+        '& .MuiButton-root': { borderRadius: 2, fontSize: '0.78rem', fontWeight: 600 },
+      }}
+    >
       <GridToolbarColumnsButton />
       <GridToolbarFilterButton />
       <GridToolbarDensitySelector />
       <Box sx={{ flexGrow: 1 }} />
-      <GridToolbarQuickFilter />
+      <GridToolbarQuickFilter
+        sx={{
+          '& .MuiInputBase-root': {
+            borderRadius: 2,
+            bgcolor: 'action.hover',
+            px: 1,
+            fontSize: '0.85rem',
+          },
+          '& .MuiInputBase-root:before, & .MuiInputBase-root:after': { display: 'none' },
+        }}
+      />
       {toolbarExtra}
       {onExport && (
-        <Tooltip title="Export the current view">
+        <Tooltip title="Export current view to CSV">
           <Button
             size="small"
             startIcon={<FileDownloadOutlinedIcon />}
             onClick={onExport}
             variant="outlined"
+            sx={{ ml: 0.5 }}
           >
             Export
           </Button>
@@ -168,8 +189,26 @@ export function DataTable<T extends GridValidRowModel>({
         onRowSelectionModelChange={onRowSelectionModelChange}
         slots={{ toolbar: () => <ExportableToolbar onExport={onExport} toolbarExtra={toolbarExtra} /> }}
         sx={{
+          border: 'none',
           '& .MuiDataGrid-cell:focus': { outline: 'none' },
           '& .MuiDataGrid-cell:focus-within': { outline: 'none' },
+          '& .MuiDataGrid-row': {
+            transition: 'background-color 0.12s ease',
+            '&:hover': { bgcolor: 'action.hover' },
+          },
+          '& .MuiDataGrid-columnHeader': {
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          },
+          '& .MuiDataGrid-footerContainer': {
+            borderTop: '1px solid',
+            borderColor: 'divider',
+          },
+          '& .MuiDataGrid-virtualScroller': {
+            overflowX: 'auto',
+          },
         }}
       />
     </Box>

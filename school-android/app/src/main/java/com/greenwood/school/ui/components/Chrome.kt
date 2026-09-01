@@ -1,21 +1,33 @@
 package com.greenwood.school.ui.components
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -26,8 +38,12 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.greenwood.school.core.common.Formatters
@@ -50,7 +66,24 @@ fun AppTopBar(
     TopAppBar(
         modifier = modifier,
         title = {
-            Column2(title = title, subtitle = subtitle)
+            androidx.compose.foundation.layout.Column {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         },
         navigationIcon = {
             when {
@@ -68,42 +101,29 @@ fun AppTopBar(
     )
 }
 
-@Composable
-private fun Column2(title: String, subtitle: String?) {
-    androidx.compose.foundation.layout.Column {
-        Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (!subtitle.isNullOrBlank()) {
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
 /**
- * Colour-coded status pill. Every enum in the system — attendance, fee, leave,
- * payroll, book issue — funnels through [StatusPalette] so the same word always
- * gets the same colour, exactly as the web app's chip styling does.
+ * Premium status pill: tinted background + matching colored border + bold label.
+ * Every status enum in the system routes through StatusPalette for consistent coloring.
  */
 @Composable
 fun StatusChip(status: String?, modifier: Modifier = Modifier) {
     if (status.isNullOrBlank()) return
     val color = StatusPalette.forStatus(status)
-    AssistChip(
-        onClick = {},
-        enabled = false,
-        modifier = modifier,
-        label = { Text(Formatters.humanizeEnum(status), style = MaterialTheme.typography.labelSmall) },
-        colors = AssistChipDefaults.assistChipColors(
-            disabledContainerColor = color.copy(alpha = 0.12f),
-            disabledLabelColor = color,
-        ),
-        border = null,
-    )
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(color.copy(alpha = 0.12f))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = Formatters.humanizeEnum(status),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            maxLines = 1,
+        )
+    }
 }
 
 @Composable
@@ -117,12 +137,13 @@ fun ConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(message) },
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = { Text(message, style = MaterialTheme.typography.bodyMedium) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(
                     confirmLabel,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (isDestructive) MaterialTheme.colorScheme.error else Color.Unspecified,
                 )
             }
@@ -133,10 +154,6 @@ fun ConfirmDialog(
 
 /**
  * Infinite-scrolling list wired to [PagedListState].
- *
- * Pages are requested when the user is within [prefetchDistance] rows of the end,
- * so the next page is usually already there by the time they reach it. This is the
- * mobile answer to the web app's numbered DataGrid pager.
  */
 @Composable
 fun <T> PagedLazyColumn(
@@ -200,6 +217,48 @@ fun ResultCount(shown: Int, total: Long, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * Offline banner with pulsing icon animation.
+ */
+@Composable
+fun OfflineBanner(visible: Boolean, modifier: Modifier = Modifier) {
+    if (!visible) return
+
+    val infiniteTransition = rememberInfiniteTransition(label = "offline-pulse")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "icon-pulse",
+    )
+
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Outlined.CloudOff,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp).alpha(alpha),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "You're offline — showing last loaded data.",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+            )
+        }
     }
 }
 

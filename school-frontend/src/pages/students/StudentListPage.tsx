@@ -313,6 +313,7 @@ export function StudentListPage() {
                     </InputAdornment>
                   ),
                 }}
+                sx={{ minWidth: 260, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.paper' } }}
               />
             </Grid>
             <Grid item xs={6} sm={3} md={2}>
@@ -323,6 +324,7 @@ export function StudentListPage() {
                 label="Class"
                 value={classId}
                 onChange={(e) => setClassId(e.target.value === '' ? '' : Number(e.target.value))}
+                sx={{ minWidth: 180, '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
               >
                 <MenuItem value="">All classes</MenuItem>
                 {classes.map((cls) => (
@@ -333,7 +335,7 @@ export function StudentListPage() {
               </TextField>
             </Grid>
             <Grid item xs={12} md={5}>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                 {STATUS_OPTIONS.map((opt) => (
                   <Chip
                     key={opt.label}
@@ -341,7 +343,8 @@ export function StudentListPage() {
                     size="small"
                     color={status === opt.value && opt.value !== '' ? 'primary' : 'default'}
                     variant={status === opt.value ? 'filled' : 'outlined'}
-                    onClick={() => setStatus(opt.value)}
+                    onClick={() => { setStatus(opt.value); setPaginationModel((p) => ({ ...p, page: 0 })); }}
+                    sx={{ fontWeight: status === opt.value ? 700 : 500, borderRadius: 2, cursor: 'pointer' }}
                   />
                 ))}
               </Stack>

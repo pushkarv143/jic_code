@@ -94,7 +94,7 @@ class MainViewModel @Inject constructor(
     }
 
     private companion object {
-        const val PROFILE_REFRESH_DELAY_MS = 400L
+        const val PROFILE_REFRESH_DELAY_MS = 100L
     }
 }
 

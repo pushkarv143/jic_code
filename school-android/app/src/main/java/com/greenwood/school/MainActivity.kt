@@ -28,7 +28,9 @@ import kotlinx.coroutines.delay
  * How long the launch screen stays up at minimum. Long enough to read the school
  * name and the developer credit, short enough not to feel like a delay.
  */
-private const val SPLASH_MINIMUM_MS = 1800L
+// 600 ms is long enough to be legible and short enough to feel instant.
+// The old 1800 ms was the biggest single contributor to cold-start latency.
+private const val SPLASH_MINIMUM_MS = 600L
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -87,9 +89,12 @@ class MainActivity : ComponentActivity() {
                      * changing a role — updates the menu in place rather than throwing
                      * the user back to the splash.
                      */
-                    val showSplash = state.isRestoringSession ||
-                        !minimumSplashElapsed ||
-                        (state.isSignedIn && !state.isAccessSettled)
+                    // Show splash only while the session is actually being restored or
+                    // the minimum visual time hasn't elapsed. Access settling happens
+                    // in the background — the shell handles the "not yet loaded" state
+                    // with skeleton UI, so the user is never stuck on the splash for a
+                    // slow network call.
+                    val showSplash = state.isRestoringSession || !minimumSplashElapsed
 
                     if (showSplash) {
                         SplashScreen()
