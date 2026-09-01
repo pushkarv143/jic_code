@@ -62,6 +62,12 @@ app:
       account-sid: ${TWILIO_ACCOUNT_SID:}
       auth-token: ${TWILIO_AUTH_TOKEN:}
       from-number: ${TWILIO_FROM_NUMBER:}
+  whatsapp:
+    twilio:
+      # WhatsApp-approved sender in whatsapp:+E164 format.
+      # Dev/Sandbox:   whatsapp:+14155238886  (join sandbox first on each device)
+      # Production:    whatsapp:+91XXXXXXXXXX (your approved Business number)
+      from-number: ${TWILIO_WHATSAPP_FROM:}
   frontend:
     url: ${FRONTEND_URL:http://localhost:5173}
   cors:

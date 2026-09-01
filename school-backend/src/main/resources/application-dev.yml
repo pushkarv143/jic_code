@@ -6,6 +6,13 @@ spring:
         format_sql: true
         highlight_sql: true
 
+# Disable the mail health check in dev — SMTP creds are not set locally
+# and a failed MailHealthIndicator turns the whole /actuator/health 503.
+management:
+  health:
+    mail:
+      enabled: false
+
 logging:
   level:
     root: INFO

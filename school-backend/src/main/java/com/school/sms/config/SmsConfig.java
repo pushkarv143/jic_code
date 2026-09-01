@@ -1,8 +1,11 @@
 package com.school.sms.config;
 
 import com.school.sms.service.SmsService;
+import com.school.sms.service.WhatsAppService;
 import com.school.sms.service.impl.LoggingSmsServiceImpl;
+import com.school.sms.service.impl.LoggingWhatsAppService;
 import com.school.sms.service.impl.TwilioSmsService;
+import com.school.sms.service.impl.TwilioWhatsAppService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -47,6 +50,14 @@ public class SmsConfig {
     @Value("${app.sms.default-country-code:+91}")
     private String defaultCountryCode;
 
+    /**
+     * WhatsApp sender number in {@code whatsapp:+E164} format.
+     * During development use the Twilio Sandbox number {@code whatsapp:+14155238886}.
+     * For production, register a WhatsApp Business number with Twilio and set this.
+     */
+    @Value("${app.whatsapp.twilio.from-number:}")
+    private String whatsAppFromNumber;
+
     @Bean
     public SmsService smsService(RestClient.Builder restClientBuilder) {
         // All three matter: a SID with no token cannot authenticate, and neither
@@ -58,5 +69,25 @@ public class SmsConfig {
 
         log.info("SMS gateway configured (Twilio), sending from {}", fromNumber);
         return new TwilioSmsService(restClientBuilder, accountSid, authToken, fromNumber, defaultCountryCode);
+    }
+
+    /**
+     * WhatsApp bean.
+     *
+     * <p>Reuses the same Twilio credentials as SMS — only the sender number is
+     * different (the WhatsApp-approved number vs. the SMS long/short code).
+     * If {@code TWILIO_WHATSAPP_FROM} is not set the stub is returned and every
+     * {@link WhatsAppService#isAvailable()} call returns {@code false}, so the
+     * scheduler skips gracefully.
+     */
+    @Bean
+    public WhatsAppService whatsAppService(RestClient.Builder restClientBuilder) {
+        if (accountSid.isBlank() || authToken.isBlank() || whatsAppFromNumber.isBlank()) {
+            log.info("WhatsApp gateway not configured (set TWILIO_WHATSAPP_FROM to enable)");
+            return new LoggingWhatsAppService();
+        }
+        log.info("WhatsApp gateway configured (Twilio), sending from {}", whatsAppFromNumber);
+        return new TwilioWhatsAppService(restClientBuilder, accountSid, authToken,
+                whatsAppFromNumber, defaultCountryCode);
     }
 }
